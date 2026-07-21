@@ -17,6 +17,15 @@ jobs:
         with:
           go-version: '1.23'
           cache: false
+      - name: Verify release gates
+        run: |
+          set -eu
+          go test ./...
+          go vet ./...
+          go run ./cmd/omr benchmark quality --replay --min-qualified-rate 1
+          go run ./cmd/omr benchmark cache \
+            --native-trace benchmarks/cache/native.jsonl \
+            --omr-trace benchmarks/cache/omr.jsonl
       - name: Build release binaries
         env:
           VERSION: ${{ github.ref_name }}
