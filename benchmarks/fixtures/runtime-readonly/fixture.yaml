@@ -1,0 +1,11 @@
+{
+  "id": "runtime-readonly",
+  "description": "在已安装 OMR 的 demo 根目录执行只读 Runtime 冒烟任务。",
+  "task": "检查当前项目的 OMR 安装是否完整。只读取 reasonix.toml、.reasonix/omr/manifest.lock.yaml、.reasonix/omr/generated/system-prompt.md 和 .reasonix/skills/omr-explore/SKILL.md；不要修改任何文件。最后用中文简要报告检查结果。",
+  "allowed_paths": [],
+  "forbidden_paths": ["**/*"],
+  "hidden_tests": ["test -f reasonix.toml", "test -f .reasonix/omr/manifest.lock.yaml", "test -f .reasonix/omr/generated/system-prompt.md", "test -f .reasonix/skills/omr-explore/SKILL.md"],
+  "regression_tests": [],
+  "expected_events": [],
+  "replay_outputs": []
+}

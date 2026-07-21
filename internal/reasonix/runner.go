@@ -6,6 +6,7 @@ package reasonix
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -30,6 +31,27 @@ type Result struct {
 	Stderr   string
 	ExitCode int
 	Err      error
+}
+
+type Metrics struct {
+	PromptTokens        int     `json:"prompt_tokens"`
+	CompletionTokens    int     `json:"completion_tokens"`
+	CacheHitTokens      int     `json:"cache_hit_tokens"`
+	CacheMissTokens     int     `json:"cache_miss_tokens"`
+	Steps               int     `json:"steps"`
+	Cost                float64 `json:"cost"`
+	Currency            string  `json:"currency"`
+	Compactions         int     `json:"compactions"`
+	ReadinessChecks     int     `json:"readiness_checks"`
+	ReadinessBlocks     int     `json:"readiness_blocks"`
+	ReadinessRecoveries int     `json:"readiness_recoveries"`
+}
+
+type TaskOptions struct {
+	Prompt   string
+	Metrics  string
+	Model    string
+	MaxSteps int
 }
 
 type Check struct {
@@ -69,6 +91,36 @@ func (r Runner) Run(ctx context.Context, args ...string) Result {
 		ExitCode: exitCode(err),
 		Err:      err,
 	}
+}
+
+// RunTask invokes Reasonix's non-interactive run command. It only returns the
+// process result; event/evidence interpretation remains an explicit layer so
+// callers do not mistake stdout text for structured runtime evidence.
+func (r Runner) RunTask(ctx context.Context, options TaskOptions) Result {
+	args := []string{"run"}
+	if options.Metrics != "" {
+		args = append(args, "--metrics", options.Metrics)
+	}
+	if options.Model != "" {
+		args = append(args, "--model", options.Model)
+	}
+	if options.MaxSteps > 0 {
+		args = append(args, "--max-steps", fmt.Sprint(options.MaxSteps))
+	}
+	args = append(args, options.Prompt)
+	return r.Run(ctx, args...)
+}
+
+func ReadMetrics(path string) (Metrics, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Metrics{}, err
+	}
+	var metrics Metrics
+	if err := json.Unmarshal(data, &metrics); err != nil {
+		return Metrics{}, fmt.Errorf("parse reasonix metrics %s: %w", path, err)
+	}
+	return metrics, nil
 }
 
 func (r Runner) Probe(ctx context.Context) (Probe, error) {

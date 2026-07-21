@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -33,6 +34,33 @@ func TestRunCapturesExitCodeAndOutput(t *testing.T) {
 	}
 	if !strings.Contains(result.Stderr, "synthetic failure") {
 		t.Fatalf("stderr = %q", result.Stderr)
+	}
+}
+
+func TestRunTaskBuildsNonInteractiveRunArgs(t *testing.T) {
+	runner := Runner{commandFactory: helperCommand}
+	result := runner.RunTask(context.Background(), TaskOptions{
+		Prompt:   "fix the bug",
+		Metrics:  ".run-metrics.json",
+		Model:    "test-model",
+		MaxSteps: 7,
+	})
+	if result.Err != nil || !strings.Contains(result.Stdout, "task complete") {
+		t.Fatalf("RunTask failed: %#v", result)
+	}
+}
+
+func TestReadMetrics(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "metrics.json")
+	if err := os.WriteFile(path, []byte(`{"prompt_tokens":10,"cache_hit_tokens":7,"steps":2,"cost":0.12,"currency":"USD"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	metrics, err := ReadMetrics(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if metrics.PromptTokens != 10 || metrics.CacheHitTokens != 7 || metrics.Steps != 2 || metrics.Cost != 0.12 {
+		t.Fatalf("unexpected metrics: %#v", metrics)
 	}
 }
 
@@ -72,6 +100,10 @@ func TestReasonixHelper(t *testing.T) {
 		fmt.Fprintln(os.Stderr, "synthetic failure")
 		os.Exit(7)
 	default:
+		if len(args) > 0 && args[0] == "run" {
+			fmt.Println("task complete")
+			os.Exit(0)
+		}
 		fmt.Fprintf(os.Stderr, "unexpected args: %v", args)
 		os.Exit(8)
 	}

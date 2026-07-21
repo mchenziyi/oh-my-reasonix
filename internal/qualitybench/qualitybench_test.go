@@ -55,3 +55,14 @@ func TestCheckGateRejectsLowRate(t *testing.T) {
 		t.Fatal("expected low qualified rate to fail")
 	}
 }
+
+func TestEvaluateAllAggregatesMetrics(t *testing.T) {
+	fixtures := []Fixture{{ID: "a", Task: "a"}}
+	report := EvaluateAll(fixtures, map[string]RunResult{"a": {
+		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true,
+		Metrics: Metrics{PromptTokens: 10, CacheHitTokens: 4, Cost: 0.25, Currency: "USD"},
+	}})
+	if report.Metrics.PromptTokens != 10 || report.Metrics.CacheHitTokens != 4 || report.Metrics.Cost != 0.25 || report.Metrics.Currency != "USD" {
+		t.Fatalf("metrics were not aggregated: %#v", report.Metrics)
+	}
+}

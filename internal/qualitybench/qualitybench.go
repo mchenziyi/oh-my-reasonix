@@ -34,6 +34,7 @@ type ReplaySpec struct {
 	RequiredEffectsMet bool     `json:"required_effects_met"`
 	Events             []string `json:"events"`
 	TestsSkipped       bool     `json:"tests_skipped"`
+	Metrics            Metrics  `json:"metrics,omitempty"`
 }
 
 type ReplayOutput struct {
@@ -49,6 +50,18 @@ type RunResult struct {
 	RequiredEffectsMet bool     `json:"required_effects_met"`
 	Events             []string `json:"events"`
 	TestsSkipped       bool     `json:"tests_skipped"`
+	Metrics            Metrics  `json:"metrics,omitempty"`
+}
+
+type Metrics struct {
+	PromptTokens     int     `json:"prompt_tokens"`
+	CompletionTokens int     `json:"completion_tokens"`
+	CacheHitTokens   int     `json:"cache_hit_tokens"`
+	CacheMissTokens  int     `json:"cache_miss_tokens"`
+	Steps            int     `json:"steps"`
+	Cost             float64 `json:"cost"`
+	Currency         string  `json:"currency,omitempty"`
+	Compactions      int     `json:"compactions"`
 }
 
 type Evaluation struct {
@@ -62,6 +75,7 @@ type Report struct {
 	EvaluatedCount int          `json:"evaluated_count"`
 	QualifiedCount int          `json:"qualified_count"`
 	QualifiedRate  float64      `json:"qualified_rate"`
+	Metrics        Metrics      `json:"metrics"`
 	Evaluations    []Evaluation `json:"evaluations"`
 }
 
@@ -147,6 +161,16 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult) Report {
 		if evaluation.QualifiedCompletion {
 			report.QualifiedCount++
 		}
+		report.Metrics.PromptTokens += result.Metrics.PromptTokens
+		report.Metrics.CompletionTokens += result.Metrics.CompletionTokens
+		report.Metrics.CacheHitTokens += result.Metrics.CacheHitTokens
+		report.Metrics.CacheMissTokens += result.Metrics.CacheMissTokens
+		report.Metrics.Steps += result.Metrics.Steps
+		report.Metrics.Cost += result.Metrics.Cost
+		report.Metrics.Compactions += result.Metrics.Compactions
+		if report.Metrics.Currency == "" {
+			report.Metrics.Currency = result.Metrics.Currency
+		}
 	}
 	if report.EvaluatedCount > 0 {
 		report.QualifiedRate = float64(report.QualifiedCount) / float64(report.EvaluatedCount)
@@ -183,6 +207,7 @@ func Replay(fixture Fixture) (RunResult, error) {
 		RequiredEffectsMet: fixture.Replay.RequiredEffectsMet,
 		Events:             append([]string(nil), fixture.Replay.Events...),
 		TestsSkipped:       fixture.Replay.TestsSkipped,
+		Metrics:            fixture.Replay.Metrics,
 	}
 	return result, nil
 }

@@ -201,8 +201,14 @@ func runQualityBenchmark(args []string) error {
 	resultsPath := flags.String("results", "", "optional JSON map of fixture id to RunResult")
 	outputPath := flags.String("output", "", "optional JSON report path")
 	replay := flags.Bool("replay", false, "run fixtures with deterministic replay outcomes")
+	runtimeRun := flags.Bool("runtime", false, "run fixtures through the real Reasonix CLI")
 	runTests := flags.Bool("run-tests", false, "run fixture hidden and regression tests")
 	projectDir := flags.String("project-dir", ".", "project directory for fixture tests")
+	binary := flags.String("binary", "reasonix", "Reasonix executable for --runtime")
+	metricsDir := flags.String("metrics-dir", "", "metrics output directory for --runtime")
+	eventsPath := flags.String("events", "", "optional JSONL structured event log for --runtime")
+	model := flags.String("model", "", "optional Reasonix model for --runtime")
+	maxSteps := flags.Int("max-steps", 0, "optional Reasonix step limit for --runtime")
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
 	if err := flags.Parse(args); err != nil {
@@ -211,6 +217,36 @@ func runQualityBenchmark(args []string) error {
 	fixtures, err := qualitybench.Discover(*fixturesRoot)
 	if err != nil {
 		return err
+	}
+	if *runtimeRun && (*replay || *resultsPath != "") {
+		return errors.New("--runtime cannot be combined with --replay or --results")
+	}
+	if *runtimeRun {
+		results := map[string]qualitybench.RunResult{}
+		for _, fixture := range fixtures {
+			ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+			result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
+			cancel()
+			if runErr != nil {
+				return runErr
+			}
+			if *eventsPath != "" {
+				events, eventErr := qualitybench.ReadEventNames(*eventsPath)
+				if eventErr != nil {
+					return eventErr
+				}
+				result.Events = events
+			}
+			results[fixture.ID] = result
+		}
+		report := qualitybench.EvaluateAll(fixtures, results)
+		if err := writeJSONValue(*outputPath, report); err != nil {
+			return err
+		}
+		if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+			return fmt.Errorf("quality runtime failed: %w", err)
+		}
+		return nil
 	}
 	if *replay {
 		results := map[string]qualitybench.RunResult{}

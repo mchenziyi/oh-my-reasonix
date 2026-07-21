@@ -59,6 +59,7 @@ go run ./cmd/omr benchmark cache --native-trace native.jsonl --omr-trace omr.jso
 带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
 `--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。
 质量报告可通过 `--output path/to/quality-report.json` 保存，`--results` 外部结果模式同样适用。
+真实 Runtime 如有宿主提供的结构化 JSONL 事件日志，可通过 `--events path/to/events.jsonl` 接入证据评分；OMR 不会从人类可读 stdout 推断事件。
 
 ## 范围
 
