@@ -231,6 +231,14 @@ func profileAssets(assets Assets) []profileAsset {
 			Hash: fileutil.SHA256(assets.Research),
 		})
 	}
+	if len(assets.Debug) > 0 {
+		profiles = append(profiles, profileAsset{
+			ID:   "omr-debug",
+			Rel:  DebugProfileRel,
+			Data: assets.Debug,
+			Hash: fileutil.SHA256(assets.Debug),
+		})
+	}
 	return profiles
 }
 

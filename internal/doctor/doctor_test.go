@@ -15,6 +15,7 @@ func doctorAssets() install.Assets {
 		Orchestrator: []byte("orchestrator\n"),
 		Explore:      []byte("skill\n"),
 		Research:     []byte("research\n"),
+		Debug:        []byte("debug\n"),
 		ReviewBrief:  []byte("review\n"),
 	}
 }

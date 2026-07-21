@@ -20,3 +20,6 @@ var Explore []byte
 
 //go:embed skills/omr-research/SKILL.md
 var Research []byte
+
+//go:embed skills/omr-debug/SKILL.md
+var Debug []byte

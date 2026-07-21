@@ -19,6 +19,7 @@ func TestLoadAssetsFallsBackToEmbeddedReleaseAssets(t *testing.T) {
 		"orchestrator": assets.Orchestrator,
 		"explore":      assets.Explore,
 		"research":     assets.Research,
+		"debug":        assets.Debug,
 		"review brief": assets.ReviewBrief,
 	} {
 		if len(data) == 0 {

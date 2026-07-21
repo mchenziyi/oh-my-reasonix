@@ -14,6 +14,7 @@ type Assets struct {
 	Orchestrator []byte
 	Explore      []byte
 	Research     []byte
+	Debug        []byte
 	ReviewBrief  []byte
 }
 
@@ -31,6 +32,7 @@ func LoadAssets(start string) (Assets, error) {
 		Orchestrator: append([]byte(nil), embeddedassets.Orchestrator...),
 		Explore:      append([]byte(nil), embeddedassets.Explore...),
 		Research:     append([]byte(nil), embeddedassets.Research...),
+		Debug:        append([]byte(nil), embeddedassets.Debug...),
 		ReviewBrief:  append([]byte(nil), embeddedassets.ReviewBrief...),
 	}, nil
 }
@@ -60,11 +62,15 @@ func readAssetsFromDirectory(root string) (Assets, error) {
 	if err != nil {
 		return Assets{}, err
 	}
+	debug, err := read("skills/omr-debug/SKILL.md")
+	if err != nil {
+		return Assets{}, err
+	}
 	review, err := read("prompts/review-task-protocol.zh.md")
 	if err != nil {
 		return Assets{}, err
 	}
-	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, ReviewBrief: review}, nil
+	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, ReviewBrief: review}, nil
 }
 
 func findAssetRoot(start string) (string, error) {

@@ -1,6 +1,6 @@
 # oh-my-reasonix
 
-oh-my-reasonix（OMR）是面向 Reasonix 的项目级 Prompt、Profile 和工作流发行层。当前实现覆盖 M0/MVP 的本地安装链路、Prompt Composer、`omr-explore` / `omr-research` Profile、Manifest、字段级卸载、Cache Guard 逻辑流分析和质量 Smoke 夹具。
+oh-my-reasonix（OMR）是面向 Reasonix 的项目级 Prompt、Profile 和工作流发行层。当前实现覆盖 M0/MVP 的本地安装链路、Prompt Composer、`omr-explore` / `omr-research` / `omr-debug` Profile、Manifest、字段级卸载、Cache Guard 逻辑流分析和质量 Smoke 夹具。
 
 ## 开发
 

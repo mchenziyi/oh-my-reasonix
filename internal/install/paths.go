@@ -11,6 +11,7 @@ const (
 	ManifestRel        = ".reasonix/omr/manifest.lock.yaml"
 	ExploreProfileRel  = ".reasonix/skills/omr-explore/SKILL.md"
 	ResearchProfileRel = ".reasonix/skills/omr-research/SKILL.md"
+	DebugProfileRel    = ".reasonix/skills/omr-debug/SKILL.md"
 )
 
 func ProjectRoot(start string) (string, error) {
