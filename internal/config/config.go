@@ -65,6 +65,17 @@ func Load(path string) (Config, error) {
 	if cfg.MaxSteps < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.Timeout < 0 {
 		return Config{}, fmt.Errorf("invalid OMR benchmark configuration")
 	}
+	for profile, agent := range cfg.Agents {
+		if strings.TrimSpace(profile) != profile || strings.ContainsAny(profile, " \t/\\") {
+			return Config{}, fmt.Errorf("invalid agent profile %q", profile)
+		}
+		if strings.ContainsAny(agent.Model, "\r\n\t") {
+			return Config{}, fmt.Errorf("invalid model for agent %q", profile)
+		}
+		if strings.HasPrefix(agent.PromptFile, "/") || strings.Contains(agent.PromptFile, "\\") {
+			return Config{}, fmt.Errorf("prompt_file for agent %q must be a project-relative path", profile)
+		}
+	}
 	return cfg, nil
 }
 

@@ -36,3 +36,23 @@ func TestLoadAgentOverrides(t *testing.T) {
 		t.Fatalf("unexpected agent config: %+v", cfg.Agents)
 	}
 }
+
+func TestLoadRejectsInvalidAgentPromptPath(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nprompt_file = \"/tmp/debug.md\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected absolute agent prompt path to be rejected")
+	}
+}
+
+func TestLoadRejectsInvalidAgentProfile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr research]\nmodel = \"deepseek\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected invalid agent profile to be rejected")
+	}
+}
