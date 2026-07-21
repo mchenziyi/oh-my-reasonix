@@ -29,13 +29,13 @@
 | 能力 | OMR 当前状态 | OMO 对应能力 | 优先级 |
 |---|---|---|---|
 | 运行时任务强制 | 主要依赖 Orchestrator Prompt | Hook 和状态机制持续约束 Agent | P0 |
-| Todo Continuation | 有 Todo 和 `complete_step`，中断恢复弱 | 自动强制未完成任务继续 | P0 |
+| Todo Continuation | Orchestrator 已要求未完成 Todo 不得结束；运行时强制仍依赖 Reasonix Hook/Session | 自动强制未完成任务继续 | P0 |
 | 失败恢复 | 没有统一恢复策略 | Session recovery、auto-resume | P0 |
-| 停滞检测 | 没有统一检测 | 空响应、循环、无进展检测 | P0 |
-| 测试失败闭环 | Prompt 要求修复后重测 | 工作流机制强制回到修复流程 | P0 |
+| 停滞检测 | Orchestrator 已覆盖空响应、重复操作和无新证据；运行时检测仍待 Hook | 空响应、循环、无进展检测 | P0 |
+| 测试失败闭环 | Orchestrator 已要求失败 → 修复 → 重测；运行时状态机仍待 Hook | 工作流机制强制回到修复流程 | P0 |
 | Review 阻塞闭环 | 已有 Review 和证据校验 | 持续执行直到 Blocking Issue 关闭 | P0 |
-| 真实质量基准 | 当前主要是评分器，结果由外部提供 | 工作流可持续执行复杂任务 | P0 |
-| 任务事件记录 | 没有统一 OMR 事件协议 | 有任务、Hook、后台通知链 | P0 |
+| 真实质量基准 | 已支持 `quality --run`，仍需扩大真实任务覆盖 | 工作流可持续执行复杂任务 | P0 |
+| 任务事件记录 | 不建立 OMR 第二套事件状态；复用 Reasonix 原生事件/Session | 有任务、Hook、后台通知链 | P0 |
 
 ### 3.2 Agent 编排
 
@@ -60,13 +60,13 @@
 | PostToolUse 检查 | 没有 | P1 |
 | UserPromptSubmit 预处理 | 没有 | P2 |
 | Stop/完成拦截 | 主要依赖 `complete_step` | P1 |
-| Todo continuation enforcer | 没有 | P0 |
-| Empty task response detector | 没有 | P0 |
+| Todo continuation enforcer | Prompt 已覆盖；运行时硬拦截待 Reasonix Hook | P0 |
+| Empty task response detector | Prompt 已覆盖；运行时检测待 Reasonix Hook | P0 |
 | Comment checker | 没有 | P2 |
 | Tool/Grep 输出截断 | Orchestrator 已要求精确范围和摘要化保留 | P1 |
 | Context window monitor | Orchestrator 已要求上下文不足前保留可恢复证据 | P1 |
 | Preemptive compaction | Orchestrator 已要求压缩前记录 Todo、证据和验证状态 | P1 |
-| Session recovery | 没有 | P0 |
+| Session recovery | 依赖 Reasonix 原生 `--continue`/`--resume`，OMR 尚无统一入口 | P0 |
 | Background notification | 没有 | P1 |
 | Ralph loop | 没有 | P2 |
 | Auto-update checker | 没有 | P2 |
