@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/cacheguard"
+	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
@@ -213,8 +214,35 @@ func runQualityBenchmark(args []string) error {
 	maxSteps := flags.Int("max-steps", 0, "optional Reasonix step limit for --runtime")
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
+	configPath := flags.String("config", "", "optional OMR config TOML (default: <project>/.reasonix/omr/config.toml)")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	configFile := *configPath
+	if configFile == "" {
+		configFile = filepath.Join(*projectDir, ".reasonix", "omr", "config.toml")
+	}
+	if cfg, configErr := omrconfig.Load(configFile); configErr == nil {
+		if !flagWasSet(flags, "fixtures") && cfg.Fixtures != "" {
+			*fixturesRoot = cfg.Fixtures
+		}
+		if !flagWasSet(flags, "metrics-dir") && cfg.MetricsDir != "" {
+			*metricsDir = cfg.MetricsDir
+		}
+		if !flagWasSet(flags, "model") && cfg.Model != "" {
+			*model = cfg.Model
+		}
+		if !flagWasSet(flags, "max-steps") && cfg.MaxSteps != 0 {
+			*maxSteps = cfg.MaxSteps
+		}
+		if !flagWasSet(flags, "timeout") && cfg.TimeoutSet {
+			*timeout = cfg.Timeout
+		}
+		if !flagWasSet(flags, "min-qualified-rate") && cfg.MinQualifiedRateSet {
+			*minQualifiedRate = cfg.MinQualifiedRate
+		}
+	} else if !os.IsNotExist(configErr) {
+		return fmt.Errorf("load OMR config: %w", configErr)
 	}
 	fixtures, err := qualitybench.Discover(*fixturesRoot)
 	if err != nil {
@@ -320,6 +348,16 @@ func runQualityBenchmark(args []string) error {
 		return fmt.Errorf("quality benchmark failed: %w", err)
 	}
 	return nil
+}
+
+func flagWasSet(flags *flag.FlagSet, name string) bool {
+	set := false
+	flags.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			set = true
+		}
+	})
+	return set
 }
 
 func loadQualityResults(path string) (map[string]qualitybench.RunResult, error) {

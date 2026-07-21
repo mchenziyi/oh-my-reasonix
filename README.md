@@ -55,6 +55,19 @@ go run ./cmd/omr benchmark cache --trace path/to/trace.jsonl
 go run ./cmd/omr benchmark cache --native-trace native.jsonl --omr-trace omr.jsonl
 ```
 
+质量基准也支持项目级 `.reasonix/omr/config.toml`；命令行显式参数优先。例如：
+
+```toml
+[quality]
+fixtures = "benchmarks/fixtures"
+min_qualified_rate = 1
+
+[runtime]
+metrics_dir = ".reasonix/omr/metrics"
+max_steps = 20
+timeout = "2m"
+```
+
 `fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
 带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
 `--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。

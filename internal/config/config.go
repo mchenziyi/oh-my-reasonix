@@ -1,0 +1,110 @@
+package config
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+)
+
+type Config struct {
+	Fixtures            string
+	MetricsDir          string
+	Model               string
+	MaxSteps            int
+	Timeout             time.Duration
+	MinQualifiedRate    float64
+	MinQualifiedRateSet bool
+	TimeoutSet          bool
+}
+
+func Load(path string) (Config, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
+	var cfg Config
+	section := ""
+	scanner := bufio.NewScanner(strings.NewReader(string(data)))
+	for lineNo := 1; scanner.Scan(); lineNo++ {
+		line := strings.TrimSpace(strings.SplitN(scanner.Text(), "#", 2)[0])
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
+			section = strings.TrimSpace(line[1 : len(line)-1])
+			if section != "quality" && section != "runtime" {
+				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
+			}
+			continue
+		}
+		parts := strings.SplitN(line, "=", 2)
+		if len(parts) != 2 {
+			return Config{}, fmt.Errorf("%s:%d: expected key = value", path, lineNo)
+		}
+		key, value := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		if err := assign(&cfg, section, key, value); err != nil {
+			return Config{}, fmt.Errorf("%s:%d: %w", path, lineNo, err)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return Config{}, err
+	}
+	if cfg.MaxSteps < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.Timeout < 0 {
+		return Config{}, fmt.Errorf("invalid OMR benchmark configuration")
+	}
+	return cfg, nil
+}
+
+func assign(cfg *Config, section, key, raw string) error {
+	if section == "quality" {
+		switch key {
+		case "fixtures":
+			cfg.Fixtures = stringValue(raw)
+		case "min_qualified_rate":
+			value, err := strconv.ParseFloat(raw, 64)
+			if err != nil {
+				return fmt.Errorf("invalid min_qualified_rate")
+			}
+			cfg.MinQualifiedRate = value
+			cfg.MinQualifiedRateSet = true
+		default:
+			return fmt.Errorf("unsupported quality key %q", key)
+		}
+		return nil
+	}
+	if section == "runtime" {
+		switch key {
+		case "metrics_dir":
+			cfg.MetricsDir = stringValue(raw)
+		case "model":
+			cfg.Model = stringValue(raw)
+		case "max_steps":
+			value, err := strconv.Atoi(raw)
+			if err != nil {
+				return fmt.Errorf("invalid max_steps")
+			}
+			cfg.MaxSteps = value
+		case "timeout":
+			value, err := time.ParseDuration(stringValue(raw))
+			if err != nil {
+				return fmt.Errorf("invalid timeout")
+			}
+			cfg.Timeout = value
+			cfg.TimeoutSet = true
+		default:
+			return fmt.Errorf("unsupported runtime key %q", key)
+		}
+		return nil
+	}
+	return fmt.Errorf("key %q must be under [quality] or [runtime]", key)
+}
+
+func stringValue(raw string) string {
+	if len(raw) >= 2 && ((raw[0] == '"' && raw[len(raw)-1] == '"') || (raw[0] == '\'' && raw[len(raw)-1] == '\'')) {
+		return raw[1 : len(raw)-1]
+	}
+	return raw
+}
