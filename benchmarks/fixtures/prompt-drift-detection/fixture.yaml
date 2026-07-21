@@ -1,0 +1,19 @@
+{
+  "id": "prompt-drift-detection",
+  "description": "检测项目 Prompt 来源漂移并给出可审计结论。",
+  "task": "检查项目的系统 Prompt 来源是否发生漂移，记录发现和验证结果。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "omr-explore", "complete_step"],
+  "replay_outputs": [],
+  "replay": {
+    "changed_paths": ["docs/prompt-drift-report.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "complete_step"],
+    "tests_skipped": false
+  }
+}

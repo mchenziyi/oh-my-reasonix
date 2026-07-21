@@ -1,0 +1,19 @@
+{
+  "id": "cache-stability",
+  "description": "验证只读 Explore 不改变后续请求前缀和工具指纹。",
+  "task": "检查 Explore 前后系统 Prompt、工具定义和消息前缀是否保持稳定。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": ["**/*.go", ".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["omr-explore", "complete_step"],
+  "replay_outputs": [],
+  "replay": {
+    "changed_paths": ["docs/cache-stability-report.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"],
+    "tests_skipped": false
+  }
+}

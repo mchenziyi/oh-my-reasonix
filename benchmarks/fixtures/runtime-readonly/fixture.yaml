@@ -7,5 +7,13 @@
   "hidden_tests": ["test -f reasonix.toml", "test -f .reasonix/omr/manifest.lock.yaml", "test -f .reasonix/omr/generated/system-prompt.md", "test -f .reasonix/skills/omr-explore/SKILL.md"],
   "regression_tests": [],
   "expected_events": [],
-  "replay_outputs": []
+  "replay_outputs": [],
+  "replay": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": [],
+    "tests_skipped": false
+  }
 }
