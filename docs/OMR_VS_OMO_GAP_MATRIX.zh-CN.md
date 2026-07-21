@@ -43,7 +43,7 @@
 |---|---|---|---|
 | 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
 | Agent 独立模型配置 | 没有 OMR 层配置 | 每个 Agent 可覆盖模型、Prompt、权限 | P1 |
-| 任务类别路由 | 没有 | visual、business-logic 等 Category | P1 |
+| 任务类别路由 | 已有只读 Profile Prompt 路由，尚无可配置 Category | visual、business-logic 等 Category | P1 |
 | 后台 Agent 编排 | 依赖 Reasonix 原生，OMR 不统一编排 | 多 Agent 并行执行 | P1 |
 | 并发策略 | 没有 OMR 层策略 | 按 Provider/Model 配置并发上限 | P1 |
 | 后台结果汇聚 | 没有统一协议 | 通知、收集结果并继续主任务 | P1 |

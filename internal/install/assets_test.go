@@ -42,6 +42,20 @@ func TestEmbeddedOrchestratorInjectsProjectRules(t *testing.T) {
 	}
 }
 
+func TestEmbeddedOrchestratorRoutesReadOnlyProfiles(t *testing.T) {
+	t.Setenv("OMR_ASSET_DIR", "")
+	assets, err := LoadAssets(t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadAssets: %v", err)
+	}
+	orchestrator := string(assets.Orchestrator)
+	for _, required := range []string{"omr-explore", "omr-research", "omr-debug"} {
+		if !strings.Contains(orchestrator, required) {
+			t.Fatalf("orchestrator does not route %s", required)
+		}
+	}
+}
+
 func TestLoadAssetsInvalidConfiguredDirectoryDoesNotFallback(t *testing.T) {
 	t.Setenv("OMR_ASSET_DIR", t.TempDir()+"/missing")
 	if _, err := LoadAssets(t.TempDir()); err == nil {
