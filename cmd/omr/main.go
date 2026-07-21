@@ -306,7 +306,10 @@ func runQualityBenchmark(args []string) error {
 			result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
 			cancel()
 			if runErr != nil {
-				return runErr
+				// Keep evaluating the remaining fixtures so one runtime failure
+				// produces a complete report instead of hiding later failures.
+				results[fixture.ID] = result
+				continue
 			}
 			if *eventsPath != "" {
 				events, eventErr := qualitybench.ReadEventNames(*eventsPath)
