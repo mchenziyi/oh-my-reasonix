@@ -14,6 +14,21 @@ func TestEvaluateQualifiedCompletion(t *testing.T) {
 	}
 }
 
+func TestEvaluateReportsRuntimeError(t *testing.T) {
+	evaluation := Evaluate(Fixture{ID: "runtime", Task: "task"}, RunResult{
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
+		Error:              "reasonix exited with status 1",
+	})
+	if evaluation.QualifiedCompletion {
+		t.Fatalf("expected runtime error to fail qualification: %#v", evaluation)
+	}
+	if len(evaluation.Failures) != 1 || evaluation.Failures[0] != "runtime error: reasonix exited with status 1" {
+		t.Fatalf("runtime error was not reported: %#v", evaluation)
+	}
+}
+
 func TestReplayUsesDeterministicOutcome(t *testing.T) {
 	fixture := Fixture{
 		ID:   "m0",

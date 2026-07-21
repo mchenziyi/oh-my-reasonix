@@ -61,6 +61,9 @@ func TestExecuteRuntimeDoesNotInventEventsOnProcessFailure(t *testing.T) {
 	if result.RequiredEffectsMet || len(result.Events) != 0 {
 		t.Fatalf("runtime failure was incorrectly qualified: %#v", result)
 	}
+	if result.Error == "" {
+		t.Fatalf("runtime failure did not preserve error: %#v", result)
+	}
 }
 
 func TestReadEventNamesAcceptsCommonJSONLFields(t *testing.T) {
