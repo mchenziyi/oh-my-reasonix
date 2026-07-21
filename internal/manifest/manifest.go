@@ -47,6 +47,12 @@ type Prompt struct {
 	FinalSHA256        string `json:"final_sha256"`
 }
 
+type Profile struct {
+	ID            string `json:"id"`
+	Path          string `json:"path"`
+	ContentSHA256 string `json:"content_sha256"`
+}
+
 type Manifest struct {
 	SchemaVersion  int           `json:"schema_version"`
 	Product        string        `json:"product"`
@@ -55,8 +61,9 @@ type Manifest struct {
 	Prompt         Prompt        `json:"prompt"`
 	Assets         []Asset       `json:"assets"`
 	Config         []ConfigEntry `json:"config"`
-	ProfilePath    string        `json:"profile_path"`
-	ProfileSHA256  string        `json:"profile_sha256"`
+	Profiles       []Profile     `json:"profiles,omitempty"`
+	ProfilePath    string        `json:"profile_path,omitempty"`
+	ProfileSHA256  string        `json:"profile_sha256,omitempty"`
 	BackupPath     string        `json:"backup_path,omitempty"`
 }
 
@@ -79,8 +86,13 @@ func (m Manifest) Validate() error {
 	if m.Prompt.GeneratedPath == "" || m.Prompt.FinalSHA256 == "" {
 		return fmt.Errorf("manifest prompt metadata is incomplete")
 	}
-	if m.ProfilePath == "" || m.ProfileSHA256 == "" {
+	if len(m.NormalizedProfiles()) == 0 {
 		return fmt.Errorf("manifest profile metadata is incomplete")
+	}
+	for _, profile := range m.NormalizedProfiles() {
+		if profile.ID == "" || profile.Path == "" || profile.ContentSHA256 == "" {
+			return fmt.Errorf("manifest profile metadata is incomplete")
+		}
 	}
 	for _, asset := range m.Assets {
 		status := strings.ToLower(strings.TrimSpace(asset.LicenseStatus))
@@ -89,6 +101,16 @@ func (m Manifest) Validate() error {
 		}
 	}
 	return nil
+}
+
+func (m Manifest) NormalizedProfiles() []Profile {
+	if len(m.Profiles) > 0 {
+		return append([]Profile(nil), m.Profiles...)
+	}
+	if m.ProfilePath == "" || m.ProfileSHA256 == "" {
+		return nil
+	}
+	return []Profile{{ID: "omr-explore", Path: m.ProfilePath, ContentSHA256: m.ProfileSHA256}}
 }
 
 // Write stores JSON, which is a valid YAML 1.2 document, under the required

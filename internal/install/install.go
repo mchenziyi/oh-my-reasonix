@@ -42,6 +42,13 @@ type Report struct {
 
 func (r Report) Blocking() bool { return len(r.Conflicts) > 0 || len(r.Errors) > 0 }
 
+type profileAsset struct {
+	ID   string
+	Rel  string
+	Data []byte
+	Hash string
+}
+
 func (r Report) Render(w io.Writer) {
 	fmt.Fprintf(w, "project: %s\n", r.Root)
 	for _, change := range r.Changes {
@@ -97,7 +104,6 @@ func Init(opts Options) (Report, error) {
 	}
 
 	generatedPath := GeneratedPromptPath(root)
-	profilePath := ExploreProfilePath(root)
 	manifestOwnedPrompt := hasManifest && existing.Prompt.GeneratedPath == GeneratedPromptRel && samePath(root, valueOrEmpty(cfg.SystemPromptFile), generatedPath)
 	if samePath(root, valueOrEmpty(cfg.SystemPromptFile), generatedPath) && !manifestOwnedPrompt {
 		return conflictReport(root, "system_prompt_file points to the OMR generated path but the manifest is missing or does not claim it")
@@ -114,14 +120,14 @@ func Init(opts Options) (Report, error) {
 	baseText := string(opts.Assets.BasePrompt)
 	orchestratorText := string(opts.Assets.Orchestrator)
 	composition := promptcompose.Compose(baseText, userPrompt, orchestratorText)
-	profileHash := fileutil.SHA256(opts.Assets.Explore)
+	profiles := profileAssets(opts.Assets)
 
 	report := Report{Root: root, Manifest: existing}
 	if hasManifest && existing.Prompt.BaseSHA256 != promptcompose.SHA256String(promptcompose.Canonicalize(baseText)) && !opts.AcceptReasonixBaseUpdate {
 		report.Conflicts = append(report.Conflicts, "Reasonix base Prompt changed; rerun with --accept-reasonix-base-update")
 	}
 
-	if conflict := checkAssetPathConflict(generatedPath, profilePath, composition.Hash, profileHash, existing, hasManifest); conflict != "" {
+	if conflict := checkAssetPathConflict(root, generatedPath, profiles, existing, hasManifest); conflict != "" {
 		report.Conflicts = append(report.Conflicts, conflict)
 	}
 
@@ -130,12 +136,12 @@ func Init(opts Options) (Report, error) {
 		return Report{Root: root, Errors: []string{err.Error()}}, err
 	}
 	configChanged := newConfig != string(oldConfig)
-	profileChanged := !fileExists(profilePath) || fileHashDiffers(profilePath, profileHash)
+	profilesChanged := profilesNeedWrite(root, profiles)
 	generatedChanged := !fileExists(generatedPath) || fileHashDiffers(generatedPath, composition.Hash)
 
 	if userPresent {
 		report.Warnings = append(report.Warnings, "User Prompt content will be persisted in the generated Prompt and backup paths")
-		if !opts.AllowPersistUserPrompt && (configChanged || generatedChanged || profileChanged || !hasManifest) {
+		if !opts.AllowPersistUserPrompt && (configChanged || generatedChanged || profilesChanged || !hasManifest) {
 			if opts.DryRun {
 				report.Warnings = append(report.Warnings, "installation is blocked without --allow-persist-user-prompt")
 			} else {
@@ -158,20 +164,20 @@ func Init(opts Options) (Report, error) {
 		// three-way merge baseline recorded by the first installation.
 		baseValue = existing.Config[0].BaseValue
 	}
-	newManifest := buildManifest(composition, profileHash, userSource, userPresent, baseValue, backupRel)
+	newManifest := buildManifest(composition, profiles, userSource, userPresent, baseValue, backupRel)
 	manifestChanged := !hasManifest || !manifestsEqual(existing, newManifest)
-	if !configChanged && !generatedChanged && !profileChanged && !manifestChanged {
+	if !configChanged && !generatedChanged && !profilesChanged && !manifestChanged {
 		report.NoOp = true
 		report.Manifest = existing
 		return report, nil
 	}
 
-	report.Changes = appendInstallChanges(report.Changes, root, configChanged, generatedChanged, profileChanged, manifestChanged, backupRel)
+	report.Changes = appendInstallChanges(report.Changes, root, configChanged, generatedChanged, profilesChanged, profiles, manifestChanged, backupRel)
 	report.Manifest = newManifest
 	if opts.DryRun {
 		return report, nil
 	}
-	if err := writeInstall(root, configPath, oldConfig, newConfig, generatedPath, []byte(composition.Content), profilePath, opts.Assets.Explore, ManifestPath(root), newManifest, backupRel, configChanged, generatedChanged, profileChanged, manifestChanged); err != nil {
+	if err := writeInstall(root, configPath, oldConfig, newConfig, generatedPath, []byte(composition.Content), profiles, ManifestPath(root), newManifest, backupRel, configChanged, generatedChanged, profilesChanged, manifestChanged); err != nil {
 		report.Errors = append(report.Errors, err.Error())
 		return report, err
 	}
@@ -210,7 +216,26 @@ func resolveUserPrompt(root string, cfg agentConfig, existing manifest.Manifest,
 	return "", "", false, nil
 }
 
-func checkAssetPathConflict(generatedPath, profilePath, promptHash, profileHash string, existing manifest.Manifest, hasManifest bool) string {
+func profileAssets(assets Assets) []profileAsset {
+	return []profileAsset{{
+		ID:   "omr-explore",
+		Rel:  ExploreProfileRel,
+		Data: assets.Explore,
+		Hash: fileutil.SHA256(assets.Explore),
+	}}
+}
+
+func profilesNeedWrite(root string, profiles []profileAsset) bool {
+	for _, profile := range profiles {
+		path := ProfilePath(root, profile.Rel)
+		if !fileExists(path) || fileHashDiffers(path, profile.Hash) {
+			return true
+		}
+	}
+	return false
+}
+
+func checkAssetPathConflict(root, generatedPath string, profiles []profileAsset, existing manifest.Manifest, hasManifest bool) string {
 	if fileExists(generatedPath) {
 		owned := hasManifest && existing.Prompt.GeneratedPath == GeneratedPromptRel
 		if !owned {
@@ -220,21 +245,28 @@ func checkAssetPathConflict(generatedPath, profilePath, promptHash, profileHash 
 			return "generated Prompt file was modified after installation"
 		}
 	}
-	if fileExists(profilePath) {
-		owned := hasManifest && existing.ProfilePath == ExploreProfileRel
-		if !owned {
-			return "omr-explore Profile already exists and is not OMR-owned"
-		}
-		if fileHashDiffers(profilePath, existing.ProfileSHA256) {
-			return "OMR-owned omr-explore Profile was modified after installation"
+	ownedProfiles := map[string]string{}
+	if hasManifest {
+		for _, profile := range existing.NormalizedProfiles() {
+			ownedProfiles[profile.Path] = profile.ContentSHA256
 		}
 	}
-	_ = promptHash
-	_ = profileHash
+	for _, profile := range profiles {
+		path := ProfilePath(root, profile.Rel)
+		if fileExists(path) {
+			hash, owned := ownedProfiles[profile.Rel]
+			if !owned {
+				return profile.ID + " Profile already exists and is not OMR-owned"
+			}
+			if fileHashDiffers(path, hash) {
+				return "OMR-owned " + profile.ID + " Profile was modified after installation"
+			}
+		}
+	}
 	return ""
 }
 
-func buildManifest(composition promptcompose.Composition, profileHash, userSource string, userPresent bool, baseValue *string, backupRel string) manifest.Manifest {
+func buildManifest(composition promptcompose.Composition, profiles []profileAsset, userSource string, userPresent bool, baseValue *string, backupRel string) manifest.Manifest {
 	m := manifest.New()
 	m.Prompt = manifest.Prompt{
 		GeneratedPath:      GeneratedPromptRel,
@@ -257,24 +289,31 @@ func buildManifest(composition promptcompose.Composition, profileHash, userSourc
 	m.Assets = []manifest.Asset{
 		{ID: "reasonix-base-464d494", Role: "system_prompt_segment", SourceProject: "reasonix", SourceVersion: "desktop-v1.17.16", SourceCommit: "464d494", SourcePath: "assets/prompts/reasonix-base-464d494.md", LicenseStatus: "upstream-public-source", ContentSHA256: composition.Segments[0].Hash, InstallTarget: GeneratedPromptRel, CompositionOrder: 1},
 		{ID: "orchestrator.zh", Role: "system_prompt_segment", SourceProject: "clean-room", SourceVersion: manifest.Version, SourcePath: "assets/prompts/orchestrator.zh.md", LicenseStatus: "project-owned", ContentSHA256: composition.Segments[len(composition.Segments)-1].Hash, InstallTarget: GeneratedPromptRel, CompositionOrder: len(composition.Segments)},
-		{ID: "omr-explore", Role: "profile", SourceProject: "clean-room", SourceVersion: manifest.Version, SourcePath: "assets/skills/omr-explore/SKILL.md", LicenseStatus: "project-owned", ContentSHA256: profileHash, InstallTarget: ExploreProfileRel},
+	}
+	for _, profile := range profiles {
+		m.Profiles = append(m.Profiles, manifest.Profile{ID: profile.ID, Path: profile.Rel, ContentSHA256: profile.Hash})
+		m.Assets = append(m.Assets, manifest.Asset{ID: profile.ID, Role: "profile", SourceProject: "clean-room", SourceVersion: manifest.Version, SourcePath: "assets/skills/" + profile.ID + "/SKILL.md", LicenseStatus: "project-owned", ContentSHA256: profile.Hash, InstallTarget: profile.Rel})
 	}
 	m.Config = []manifest.ConfigEntry{{Path: "agent.system_prompt_file", BaseValue: baseValue, InstalledValue: GeneratedPromptRel}}
-	m.ProfilePath = ExploreProfileRel
-	m.ProfileSHA256 = profileHash
+	if len(profiles) > 0 {
+		m.ProfilePath = profiles[0].Rel
+		m.ProfileSHA256 = profiles[0].Hash
+	}
 	m.BackupPath = backupRel
 	return m
 }
 
-func appendInstallChanges(changes []Change, root string, configChanged, generatedChanged, profileChanged, manifestChanged bool, backupRel string) []Change {
+func appendInstallChanges(changes []Change, root string, configChanged, generatedChanged, profilesChanged bool, profiles []profileAsset, manifestChanged bool, backupRel string) []Change {
 	if configChanged {
 		changes = append(changes, Change{Path: relOrSlash(root, filepath.Join(root, "reasonix.toml")), Action: "UPDATE", Detail: "set agent.system_prompt_file"})
 	}
 	if generatedChanged {
 		changes = append(changes, Change{Path: GeneratedPromptRel, Action: "WRITE", Detail: "Base → User → OMR composed Prompt"})
 	}
-	if profileChanged {
-		changes = append(changes, Change{Path: ExploreProfileRel, Action: "WRITE", Detail: "install read-only omr-explore Profile"})
+	if profilesChanged {
+		for _, profile := range profiles {
+			changes = append(changes, Change{Path: profile.Rel, Action: "WRITE", Detail: "install read-only " + profile.ID + " Profile"})
+		}
 	}
 	if configChanged {
 		changes = append(changes, Change{Path: backupRel + "/reasonix.toml", Action: "BACKUP", Detail: "preserve pre-install config"})
@@ -285,9 +324,14 @@ func appendInstallChanges(changes []Change, root string, configChanged, generate
 	return changes
 }
 
-func writeInstall(root, configPath string, oldConfig []byte, newConfig string, generatedPath string, generated []byte, profilePath string, profile []byte, manifestPath string, m manifest.Manifest, backupRel string, configChanged, generatedChanged, profileChanged, manifestChanged bool) error {
+func writeInstall(root, configPath string, oldConfig []byte, newConfig string, generatedPath string, generated []byte, profiles []profileAsset, manifestPath string, m manifest.Manifest, backupRel string, configChanged, generatedChanged, profilesChanged, manifestChanged bool) error {
 	oldGenerated, generatedExisted := readIfExists(generatedPath)
-	oldProfile, profileExisted := readIfExists(profilePath)
+	oldProfiles := map[string][]byte{}
+	profileExisted := map[string]bool{}
+	for _, profile := range profiles {
+		path := ProfilePath(root, profile.Rel)
+		oldProfiles[profile.Rel], profileExisted[profile.Rel] = readIfExists(path)
+	}
 	oldManifest, manifestExisted := readIfExists(manifestPath)
 	backupPath := filepath.Join(root, filepath.FromSlash(backupRel), "reasonix.toml")
 	backupCreated := false
@@ -298,8 +342,10 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 		if generatedChanged {
 			restoreFile(generatedPath, generatedExisted, oldGenerated)
 		}
-		if profileChanged {
-			restoreFile(profilePath, profileExisted, oldProfile)
+		if profilesChanged {
+			for _, profile := range profiles {
+				restoreFile(ProfilePath(root, profile.Rel), profileExisted[profile.Rel], oldProfiles[profile.Rel])
+			}
 		}
 		if manifestChanged {
 			restoreFile(manifestPath, manifestExisted, oldManifest)
@@ -320,10 +366,12 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 			return fmt.Errorf("write generated Prompt: %w", err)
 		}
 	}
-	if profileChanged {
-		if err := fileutil.AtomicWrite(profilePath, profile, 0o644); err != nil {
-			rollback()
-			return fmt.Errorf("write Explore Profile: %w", err)
+	if profilesChanged {
+		for _, profile := range profiles {
+			if err := fileutil.AtomicWrite(ProfilePath(root, profile.Rel), profile.Data, 0o644); err != nil {
+				rollback()
+				return fmt.Errorf("write %s Profile: %w", profile.ID, err)
+			}
 		}
 	}
 	if configChanged {
@@ -433,7 +481,19 @@ func PromptSourceDrift(root string, m manifest.Manifest, assets Assets) []string
 }
 
 func manifestsEqual(a, b manifest.Manifest) bool {
-	return a.SchemaVersion == b.SchemaVersion && a.Product == b.Product && a.Version == b.Version && a.ReasonixCommit == b.ReasonixCommit && a.Prompt == b.Prompt && a.ProfilePath == b.ProfilePath && a.ProfileSHA256 == b.ProfileSHA256 && a.BackupPath == b.BackupPath && equalConfig(a.Config, b.Config) && equalAssets(a.Assets, b.Assets)
+	return a.SchemaVersion == b.SchemaVersion && a.Product == b.Product && a.Version == b.Version && a.ReasonixCommit == b.ReasonixCommit && a.Prompt == b.Prompt && a.ProfilePath == b.ProfilePath && a.ProfileSHA256 == b.ProfileSHA256 && a.BackupPath == b.BackupPath && equalProfiles(a.Profiles, b.Profiles) && equalConfig(a.Config, b.Config) && equalAssets(a.Assets, b.Assets)
+}
+
+func equalProfiles(a, b []manifest.Profile) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
 }
 
 func equalConfig(a, b []manifest.ConfigEntry) bool {

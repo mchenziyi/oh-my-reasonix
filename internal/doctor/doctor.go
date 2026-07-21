@@ -109,11 +109,13 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	} else {
 		result.Checks = append(result.Checks, Check{Name: "prompt.hash", Status: "PASS", Detail: m.Prompt.FinalSHA256})
 	}
-	profile := install.ExploreProfilePathForDoctor(root)
-	if actual, err := fileutil.SHA256File(profile); err != nil || actual != m.ProfileSHA256 {
-		result.Errors = append(result.Errors, "omr-explore Profile hash drift detected")
-	} else {
-		result.Checks = append(result.Checks, Check{Name: "profile.omr-explore", Status: "PASS", Detail: install.ExploreProfileRelForDoctor()})
+	for _, profile := range m.NormalizedProfiles() {
+		path := install.ProfilePath(root, profile.Path)
+		if actual, err := fileutil.SHA256File(path); err != nil || actual != profile.ContentSHA256 {
+			result.Errors = append(result.Errors, profile.ID+" Profile hash drift detected")
+		} else {
+			result.Checks = append(result.Checks, Check{Name: "profile." + profile.ID, Status: "PASS", Detail: profile.Path})
+		}
 	}
 	for _, drift := range install.PromptSourceDrift(root, m, assets) {
 		result.Errors = append(result.Errors, drift)

@@ -68,12 +68,14 @@ func Uninstall(opts Options) (Report, error) {
 			report.Changes = append(report.Changes, Change{Path: GeneratedPromptRel, Action: "REMOVE", Detail: "restore OMR-generated Prompt"})
 		}
 	}
-	profilePath := ExploreProfilePath(root)
-	if fileExists(profilePath) {
-		if fileHashDiffers(profilePath, m.ProfileSHA256) {
-			report.Conflicts = append(report.Conflicts, "omr-explore Profile was modified; file preserved")
-		} else {
-			report.Changes = append(report.Changes, Change{Path: ExploreProfileRel, Action: "REMOVE", Detail: "remove OMR-owned Profile"})
+	for _, profile := range m.NormalizedProfiles() {
+		profilePath := ProfilePath(root, profile.Path)
+		if fileExists(profilePath) {
+			if fileHashDiffers(profilePath, profile.ContentSHA256) {
+				report.Conflicts = append(report.Conflicts, profile.ID+" Profile was modified; file preserved")
+			} else {
+				report.Changes = append(report.Changes, Change{Path: profile.Path, Action: "REMOVE", Detail: "remove OMR-owned Profile"})
+			}
 		}
 	}
 	if configChanged {
@@ -88,7 +90,12 @@ func Uninstall(opts Options) (Report, error) {
 
 	oldConfig := configData
 	oldGenerated, generatedExisted := readIfExists(generatedPath)
-	oldProfile, profileExisted := readIfExists(profilePath)
+	oldProfiles := map[string][]byte{}
+	profileExisted := map[string]bool{}
+	for _, profile := range m.NormalizedProfiles() {
+		path := ProfilePath(root, profile.Path)
+		oldProfiles[profile.Path], profileExisted[profile.Path] = readIfExists(path)
+	}
 	oldManifest, manifestExisted := readIfExists(ManifestPath(root))
 	rollback := func() {
 		if configChanged {
@@ -97,8 +104,11 @@ func Uninstall(opts Options) (Report, error) {
 		if generatedExisted {
 			_ = fileutil.AtomicWrite(generatedPath, oldGenerated, 0o644)
 		}
-		if profileExisted {
-			_ = fileutil.AtomicWrite(profilePath, oldProfile, 0o644)
+		for _, profile := range m.NormalizedProfiles() {
+			path := ProfilePath(root, profile.Path)
+			if profileExisted[profile.Path] {
+				_ = fileutil.AtomicWrite(path, oldProfiles[profile.Path], 0o644)
+			}
 		}
 		if manifestExisted {
 			_ = fileutil.AtomicWrite(ManifestPath(root), oldManifest, 0o644)
@@ -115,10 +125,13 @@ func Uninstall(opts Options) (Report, error) {
 			return reportWithError(report, err)
 		}
 	}
-	if fileExists(profilePath) {
-		if err := os.Remove(profilePath); err != nil {
-			rollback()
-			return reportWithError(report, err)
+	for _, profile := range m.NormalizedProfiles() {
+		profilePath := ProfilePath(root, profile.Path)
+		if fileExists(profilePath) {
+			if err := os.Remove(profilePath); err != nil {
+				rollback()
+				return reportWithError(report, err)
+			}
 		}
 	}
 	if err := os.Remove(ManifestPath(root)); err != nil && !os.IsNotExist(err) {
@@ -129,7 +142,9 @@ func Uninstall(opts Options) (Report, error) {
 		_ = os.RemoveAll(filepath.Join(root, filepath.FromSlash(m.BackupPath)))
 	}
 	removeEmptyDir(filepath.Dir(generatedPath))
-	removeEmptyDir(filepath.Dir(profilePath))
+	for _, profile := range m.NormalizedProfiles() {
+		removeEmptyDir(filepath.Dir(ProfilePath(root, profile.Path)))
+	}
 	removeEmptyDir(filepath.Join(root, ".reasonix", "omr", "backups"))
 	removeEmptyDir(filepath.Join(root, ".reasonix", "omr"))
 	removeEmptyDir(filepath.Join(root, ".reasonix", "skills"))

@@ -50,6 +50,10 @@ func TestInitIsIdempotentAndUninstallRestoresConfig(t *testing.T) {
 	if err != nil || manifestData.Prompt.FinalSHA256 == "" {
 		t.Fatalf("manifest invalid: %v %#v", err, manifestData)
 	}
+	profiles := manifestData.NormalizedProfiles()
+	if len(profiles) != 1 || profiles[0].ID != "omr-explore" || profiles[0].Path != ExploreProfileRel {
+		t.Fatalf("manifest profiles invalid: %#v", profiles)
+	}
 	if _, err := Uninstall(Options{ProjectDir: root}); err != nil {
 		t.Fatalf("uninstall: %v", err)
 	}

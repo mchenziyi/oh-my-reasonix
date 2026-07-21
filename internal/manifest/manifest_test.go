@@ -27,3 +27,31 @@ func TestValidateAcceptsKnownLicense(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestNormalizedProfilesAcceptsLegacyFields(t *testing.T) {
+	profiles := validManifest().NormalizedProfiles()
+	if len(profiles) != 1 || profiles[0].ID != "omr-explore" || profiles[0].Path != "profile/SKILL.md" || profiles[0].ContentSHA256 != "profile-hash" {
+		t.Fatalf("unexpected normalized profiles: %#v", profiles)
+	}
+}
+
+func TestValidateAcceptsProfilesList(t *testing.T) {
+	m := New()
+	m.Prompt.GeneratedPath = "generated.md"
+	m.Prompt.FinalSHA256 = "prompt-hash"
+	m.Profiles = []Profile{{ID: "omr-explore", Path: "profile/SKILL.md", ContentSHA256: "profile-hash"}}
+	m.Assets = []Asset{{ID: "owned", LicenseStatus: "project-owned"}}
+	if err := m.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestValidateRejectsIncompleteProfile(t *testing.T) {
+	m := validManifest()
+	m.ProfilePath = ""
+	m.ProfileSHA256 = ""
+	m.Profiles = []Profile{{ID: "omr-explore", Path: "profile/SKILL.md"}}
+	if err := m.Validate(); err == nil {
+		t.Fatal("expected incomplete profile to fail")
+	}
+}

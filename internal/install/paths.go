@@ -51,6 +51,9 @@ func GeneratedPromptPath(root string) string {
 func ExploreProfilePath(root string) string {
 	return filepath.Join(root, filepath.FromSlash(ExploreProfileRel))
 }
+func ProfilePath(root, rel string) string {
+	return filepath.Join(root, filepath.FromSlash(rel))
+}
 
 // Exported path helpers keep diagnostics and benchmark packages independent
 // of the installer implementation details.
