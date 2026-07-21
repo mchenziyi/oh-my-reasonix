@@ -149,7 +149,7 @@
 | Claude Code Skills 兼容 | 仅支持 Reasonix 原生 Skill | P1 |
 | Claude Code MCP 配置兼容 | 没有 | P2 |
 | Claude Code Hooks 兼容 | 没有 | P2 |
-| `.claude/rules` 兼容 | 没有 | P1 |
+| `.claude/rules` 兼容 | Orchestrator 已要求按路径读取兼容规则；执行仍依赖宿主读取能力 | P1 |
 | `.agents/skills` 兼容 | 没有 | P2 |
 
 ### 3.9 高级体验

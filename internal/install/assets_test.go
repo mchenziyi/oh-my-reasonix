@@ -35,7 +35,7 @@ func TestEmbeddedOrchestratorInjectsProjectRules(t *testing.T) {
 		t.Fatalf("LoadAssets: %v", err)
 	}
 	orchestrator := string(assets.Orchestrator)
-	for _, required := range []string{"AGENTS.md", "README.md", ".reasonix/rules"} {
+	for _, required := range []string{"AGENTS.md", "README.md", ".reasonix/rules", ".claude/rules"} {
 		if !strings.Contains(orchestrator, required) {
 			t.Fatalf("orchestrator does not mention %s", required)
 		}
