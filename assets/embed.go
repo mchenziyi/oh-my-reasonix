@@ -17,3 +17,6 @@ var ReviewBrief []byte
 
 //go:embed skills/omr-explore/SKILL.md
 var Explore []byte
+
+//go:embed skills/omr-research/SKILL.md
+var Research []byte

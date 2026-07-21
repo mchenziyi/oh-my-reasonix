@@ -217,12 +217,21 @@ func resolveUserPrompt(root string, cfg agentConfig, existing manifest.Manifest,
 }
 
 func profileAssets(assets Assets) []profileAsset {
-	return []profileAsset{{
+	profiles := []profileAsset{{
 		ID:   "omr-explore",
 		Rel:  ExploreProfileRel,
 		Data: assets.Explore,
 		Hash: fileutil.SHA256(assets.Explore),
 	}}
+	if len(assets.Research) > 0 {
+		profiles = append(profiles, profileAsset{
+			ID:   "omr-research",
+			Rel:  ResearchProfileRel,
+			Data: assets.Research,
+			Hash: fileutil.SHA256(assets.Research),
+		})
+	}
+	return profiles
 }
 
 func profilesNeedWrite(root string, profiles []profileAsset) bool {

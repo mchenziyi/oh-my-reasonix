@@ -14,6 +14,7 @@ func doctorAssets() install.Assets {
 		BasePrompt:   []byte("base\n"),
 		Orchestrator: []byte("orchestrator\n"),
 		Explore:      []byte("skill\n"),
+		Research:     []byte("research\n"),
 		ReviewBrief:  []byte("review\n"),
 	}
 }
