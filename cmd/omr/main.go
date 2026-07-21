@@ -251,10 +251,10 @@ func runQualityBenchmark(args []string) error {
 	}
 	if cfg, configErr := omrconfig.Load(configFile); configErr == nil {
 		if !flagWasSet(flags, "fixtures") && cfg.Fixtures != "" {
-			*fixturesRoot = cfg.Fixtures
+			*fixturesRoot = projectRelativePath(*projectDir, cfg.Fixtures)
 		}
 		if !flagWasSet(flags, "metrics-dir") && cfg.MetricsDir != "" {
-			*metricsDir = cfg.MetricsDir
+			*metricsDir = projectRelativePath(*projectDir, cfg.MetricsDir)
 		}
 		if !flagWasSet(flags, "model") && cfg.Model != "" {
 			*model = cfg.Model
@@ -378,6 +378,13 @@ func runQualityBenchmark(args []string) error {
 		return fmt.Errorf("quality benchmark failed: %w", err)
 	}
 	return nil
+}
+
+func projectRelativePath(projectDir, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(projectDir, path)
 }
 
 func flagWasSet(flags *flag.FlagSet, name string) bool {
