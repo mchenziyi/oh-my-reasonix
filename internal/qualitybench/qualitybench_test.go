@@ -66,3 +66,12 @@ func TestEvaluateAllAggregatesMetrics(t *testing.T) {
 		t.Fatalf("metrics were not aggregated: %#v", report.Metrics)
 	}
 }
+
+func TestCompareReports(t *testing.T) {
+	native := Report{QualifiedCount: 1, QualifiedRate: 1, Metrics: Metrics{PromptTokens: 10, CacheHitTokens: 4, Cost: 0.1}}
+	omr := Report{QualifiedCount: 1, QualifiedRate: 1, Metrics: Metrics{PromptTokens: 12, CacheHitTokens: 8, Cost: 0.2}}
+	comparison := CompareReports(native, omr)
+	if !comparison.Passed || comparison.PromptTokensDelta != 2 || comparison.CacheHitTokensDelta != 4 || comparison.CostDelta != 0.1 {
+		t.Fatalf("unexpected comparison: %#v", comparison)
+	}
+}

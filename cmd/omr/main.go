@@ -199,6 +199,8 @@ func runQualityBenchmark(args []string) error {
 	flags.SetOutput(os.Stderr)
 	fixturesRoot := flags.String("fixtures", "benchmarks/fixtures", "fixture root")
 	resultsPath := flags.String("results", "", "optional JSON map of fixture id to RunResult")
+	nativeResultsPath := flags.String("native-results", "", "Native JSON results for quality comparison")
+	omrResultsPath := flags.String("omr-results", "", "OMR JSON results for quality comparison")
 	outputPath := flags.String("output", "", "optional JSON report path")
 	replay := flags.Bool("replay", false, "run fixtures with deterministic replay outcomes")
 	runtimeRun := flags.Bool("runtime", false, "run fixtures through the real Reasonix CLI")
@@ -220,6 +222,27 @@ func runQualityBenchmark(args []string) error {
 	}
 	if *runtimeRun && (*replay || *resultsPath != "") {
 		return errors.New("--runtime cannot be combined with --replay or --results")
+	}
+	if *nativeResultsPath != "" || *omrResultsPath != "" {
+		if *nativeResultsPath == "" || *omrResultsPath == "" || *replay || *runtimeRun || *resultsPath != "" {
+			return errors.New("quality comparison requires only --native-results and --omr-results")
+		}
+		native, err := loadQualityResults(*nativeResultsPath)
+		if err != nil {
+			return err
+		}
+		omr, err := loadQualityResults(*omrResultsPath)
+		if err != nil {
+			return err
+		}
+		comparison := qualitybench.CompareReports(qualitybench.EvaluateAll(fixtures, native), qualitybench.EvaluateAll(fixtures, omr))
+		if err := writeJSONValue(*outputPath, comparison); err != nil {
+			return err
+		}
+		if !comparison.Passed {
+			return errors.New("quality comparison failed hard gate")
+		}
+		return nil
 	}
 	if *runtimeRun {
 		results := map[string]qualitybench.RunResult{}
@@ -285,13 +308,9 @@ func runQualityBenchmark(args []string) error {
 		fmt.Println("no --results supplied; execution is intentionally separate from scoring")
 		return nil
 	}
-	data, err := os.ReadFile(*resultsPath)
+	results, err := loadQualityResults(*resultsPath)
 	if err != nil {
 		return err
-	}
-	results := map[string]qualitybench.RunResult{}
-	if err := json.Unmarshal(data, &results); err != nil {
-		return fmt.Errorf("parse quality results: %w", err)
 	}
 	report := qualitybench.EvaluateAll(fixtures, results)
 	if err := writeJSONValue(*outputPath, report); err != nil {
@@ -301,6 +320,18 @@ func runQualityBenchmark(args []string) error {
 		return fmt.Errorf("quality benchmark failed: %w", err)
 	}
 	return nil
+}
+
+func loadQualityResults(path string) (map[string]qualitybench.RunResult, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	results := map[string]qualitybench.RunResult{}
+	if err := json.Unmarshal(data, &results); err != nil {
+		return nil, fmt.Errorf("parse quality results: %w", err)
+	}
+	return results, nil
 }
 
 func writeJSONValue(path string, value interface{}) error {
