@@ -20,3 +20,19 @@ func TestLoad(t *testing.T) {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }
+
+func TestLoadAgentOverrides(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	data := "[agent.omr-research]\nmodel = 'deepseek-v4-flash'\nprompt_file = \"prompts/research.md\"\nread_only = true\n"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	agent, ok := cfg.Agents["omr-research"]
+	if !ok || agent.Model != "deepseek-v4-flash" || agent.PromptFile != "prompts/research.md" || agent.ReadOnly == nil || !*agent.ReadOnly {
+		t.Fatalf("unexpected agent config: %+v", cfg.Agents)
+	}
+}

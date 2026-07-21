@@ -88,9 +88,9 @@
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
 | 独立 OMR 配置文件 | 已支持项目级 `.reasonix/omr/config.toml`，覆盖质量基准和 Runtime 默认值 | P1 |
-| Agent 模型覆盖 | 没有 OMR 层配置 | P1 |
-| Agent Prompt 覆盖 | 没有 | P1 |
-| Agent 权限覆盖 | 依赖 Reasonix 原生，缺少 OMR 声明层 | P1 |
+| Agent 模型覆盖 | 已支持 `[agent.<profile>] model` 声明，实际执行由 Reasonix 原生 Profile 负责 | P1 |
+| Agent Prompt 覆盖 | 已支持 `[agent.<profile>] prompt_file` 声明，实际加载由宿主负责 | P1 |
+| Agent 权限覆盖 | 已支持 `[agent.<profile>] read_only` 声明校验，执行仍依赖 Reasonix 原生 | P1 |
 | Hook 禁用列表 | 没有 | P1 |
 | Profile 禁用列表 | 没有 | P1 |
 | 并发上限配置 | 没有 | P1 |

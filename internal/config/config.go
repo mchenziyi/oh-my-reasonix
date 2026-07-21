@@ -18,6 +18,13 @@ type Config struct {
 	MinQualifiedRate    float64
 	MinQualifiedRateSet bool
 	TimeoutSet          bool
+	Agents              map[string]AgentConfig
+}
+
+type AgentConfig struct {
+	Model      string
+	PromptFile string
+	ReadOnly   *bool
 }
 
 func Load(path string) (Config, error) {
@@ -35,8 +42,11 @@ func Load(path string) (Config, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" {
+			if section != "quality" && section != "runtime" && !strings.HasPrefix(section, "agent.") {
 				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
+			}
+			if strings.HasPrefix(section, "agent.") && strings.TrimSpace(strings.TrimPrefix(section, "agent.")) == "" {
+				return Config{}, fmt.Errorf("%s:%d: agent profile is required", path, lineNo)
 			}
 			continue
 		}
@@ -97,6 +107,29 @@ func assign(cfg *Config, section, key, raw string) error {
 		default:
 			return fmt.Errorf("unsupported runtime key %q", key)
 		}
+		return nil
+	}
+	if strings.HasPrefix(section, "agent.") {
+		profile := strings.TrimSpace(strings.TrimPrefix(section, "agent."))
+		if cfg.Agents == nil {
+			cfg.Agents = make(map[string]AgentConfig)
+		}
+		agent := cfg.Agents[profile]
+		switch key {
+		case "model":
+			agent.Model = stringValue(raw)
+		case "prompt_file":
+			agent.PromptFile = stringValue(raw)
+		case "read_only":
+			value, err := strconv.ParseBool(raw)
+			if err != nil {
+				return fmt.Errorf("invalid read_only")
+			}
+			agent.ReadOnly = &value
+		default:
+			return fmt.Errorf("unsupported agent key %q", key)
+		}
+		cfg.Agents[profile] = agent
 		return nil
 	}
 	return fmt.Errorf("key %q must be under [quality] or [runtime]", key)
