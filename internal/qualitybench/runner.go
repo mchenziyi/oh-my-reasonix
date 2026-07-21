@@ -87,6 +87,9 @@ func ExecuteRuntime(ctx context.Context, fixture Fixture, projectDir, binary, me
 		Prompt: fixture.Task, Metrics: metricsPath, Model: model, MaxSteps: maxSteps,
 	})
 	result := RunResult{RequiredEffectsMet: run.Err == nil}
+	if run.Err != nil {
+		result.Error = run.Err.Error()
+	}
 	if metrics, err := reasonix.ReadMetrics(metricsPath); err == nil {
 		result.Metrics = Metrics{
 			PromptTokens: metrics.PromptTokens, CompletionTokens: metrics.CompletionTokens,
@@ -97,10 +100,12 @@ func ExecuteRuntime(ctx context.Context, fixture Fixture, projectDir, binary, me
 	}
 	hidden, err := runChecks(ctx, projectDir, fixture.HiddenTests)
 	if err != nil {
+		result.Error = err.Error()
 		return result, fmt.Errorf("fixture %s hidden tests: %w", fixture.ID, err)
 	}
 	regression, err := runChecks(ctx, projectDir, fixture.RegressionTests)
 	if err != nil {
+		result.Error = err.Error()
 		return result, fmt.Errorf("fixture %s regression tests: %w", fixture.ID, err)
 	}
 	result.HiddenTestsPassed = hidden

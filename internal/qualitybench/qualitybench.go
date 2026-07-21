@@ -52,6 +52,7 @@ type RunResult struct {
 	Events             []string `json:"events"`
 	TestsSkipped       bool     `json:"tests_skipped"`
 	Metrics            Metrics  `json:"metrics,omitempty"`
+	Error              string   `json:"error,omitempty"`
 }
 
 type Metrics struct {
@@ -131,6 +132,9 @@ func Evaluate(fixture Fixture, result RunResult) Evaluation {
 	}
 	if !result.RequiredEffectsMet {
 		evaluation.Failures = append(evaluation.Failures, "required effects not met")
+	}
+	if result.Error != "" {
+		evaluation.Failures = append(evaluation.Failures, "runtime error: "+result.Error)
 	}
 	if result.TestsSkipped {
 		evaluation.Failures = append(evaluation.Failures, "tests were skipped")
