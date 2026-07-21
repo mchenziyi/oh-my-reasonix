@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -217,10 +218,36 @@ func Matches(path, pattern string) bool {
 		return true
 	}
 	if strings.ContainsAny(pattern, "*?[") {
+		if strings.Contains(pattern, "**") {
+			return globstarMatch(filepath.ToSlash(path), filepath.ToSlash(pattern))
+		}
 		matched, _ := filepath.Match(pattern, filepath.ToSlash(path))
 		return matched
 	}
 	return false
+}
+
+func globstarMatch(path, pattern string) bool {
+	var expression strings.Builder
+	expression.WriteString("^")
+	for i := 0; i < len(pattern); i++ {
+		switch pattern[i] {
+		case '*':
+			if i+1 < len(pattern) && pattern[i+1] == '*' {
+				expression.WriteString(".*")
+				i++
+			} else {
+				expression.WriteString("[^/]*")
+			}
+		case '?':
+			expression.WriteString("[^/]")
+		default:
+			expression.WriteString(regexp.QuoteMeta(string(pattern[i])))
+		}
+	}
+	expression.WriteString("$")
+	matched, err := regexp.MatchString(expression.String(), path)
+	return err == nil && matched
 }
 
 func matchesAny(path string, patterns []string) bool {

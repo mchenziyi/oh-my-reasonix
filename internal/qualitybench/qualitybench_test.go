@@ -75,3 +75,12 @@ func TestCompareReports(t *testing.T) {
 		t.Fatalf("unexpected comparison: %#v", comparison)
 	}
 }
+
+func TestMatchesSupportsGlobstarPaths(t *testing.T) {
+	if !Matches(".reasonix/omr/manifest.lock.yaml", ".reasonix/**") {
+		t.Fatal("globstar should match nested paths")
+	}
+	if !Matches("internal/cacheguard/trace.go", "**/*.go") {
+		t.Fatal("globstar should match files at any depth")
+	}
+}
