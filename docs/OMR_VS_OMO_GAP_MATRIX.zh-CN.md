@@ -63,9 +63,9 @@
 | Todo continuation enforcer | 没有 | P0 |
 | Empty task response detector | 没有 | P0 |
 | Comment checker | 没有 | P2 |
-| Tool/Grep 输出截断 | 没有 | P1 |
-| Context window monitor | 没有 | P1 |
-| Preemptive compaction | 没有 | P1 |
+| Tool/Grep 输出截断 | Orchestrator 已要求精确范围和摘要化保留 | P1 |
+| Context window monitor | Orchestrator 已要求上下文不足前保留可恢复证据 | P1 |
+| Preemptive compaction | Orchestrator 已要求压缩前记录 Todo、证据和验证状态 | P1 |
 | Session recovery | 没有 | P0 |
 | Background notification | 没有 | P1 |
 | Ralph loop | 没有 | P2 |

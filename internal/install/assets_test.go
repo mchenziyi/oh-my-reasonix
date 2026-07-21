@@ -56,6 +56,20 @@ func TestEmbeddedOrchestratorRoutesReadOnlyProfiles(t *testing.T) {
 	}
 }
 
+func TestEmbeddedOrchestratorConstrainsToolOutputAndContext(t *testing.T) {
+	t.Setenv("OMR_ASSET_DIR", "")
+	assets, err := LoadAssets(t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadAssets: %v", err)
+	}
+	orchestrator := string(assets.Orchestrator)
+	for _, required := range []string{"超大 grep", "上下文窗口", "最后一次验证命令"} {
+		if !strings.Contains(orchestrator, required) {
+			t.Fatalf("orchestrator does not include context discipline %q", required)
+		}
+	}
+}
+
 func TestLoadAssetsInvalidConfiguredDirectoryDoesNotFallback(t *testing.T) {
 	t.Setenv("OMR_ASSET_DIR", t.TempDir()+"/missing")
 	if _, err := LoadAssets(t.TempDir()); err == nil {
