@@ -20,6 +20,7 @@ go run ./cmd/omr version
 go run ./cmd/omr init --dry-run
 go run ./cmd/omr init
 go run ./cmd/omr doctor
+go run ./cmd/omr config validate
 go run ./cmd/omr upgrade --dry-run
 go run ./cmd/omr uninstall --dry-run
 ```

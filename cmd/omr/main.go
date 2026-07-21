@@ -34,6 +34,8 @@ func main() {
 		err = runUninstall(os.Args[2:])
 	case "doctor":
 		err = runDoctor(os.Args[2:])
+	case "config":
+		err = runConfig(os.Args[2:])
 	case "benchmark":
 		err = runBenchmark(os.Args[2:])
 	case "version":
@@ -100,6 +102,31 @@ func runDoctor(args []string) error {
 	result, runErr := doctor.Run(*projectDir, assets)
 	result.Render(os.Stdout)
 	return runErr
+}
+
+func runConfig(args []string) error {
+	if len(args) == 0 || args[0] != "validate" {
+		return errors.New("config requires validate")
+	}
+	flags := flag.NewFlagSet("config validate", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	configPath := flags.String("config", "", "OMR config TOML path")
+	if err := flags.Parse(args[1:]); err != nil {
+		return err
+	}
+	path := *configPath
+	if path == "" {
+		path = filepath.Join(*projectDir, ".reasonix", "omr", "config.toml")
+	}
+	if _, err := omrconfig.Load(path); err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("OMR config not found: %s", path)
+		}
+		return err
+	}
+	fmt.Printf("OMR config valid: %s\n", path)
+	return nil
 }
 
 func runBenchmark(args []string) error {
@@ -405,6 +432,6 @@ func loadAssetsFromInvocation() (install.Assets, error) {
 
 func usage() {
 	name := filepath.Base(os.Args[0])
-	fmt.Printf("%s init|upgrade|uninstall|doctor|benchmark|version\n", name)
+	fmt.Printf("%s init|upgrade|uninstall|doctor|config|benchmark|version\n", name)
 	fmt.Println("Use --help on a command for flags.")
 }
