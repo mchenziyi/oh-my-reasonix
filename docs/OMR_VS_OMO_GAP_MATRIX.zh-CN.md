@@ -87,7 +87,7 @@
 
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
-| 独立 OMR 配置文件 | 主要依赖 `reasonix.toml` 和 CLI 参数 | P1 |
+| 独立 OMR 配置文件 | 已支持项目级 `.reasonix/omr/config.toml`，覆盖质量基准和 Runtime 默认值 | P1 |
 | Agent 模型覆盖 | 没有 OMR 层配置 | P1 |
 | Agent Prompt 覆盖 | 没有 | P1 |
 | Agent 权限覆盖 | 依赖 Reasonix 原生，缺少 OMR 声明层 | P1 |
@@ -95,7 +95,7 @@
 | Profile 禁用列表 | 没有 | P1 |
 | 并发上限配置 | 没有 | P1 |
 | Category 自定义 | 没有 | P2 |
-| 配置 Schema 校验 | 没有独立 Schema | P1 |
+| 配置 Schema 校验 | 已有 Doctor 对当前 TOML 子集做结构和范围校验，完整 Schema 仍未实现 | P1 |
 | 用户级配置 | 明确不支持 | P2 |
 | JSONC/注释配置 | 没有 | P2 |
 | 环境变量展开 | 没有 OMR 配置层 | P2 |
