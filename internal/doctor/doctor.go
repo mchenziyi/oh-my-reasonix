@@ -53,6 +53,8 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return Result{}, err
 	}
 	result := Result{Root: root}
+	var omrConfig omrconfig.Config
+	var hasOMRConfig bool
 	configPath := filepath.Join(root, "reasonix.toml")
 	if _, err := os.Stat(configPath); err != nil {
 		result.Errors = append(result.Errors, "reasonix.toml not found")
@@ -61,9 +63,11 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	result.Checks = append(result.Checks, Check{Name: "reasonix.config", Status: "PASS", Detail: configPath})
 	omrConfigPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
 	if _, statErr := os.Stat(omrConfigPath); statErr == nil {
-		if _, configErr := omrconfig.Load(omrConfigPath); configErr != nil {
+		if loaded, configErr := omrconfig.Load(omrConfigPath); configErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("invalid OMR config: %v", configErr))
 		} else {
+			omrConfig = loaded
+			hasOMRConfig = true
 			result.Checks = append(result.Checks, Check{Name: "omr.config", Status: "PASS", Detail: omrConfigPath})
 		}
 	} else if !os.IsNotExist(statErr) {
@@ -103,6 +107,20 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, err
 	}
 	result.Checks = append(result.Checks, Check{Name: "manifest", Status: "PASS", Detail: "schema and required fields valid"})
+	if hasOMRConfig && len(omrConfig.Agents) > 0 {
+		installed := make(map[string]bool)
+		for _, profile := range m.NormalizedProfiles() {
+			installed[profile.ID] = true
+		}
+		for profile := range omrConfig.Agents {
+			if !installed[profile] {
+				result.Errors = append(result.Errors, fmt.Sprintf("OMR config references uninstalled Profile %q", profile))
+			}
+		}
+		if len(result.Errors) == 0 {
+			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles are installed"})
+		}
+	}
 	generated := install.GeneratedPromptPathForDoctor(root)
 	if actual, err := fileutil.SHA256File(generated); err != nil || actual != m.Prompt.FinalSHA256 {
 		result.Errors = append(result.Errors, "generated Prompt hash drift detected")

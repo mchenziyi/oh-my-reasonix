@@ -87,3 +87,24 @@ func TestRunReportsValidOMRConfig(t *testing.T) {
 		t.Fatalf("valid config check missing: %#v", result.Checks)
 	}
 }
+
+func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr-missing]\nmodel = \"deepseek\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || len(result.Errors) == 0 {
+		t.Fatalf("expected missing Profile error: %#v %v", result, err)
+	}
+	found := false
+	for _, issue := range result.Errors {
+		if issue == `OMR config references uninstalled Profile "omr-missing"` {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing Profile error not reported: %#v", result.Errors)
+	}
+}
