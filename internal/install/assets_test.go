@@ -49,7 +49,7 @@ func TestEmbeddedOrchestratorRoutesReadOnlyProfiles(t *testing.T) {
 		t.Fatalf("LoadAssets: %v", err)
 	}
 	orchestrator := string(assets.Orchestrator)
-	for _, required := range []string{"omr-explore", "omr-research", "omr-debug"} {
+	for _, required := range []string{"omr-explore", "omr-research", "omr-debug", "任务类别路由", "delivery"} {
 		if !strings.Contains(orchestrator, required) {
 			t.Fatalf("orchestrator does not route %s", required)
 		}
