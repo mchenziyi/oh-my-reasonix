@@ -4,6 +4,8 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 )
 
 func TestQualityBenchmarkConfigPathsAreProjectRelative(t *testing.T) {
@@ -42,6 +44,28 @@ func TestQualityBenchmarkConfigPathsAreProjectRelative(t *testing.T) {
 
 	err = runQualityBenchmark([]string{"--project-dir", projectDir, "--replay", "--min-qualified-rate", "1"})
 	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestProfileListReadsInstalledProfiles(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "reasonix.toml"), []byte("[agent]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assets := install.Assets{
+		Root:         "test-assets",
+		BasePrompt:   []byte("base\n"),
+		Orchestrator: []byte("orchestrator\n"),
+		Explore:      []byte("explore\n"),
+		Research:     []byte("research\n"),
+		Debug:        []byte("debug\n"),
+		ReviewBrief:  []byte("review\n"),
+	}
+	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runProfile([]string{"list", "--project-dir", root}); err != nil {
 		t.Fatal(err)
 	}
 }

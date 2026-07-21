@@ -14,6 +14,7 @@ import (
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
+	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
 )
 
@@ -36,6 +37,8 @@ func main() {
 		err = runDoctor(os.Args[2:])
 	case "config":
 		err = runConfig(os.Args[2:])
+	case "profile":
+		err = runProfile(os.Args[2:])
 	case "benchmark":
 		err = runBenchmark(os.Args[2:])
 	case "version":
@@ -126,6 +129,33 @@ func runConfig(args []string) error {
 		return err
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
+	return nil
+}
+
+func runProfile(args []string) error {
+	if len(args) == 0 || args[0] != "list" {
+		return errors.New("profile requires list")
+	}
+	flags := flag.NewFlagSet("profile list", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	if err := flags.Parse(args[1:]); err != nil {
+		return err
+	}
+	root, err := install.ProjectRoot(*projectDir)
+	if err != nil {
+		return err
+	}
+	m, err := manifest.Load(install.ManifestPathForDoctor(root))
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("OMR manifest not found: %s", install.ManifestPathForDoctor(root))
+		}
+		return err
+	}
+	for _, profile := range m.NormalizedProfiles() {
+		fmt.Printf("%s\t%s\t%s\n", profile.ID, profile.Path, profile.ContentSHA256)
+	}
 	return nil
 }
 
@@ -442,6 +472,6 @@ func loadAssetsFromInvocation() (install.Assets, error) {
 
 func usage() {
 	name := filepath.Base(os.Args[0])
-	fmt.Printf("%s init|upgrade|uninstall|doctor|config|benchmark|version\n", name)
+	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|benchmark|version\n", name)
 	fmt.Println("Use --help on a command for flags.")
 }
