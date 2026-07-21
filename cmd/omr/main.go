@@ -12,7 +12,6 @@ import (
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/cacheguard"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
-	"github.com/mchenziyi/oh-my-reasonix/internal/events"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
 )
@@ -210,7 +209,6 @@ func runQualityBenchmark(args []string) error {
 	binary := flags.String("binary", "reasonix", "Reasonix executable for --runtime")
 	metricsDir := flags.String("metrics-dir", "", "metrics output directory for --runtime")
 	eventsPath := flags.String("events", "", "optional JSONL structured event log for --runtime")
-	eventLogPath := flags.String("event-log", "", "optional JSONL OMR lifecycle event output")
 	model := flags.String("model", "", "optional Reasonix model for --runtime")
 	maxSteps := flags.Int("max-steps", 0, "optional Reasonix step limit for --runtime")
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
@@ -247,41 +245,13 @@ func runQualityBenchmark(args []string) error {
 		return nil
 	}
 	if *runtimeRun {
-		var eventWriter *events.Writer
-		var eventFile *os.File
-		if *eventLogPath != "" {
-			var eventErr error
-			eventFile, eventErr = os.Create(*eventLogPath)
-			if eventErr != nil {
-				return eventErr
-			}
-			defer eventFile.Close()
-			eventWriter = events.NewWriter(eventFile)
-		}
 		results := map[string]qualitybench.RunResult{}
 		for _, fixture := range fixtures {
-			if eventWriter != nil {
-				if err := eventWriter.Write("omr.fixture.started", fixture.ID, "started", nil); err != nil {
-					return err
-				}
-			}
 			ctx, cancel := context.WithTimeout(context.Background(), *timeout)
 			result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
 			cancel()
 			if runErr != nil {
-				if eventWriter != nil {
-					_ = eventWriter.Write("omr.fixture.failed", fixture.ID, "failed", runErr)
-				}
 				return runErr
-			}
-			if eventWriter != nil {
-				status := "failed"
-				if result.RequiredEffectsMet && result.HiddenTestsPassed && result.RegressionPassed && !result.TestsSkipped {
-					status = "passed"
-				}
-				if err := eventWriter.Write("omr.fixture.completed", fixture.ID, status, nil); err != nil {
-					return err
-				}
 			}
 			if *eventsPath != "" {
 				events, eventErr := qualitybench.ReadEventNames(*eventsPath)
@@ -302,24 +272,8 @@ func runQualityBenchmark(args []string) error {
 		return nil
 	}
 	if *replay {
-		var eventWriter *events.Writer
-		var eventFile *os.File
-		if *eventLogPath != "" {
-			var eventErr error
-			eventFile, eventErr = os.Create(*eventLogPath)
-			if eventErr != nil {
-				return eventErr
-			}
-			defer eventFile.Close()
-			eventWriter = events.NewWriter(eventFile)
-		}
 		results := map[string]qualitybench.RunResult{}
 		for _, fixture := range fixtures {
-			if eventWriter != nil {
-				if err := eventWriter.Write("omr.fixture.started", fixture.ID, "started", nil); err != nil {
-					return err
-				}
-			}
 			var result qualitybench.RunResult
 			var replayErr error
 			if *runTests {
@@ -330,21 +284,7 @@ func runQualityBenchmark(args []string) error {
 				result, replayErr = qualitybench.Replay(fixture)
 			}
 			if replayErr != nil {
-				if eventWriter != nil {
-					if err := eventWriter.Write("omr.fixture.failed", fixture.ID, "failed", replayErr); err != nil {
-						return err
-					}
-				}
 				continue
-			}
-			if eventWriter != nil {
-				status := "passed"
-				if result.TestsSkipped || !result.RequiredEffectsMet || !result.HiddenTestsPassed || !result.RegressionPassed {
-					status = "failed"
-				}
-				if err := eventWriter.Write("omr.fixture.completed", fixture.ID, status, nil); err != nil {
-					return err
-				}
 			}
 			results[fixture.ID] = result
 		}
