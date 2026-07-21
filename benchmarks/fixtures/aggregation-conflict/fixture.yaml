@@ -1,0 +1,15 @@
+{
+  "id": "aggregation-conflict",
+  "description": "Explore aggregation must deduplicate, retain unique facts, and surface conflicts.",
+  "task": "Investigate the conflicting reports and produce a verified implementation plan.",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": ["**/*.go"],
+  "hidden_tests": ["test -f docs/investigation.md"],
+  "regression_tests": [],
+  "expected_events": ["omr-explore", "aggregation.deduplicated", "aggregation.conflict", "complete_step"],
+  "replay_outputs": [
+    {"role": "omr-explore", "kind": "duplicate", "output": "The request enters handler.go."},
+    {"role": "omr-explore", "kind": "unique", "output": "The failing test uses a nil fixture."},
+    {"role": "omr-explore", "kind": "conflict", "output": "One report says the cache is stale; verify before implementation."}
+  ]
+}

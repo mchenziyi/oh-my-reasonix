@@ -1,0 +1,11 @@
+{
+  "id": "cross-module-bug",
+  "description": "Cross-module root-cause investigation with read-only Explore.",
+  "task": "Find and fix the request path bug spanning the API and storage modules.",
+  "allowed_paths": ["internal/api/**", "internal/storage/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["go test ./..."],
+  "regression_tests": ["go test ./..."],
+  "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+  "replay_outputs": []
+}

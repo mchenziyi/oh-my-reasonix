@@ -1,0 +1,11 @@
+{
+  "id": "simple-fix",
+  "description": "Single-file deterministic text correction.",
+  "task": "Fix the spelling mistake in the README without changing behavior.",
+  "allowed_paths": ["README.md"],
+  "forbidden_paths": ["**/*.go", ".reasonix/**"],
+  "hidden_tests": ["test -f README.md"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay_outputs": []
+}
