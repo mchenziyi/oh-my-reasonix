@@ -1,14 +1,17 @@
 package doctor
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
+	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
 type Result struct {
@@ -55,10 +58,29 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, fmt.Errorf("reasonix.toml not found")
 	}
 	result.Checks = append(result.Checks, Check{Name: "reasonix.config", Status: "PASS", Detail: configPath})
-	if _, err := exec.LookPath("reasonix"); err != nil {
+	binary, err := exec.LookPath("reasonix")
+	if err != nil {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
 	} else {
 		result.Checks = append(result.Checks, Check{Name: "reasonix.binary", Status: "PASS", Detail: "found in PATH"})
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		probe, probeErr := (reasonix.Runner{Binary: binary, ProjectDir: root}).Probe(ctx)
+		cancel()
+		if probeErr != nil {
+			result.Errors = append(result.Errors, probeErr.Error())
+		} else {
+			for _, capability := range probe.Checks {
+				if capability.Available {
+					result.Checks = append(result.Checks, Check{Name: "reasonix." + capability.Name, Status: "PASS", Detail: capability.Detail})
+					continue
+				}
+				if capability.Name == "version" {
+					result.Warnings = append(result.Warnings, fmt.Sprintf("Reasonix capability %q unavailable: %s", capability.Name, capability.Detail))
+					continue
+				}
+				result.Errors = append(result.Errors, fmt.Sprintf("Reasonix capability %q unavailable: %s", capability.Name, capability.Detail))
+			}
+		}
 	}
 	m, err := manifest.Load(install.ManifestPathForDoctor(root))
 	if err != nil {

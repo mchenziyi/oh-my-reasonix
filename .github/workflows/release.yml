@@ -1,0 +1,43 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+          cache: false
+      - name: Build release binaries
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          set -eu
+          mkdir -p dist
+          for target in \
+            "darwin amd64" \
+            "darwin arm64" \
+            "linux amd64" \
+            "linux arm64" \
+            "windows amd64"; do
+            set -- $target
+            suffix=""
+            if [ "$1" = windows ]; then suffix=".exe"; fi
+            GOOS="$1" GOARCH="$2" go build -trimpath -ldflags "-s -w -X main.version=${VERSION#v}" \
+              -o "dist/omr-${VERSION}-${1}-${2}${suffix}" ./cmd/omr
+          done
+          (cd dist && sha256sum omr-* > SHA256SUMS)
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ github.ref_name }}
+        run: gh release create "$VERSION" dist/* --verify-tag --generate-notes

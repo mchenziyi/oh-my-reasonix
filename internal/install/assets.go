@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	embeddedassets "github.com/mchenziyi/oh-my-reasonix/assets"
 )
 
 type Assets struct {
@@ -16,9 +18,22 @@ type Assets struct {
 
 func LoadAssets(start string) (Assets, error) {
 	root, err := findAssetRoot(start)
-	if err != nil {
+	if err == nil {
+		return readAssetsFromDirectory(root)
+	}
+	if os.Getenv("OMR_ASSET_DIR") != "" {
 		return Assets{}, err
 	}
+	return Assets{
+		Root:         "embedded",
+		BasePrompt:   append([]byte(nil), embeddedassets.BasePrompt...),
+		Orchestrator: append([]byte(nil), embeddedassets.Orchestrator...),
+		Explore:      append([]byte(nil), embeddedassets.Explore...),
+		ReviewBrief:  append([]byte(nil), embeddedassets.ReviewBrief...),
+	}, nil
+}
+
+func readAssetsFromDirectory(root string) (Assets, error) {
 	read := func(rel string) ([]byte, error) {
 		path := filepath.Join(root, filepath.FromSlash(rel))
 		data, err := os.ReadFile(path)

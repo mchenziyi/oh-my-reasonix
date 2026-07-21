@@ -24,13 +24,24 @@ go run ./cmd/omr upgrade --dry-run
 go run ./cmd/omr uninstall --dry-run
 ```
 
+## 让 Reasonix 自己安装
+
+可以把 [安装提示词](docs/INSTALL_PROMPT.md) 交给正在运行的 Reasonix；它会读取
+[INSTALL.md](docs/INSTALL.md)，先执行 dry-run，再在确认后下载、校验并运行 OMR。
+也可以直接使用安装文档的 Raw URL：
+
+```text
+https://raw.githubusercontent.com/mchenziyi/oh-my-reasonix/main/docs/INSTALL.md
+```
+
 已有 `agent.system_prompt_file` 或 `agent.system_prompt` 时，必须显式使用 `--compose-prompt`。非空用户 Prompt 会被写入生成文件，因此还需要显式确认：
 
 ```bash
 go run ./cmd/omr init --compose-prompt --allow-persist-user-prompt
 ```
 
-CLI 默认从仓库中的 `assets/` 读取发行资产；安装为独立二进制时可通过 `OMR_ASSET_DIR` 指向该目录。
+Release 二进制内嵌 Prompt/Profile 发行资产；本地开发时 CLI 会优先从仓库中的 `assets/` 读取，
+也可通过 `OMR_ASSET_DIR` 显式指定资产目录。
 
 ## 基准 Smoke
 

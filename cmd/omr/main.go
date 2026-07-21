@@ -14,6 +14,8 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
 )
 
+var version = "1.1.1"
+
 func main() {
 	if len(os.Args) < 2 {
 		usage()
@@ -32,7 +34,7 @@ func main() {
 	case "benchmark":
 		err = runBenchmark(os.Args[2:])
 	case "version":
-		fmt.Println("omr 1.1.1")
+		fmt.Printf("omr %s\n", version)
 	default:
 		usage()
 		os.Exit(2)
