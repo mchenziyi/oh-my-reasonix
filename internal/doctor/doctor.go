@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
@@ -58,6 +59,16 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, fmt.Errorf("reasonix.toml not found")
 	}
 	result.Checks = append(result.Checks, Check{Name: "reasonix.config", Status: "PASS", Detail: configPath})
+	omrConfigPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if _, statErr := os.Stat(omrConfigPath); statErr == nil {
+		if _, configErr := omrconfig.Load(omrConfigPath); configErr != nil {
+			result.Errors = append(result.Errors, fmt.Sprintf("invalid OMR config: %v", configErr))
+		} else {
+			result.Checks = append(result.Checks, Check{Name: "omr.config", Status: "PASS", Detail: omrConfigPath})
+		}
+	} else if !os.IsNotExist(statErr) {
+		result.Errors = append(result.Errors, fmt.Sprintf("read OMR config: %v", statErr))
+	}
 	binary, err := exec.LookPath("reasonix")
 	if err != nil {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
