@@ -76,11 +76,11 @@
 
 | 能力 | OMR 当前状态 | OMO 对应能力 | 优先级 |
 |---|---|---|---|
-| 根目录 `AGENTS.md` | 没有系统化注入 | 自动注入 | P1 |
-| 子目录 `AGENTS.md` | 没有 | 按文件路径向上收集 | P1 |
-| README 自动注入 | 没有 | 按目录注入 | P1 |
-| 条件规则 | 没有 | `.claude/rules` + glob 匹配 | P1 |
-| 规则优先级 | 没有 | 项目/用户多层覆盖 | P1 |
+| 根目录 `AGENTS.md` | Orchestrator 已要求任务前读取 | 自动注入 | P1 |
+| 子目录 `AGENTS.md` | Orchestrator 已要求按目标路径向上收集 | 按文件路径向上收集 | P1 |
+| README 自动注入 | Orchestrator 已要求读取相关目录 README | 按目录注入 | P1 |
+| 条件规则 | Orchestrator 已要求读取匹配的 `.reasonix/rules` | `.claude/rules` + glob 匹配 | P1 |
+| 规则优先级 | 已定义路径更近、用户消息、安全规则优先级 | 项目/用户多层覆盖 | P1 |
 | 规则漂移检查 | 只检查 OMR 资产 | 可扩展到项目规则 | P2 |
 
 ### 3.5 配置与可定制性

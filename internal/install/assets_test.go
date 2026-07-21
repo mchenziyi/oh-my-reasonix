@@ -1,6 +1,7 @@
 package install
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -21,6 +22,20 @@ func TestLoadAssetsFallsBackToEmbeddedReleaseAssets(t *testing.T) {
 	} {
 		if len(data) == 0 {
 			t.Errorf("embedded %s is empty", name)
+		}
+	}
+}
+
+func TestEmbeddedOrchestratorInjectsProjectRules(t *testing.T) {
+	t.Setenv("OMR_ASSET_DIR", "")
+	assets, err := LoadAssets(t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadAssets: %v", err)
+	}
+	orchestrator := string(assets.Orchestrator)
+	for _, required := range []string{"AGENTS.md", "README.md", ".reasonix/rules"} {
+		if !strings.Contains(orchestrator, required) {
+			t.Fatalf("orchestrator does not mention %s", required)
 		}
 	}
 }
