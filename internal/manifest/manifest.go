@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 )
@@ -80,6 +81,12 @@ func (m Manifest) Validate() error {
 	}
 	if m.ProfilePath == "" || m.ProfileSHA256 == "" {
 		return fmt.Errorf("manifest profile metadata is incomplete")
+	}
+	for _, asset := range m.Assets {
+		status := strings.ToLower(strings.TrimSpace(asset.LicenseStatus))
+		if status == "" || status == "unknown" || status == "未确认" {
+			return fmt.Errorf("asset %q has unresolved license status", asset.ID)
+		}
 	}
 	return nil
 }

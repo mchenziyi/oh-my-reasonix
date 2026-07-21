@@ -106,9 +106,14 @@ func Analyze(records []RequestRecord) Report {
 			ForwardedRequestBodySHA256: forwardedHash,
 			StreamRole:                 record.StreamRole,
 		}
+		if record.Usage != nil {
+			result.PromptCacheHitTokens += record.Usage.PromptCacheHitTokens
+			result.PromptCacheMissTokens += record.Usage.PromptCacheMissTokens
+		}
 		if rawHash != forwardedHash {
 			result.BodyMismatch++
 			result.Passed = false
+			analyzed.Error = "forwarded request body differs from original body"
 		}
 		payload, messages, err := parsePayload(record.Body)
 		if err != nil {
@@ -143,12 +148,14 @@ func Analyze(records []RequestRecord) Report {
 			analyzed.Classification = "declared_reset"
 		case len(candidates) > 1:
 			analyzed.Classification = "ambiguous_stream"
+			analyzed.Error = "request matches multiple logical streams"
 			result.AmbiguousStream++
 			result.Passed = false
 		case len(candidates) == 1 && equalMessages(candidates[0].messages, messages):
 			// Equal starting bodies are not distinguishable from a concurrent
 			// duplicate, so fail closed instead of inventing a stream join.
 			analyzed.Classification = "ambiguous_stream"
+			analyzed.Error = "request duplicates an existing stream prefix"
 			result.AmbiguousStream++
 			result.Passed = false
 		case len(candidates) == 1:
@@ -156,16 +163,13 @@ func Analyze(records []RequestRecord) Report {
 			analyzed.Classification = "warm_eligible"
 			analyzed.PreviousMessagesPrefixMatch = true
 			result.WarmEligible++
-			if record.Usage != nil {
-				result.PromptCacheHitTokens += record.Usage.PromptCacheHitTokens
-				result.PromptCacheMissTokens += record.Usage.PromptCacheMissTokens
-			}
 		default:
 			if len(streamsByRun[record.RunID]) == 0 {
 				analyzed.Classification = "cold"
 				result.Cold++
 			} else {
 				analyzed.Classification = "unexpected_divergence"
+				analyzed.Error = "request does not continue any known logical stream"
 				result.UnexpectedDivergence++
 				result.Passed = false
 			}

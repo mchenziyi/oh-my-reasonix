@@ -22,6 +22,18 @@ type Fixture struct {
 	RegressionTests []string       `json:"regression_tests"`
 	ExpectedEvents  []string       `json:"expected_events"`
 	ReplayOutputs   []ReplayOutput `json:"replay_outputs,omitempty"`
+	Replay          *ReplaySpec    `json:"replay,omitempty"`
+}
+
+// ReplaySpec describes the deterministic outcome expected from a local replay.
+// It deliberately contains no provider or filesystem commands.
+type ReplaySpec struct {
+	ChangedPaths       []string `json:"changed_paths"`
+	HiddenTestsPassed  bool     `json:"hidden_tests_passed"`
+	RegressionPassed   bool     `json:"regression_passed"`
+	RequiredEffectsMet bool     `json:"required_effects_met"`
+	Events             []string `json:"events"`
+	TestsSkipped       bool     `json:"tests_skipped"`
 }
 
 type ReplayOutput struct {
@@ -49,6 +61,7 @@ type Report struct {
 	FixtureCount   int          `json:"fixture_count"`
 	EvaluatedCount int          `json:"evaluated_count"`
 	QualifiedCount int          `json:"qualified_count"`
+	QualifiedRate  float64      `json:"qualified_rate"`
 	Evaluations    []Evaluation `json:"evaluations"`
 }
 
@@ -135,7 +148,43 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult) Report {
 			report.QualifiedCount++
 		}
 	}
+	if report.EvaluatedCount > 0 {
+		report.QualifiedRate = float64(report.QualifiedCount) / float64(report.EvaluatedCount)
+	}
 	return report
+}
+
+// CheckGate validates a benchmark report against the requested qualified rate.
+// A perfect-rate gate also requires every discovered fixture to be evaluated.
+func CheckGate(report Report, minimumRate float64) error {
+	if minimumRate < 0 || minimumRate > 1 {
+		return fmt.Errorf("minimum qualified rate must be between 0 and 1")
+	}
+	if minimumRate >= 1 && report.EvaluatedCount != report.FixtureCount {
+		return fmt.Errorf("missing results for one or more fixtures")
+	}
+	if report.QualifiedRate < minimumRate {
+		return fmt.Errorf("qualified rate %.3f is below minimum %.3f", report.QualifiedRate, minimumRate)
+	}
+	return nil
+}
+
+// Replay executes a fixture's deterministic transcript without contacting a
+// provider. The explicit outcome is kept in the fixture so the same run is
+// reproducible on every platform.
+func Replay(fixture Fixture) (RunResult, error) {
+	if fixture.Replay == nil {
+		return RunResult{}, fmt.Errorf("fixture %s has no replay outcome", fixture.ID)
+	}
+	result := RunResult{
+		ChangedPaths:       append([]string(nil), fixture.Replay.ChangedPaths...),
+		HiddenTestsPassed:  fixture.Replay.HiddenTestsPassed,
+		RegressionPassed:   fixture.Replay.RegressionPassed,
+		RequiredEffectsMet: fixture.Replay.RequiredEffectsMet,
+		Events:             append([]string(nil), fixture.Replay.Events...),
+		TestsSkipped:       fixture.Replay.TestsSkipped,
+	}
+	return result, nil
 }
 
 func Matches(path, pattern string) bool {

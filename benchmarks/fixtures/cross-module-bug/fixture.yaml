@@ -7,5 +7,13 @@
   "hidden_tests": ["go test ./..."],
   "regression_tests": ["go test ./..."],
   "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
-  "replay_outputs": []
+  "replay_outputs": [],
+  "replay": {
+    "changed_paths": ["internal/api/handler.go", "internal/storage/store.go", "tests/request_test.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
 }

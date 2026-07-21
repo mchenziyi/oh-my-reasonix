@@ -123,3 +123,27 @@ func TestUninstallPreservesUserConfigChange(t *testing.T) {
 		t.Fatal("generated file unexpectedly missing after blocked uninstall")
 	}
 }
+
+func TestUpgradeRequiresManifestAndPreservesBaseline(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	upgraded := assets
+	upgraded.Orchestrator = []byte("orchestrator v2\n")
+	report, err := Init(Options{ProjectDir: root, Assets: upgraded, Upgrade: true})
+	if err != nil {
+		t.Fatalf("upgrade: %v %#v", err, report)
+	}
+	if !report.Written || report.Manifest.Prompt.FinalSHA256 == "" {
+		t.Fatalf("upgrade did not write a new manifest: %#v", report)
+	}
+	if _, err := Uninstall(Options{ProjectDir: root}); err != nil {
+		t.Fatal(err)
+	}
+	rootWithoutManifest := newProject(t, "[agent]\n")
+	if _, err := Init(Options{ProjectDir: rootWithoutManifest, Assets: assets, Upgrade: true}); err == nil {
+		t.Fatal("expected upgrade without manifest to fail")
+	}
+}

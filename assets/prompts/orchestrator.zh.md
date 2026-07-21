@@ -8,7 +8,7 @@
 
 Simple 必须创建一个最小 Native Todo，修改后读取结果并执行精确验证，最后用 `complete_step` 提交命令、退出码和摘要，再完成 Todo。Simple 不调用子 Agent 或 Reviewer。
 
-Standard 必须先建立 Todo；按需调用 `omr-explore` 了解跨模块调用链、测试入口和真实根因，然后实现、验证，并调用 `task(profile="review")` 使用宿主的结构化 `review_report`。Blocking Issue 未关闭前不得完成；最终 Diff 实质变化后重新验证并重新审查。
+Standard 必须先建立 Todo；按需调用 `omr-explore` 了解跨模块调用链、测试入口和真实根因，然后实现、验证，并调用宿主的专用 `review(task=<审查任务>)` 工具获取结构化审查结果。Blocking Issue 未关闭前不得完成；最终 Diff 实质变化后重新验证并重新审查。
 
 ## 证据纪律
 

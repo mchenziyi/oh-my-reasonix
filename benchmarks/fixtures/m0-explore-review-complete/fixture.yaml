@@ -1,0 +1,22 @@
+{
+  "id": "m0-explore-review-complete",
+  "description": "可重放的 Explore → Review → complete_step M0 证据链。",
+  "task": "定位一个简单的实现问题，完成修复并提交验证证据。",
+  "allowed_paths": ["src/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["go test ./..."],
+  "regression_tests": ["go test ./..."],
+  "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+  "replay_outputs": [
+    {"role": "omr-explore", "kind": "unique", "output": "根因位于 src/handler.go。"},
+    {"role": "review", "kind": "review_report", "output": "修复范围正确，测试覆盖充分。"}
+  ],
+  "replay": {
+    "changed_paths": ["src/handler.go", "tests/handler_test.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
+}

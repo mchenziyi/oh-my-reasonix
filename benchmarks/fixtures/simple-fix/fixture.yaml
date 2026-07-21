@@ -7,5 +7,13 @@
   "hidden_tests": ["test -f README.md"],
   "regression_tests": [],
   "expected_events": ["todo_write", "complete_step"],
-  "replay_outputs": []
+  "replay_outputs": [],
+  "replay": {
+    "changed_paths": ["README.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
 }

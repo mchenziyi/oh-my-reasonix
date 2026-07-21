@@ -47,10 +47,18 @@ Release 二进制内嵌 Prompt/Profile 发行资产；本地开发时 CLI 会优
 
 ```bash
 go run ./cmd/omr benchmark quality
+go run ./cmd/omr benchmark quality --replay
+go run ./cmd/omr benchmark quality --replay --run-tests \
+  --fixtures benchmarks/fixtures/m0-explore-review-complete \
+  --project-dir . --min-qualified-rate 1
 go run ./cmd/omr benchmark cache --trace path/to/trace.jsonl
+go run ./cmd/omr benchmark cache --native-trace native.jsonl --omr-trace omr.jsonl
 ```
 
 `fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
+带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
+`--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。
+质量报告可通过 `--output path/to/quality-report.json` 保存，`--results` 外部结果模式同样适用。
 
 ## 范围
 

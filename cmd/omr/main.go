@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/cacheguard"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
@@ -117,9 +119,32 @@ func runCacheBenchmark(args []string) error {
 	flags := flag.NewFlagSet("benchmark cache", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	trace := flags.String("trace", "", "JSONL request trace")
+	nativeTrace := flags.String("native-trace", "", "Native JSONL request trace for comparison")
+	omrTrace := flags.String("omr-trace", "", "OMR JSONL request trace for comparison")
 	output := flags.String("output", "", "optional JSON report path")
 	if err := flags.Parse(args); err != nil {
 		return err
+	}
+	if *nativeTrace != "" || *omrTrace != "" {
+		if *nativeTrace == "" || *omrTrace == "" {
+			return errors.New("benchmark cache comparison requires both --native-trace and --omr-trace")
+		}
+		native, err := cacheguard.ReadJSONL(*nativeTrace)
+		if err != nil {
+			return err
+		}
+		omr, err := cacheguard.ReadJSONL(*omrTrace)
+		if err != nil {
+			return err
+		}
+		comparison := cacheguard.CompareReports(native, omr)
+		if err := writeJSONReport(*output, comparison); err != nil {
+			return err
+		}
+		if !comparison.Passed {
+			return errors.New("cache comparison failed hard gates")
+		}
+		return nil
 	}
 	if *trace == "" {
 		return errors.New("benchmark cache requires --trace")
@@ -146,17 +171,75 @@ func runCacheBenchmark(args []string) error {
 	return nil
 }
 
+func writeJSONReport(path string, value interface{}) error {
+	writer := os.Stdout
+	var file *os.File
+	if path != "" {
+		var err error
+		file, err = os.Create(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		writer = file
+	}
+	encoder := json.NewEncoder(writer)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(value); err != nil {
+		return err
+	}
+	if path != "" {
+		fmt.Printf("cache report: %s\n", path)
+	}
+	return nil
+}
+
 func runQualityBenchmark(args []string) error {
 	flags := flag.NewFlagSet("benchmark quality", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	fixturesRoot := flags.String("fixtures", "benchmarks/fixtures", "fixture root")
 	resultsPath := flags.String("results", "", "optional JSON map of fixture id to RunResult")
+	outputPath := flags.String("output", "", "optional JSON report path")
+	replay := flags.Bool("replay", false, "run fixtures with deterministic replay outcomes")
+	runTests := flags.Bool("run-tests", false, "run fixture hidden and regression tests")
+	projectDir := flags.String("project-dir", ".", "project directory for fixture tests")
+	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
+	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	fixtures, err := qualitybench.Discover(*fixturesRoot)
 	if err != nil {
 		return err
+	}
+	if *replay {
+		results := map[string]qualitybench.RunResult{}
+		for _, fixture := range fixtures {
+			var result qualitybench.RunResult
+			var replayErr error
+			if *runTests {
+				ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+				result, replayErr = qualitybench.ExecuteFixture(ctx, fixture, *projectDir)
+				cancel()
+			} else {
+				result, replayErr = qualitybench.Replay(fixture)
+			}
+			if replayErr != nil {
+				continue
+			}
+			results[fixture.ID] = result
+		}
+		report := qualitybench.EvaluateAll(fixtures, results)
+		if err := writeJSONValue(*outputPath, report); err != nil {
+			return err
+		}
+		if report.EvaluatedCount == 0 {
+			return errors.New("no fixtures contain replay outcomes")
+		}
+		if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+			return fmt.Errorf("quality replay failed: %w", err)
+		}
+		return nil
 	}
 	if *resultsPath == "" {
 		fmt.Printf("quality fixtures: %d\n", len(fixtures))
@@ -175,9 +258,36 @@ func runQualityBenchmark(args []string) error {
 		return fmt.Errorf("parse quality results: %w", err)
 	}
 	report := qualitybench.EvaluateAll(fixtures, results)
-	encoder := json.NewEncoder(os.Stdout)
+	if err := writeJSONValue(*outputPath, report); err != nil {
+		return err
+	}
+	if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+		return fmt.Errorf("quality benchmark failed: %w", err)
+	}
+	return nil
+}
+
+func writeJSONValue(path string, value interface{}) error {
+	writer := os.Stdout
+	var file *os.File
+	if path != "" {
+		var err error
+		file, err = os.Create(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		writer = file
+	}
+	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(report)
+	if err := encoder.Encode(value); err != nil {
+		return err
+	}
+	if path != "" {
+		fmt.Printf("quality report: %s\n", path)
+	}
+	return nil
 }
 
 func loadAssetsFromInvocation() (install.Assets, error) {

@@ -470,7 +470,7 @@ MVP 不安装 `omr-review`。
 冻结版本只对名称为 `review`、`security-review`、`security_review` 的 Profile 挂载 `review_report` 工具。[R11] 为避免普通 YAML 审查绕过 Delivery 宿主门槛或形成双重审查，Standard 工作流固定调用：
 
 ```text
-task(profile="review", prompt=<OMR Review Task Brief>)
+review(task=<OMR Review Task Brief>)
 ```
 
 OMR Review Task Brief 必须包含目标、验收标准、最终变更、验证证据和重点风险。OMR 负责“如何向内置 Reviewer 提问”，Reasonix 负责 Reviewer Profile、`review_report` 工具和 Delivery 证据链。
@@ -1226,7 +1226,7 @@ regression_tests: [command]
 
 必须：
 
-- 调用 `task(profile="review")`；
+- 调用宿主的专用 `review(task=...)` 工具；
 - 传递 OMR Review Task Brief；
 - 验证 `review_report` 可用；
 - 禁止 `omr-review` fallback；

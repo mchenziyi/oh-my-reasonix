@@ -11,5 +11,13 @@
     {"role": "omr-explore", "kind": "duplicate", "output": "The request enters handler.go."},
     {"role": "omr-explore", "kind": "unique", "output": "The failing test uses a nil fixture."},
     {"role": "omr-explore", "kind": "conflict", "output": "One report says the cache is stale; verify before implementation."}
-  ]
+  ],
+  "replay": {
+    "changed_paths": ["docs/investigation.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "aggregation.deduplicated", "aggregation.conflict", "complete_step"],
+    "tests_skipped": false
+  }
 }

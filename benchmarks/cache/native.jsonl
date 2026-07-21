@@ -1,0 +1,2 @@
+{"run_id":"native-run","request_id":"native-1","stream_role":"orchestrator","body":{"messages":[{"role":"user","content":"inspect"}],"system_prompt":"base","tools":[{"name":"review"}]},"usage":{"prompt_cache_miss_tokens":100}}
+{"run_id":"native-run","request_id":"native-2","stream_role":"orchestrator","body":{"messages":[{"role":"user","content":"inspect"},{"role":"assistant","content":"plan"}],"system_prompt":"base","tools":[{"name":"review"}]},"usage":{"prompt_cache_hit_tokens":80}}
