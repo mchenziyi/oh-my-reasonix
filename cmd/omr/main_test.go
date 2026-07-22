@@ -313,13 +313,14 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Valid bool   `json:"valid"`
-		Error string `json:"error"`
+		Valid  bool     `json:"valid"`
+		Error  string   `json:"error"`
+		Errors []string `json:"errors"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if result.Valid || result.Error == "" {
+	if result.Valid || result.Error == "" || len(result.Errors) != 1 || result.Errors[0] != result.Error {
 		t.Fatalf("unexpected invalid config result: %#v", result)
 	}
 }

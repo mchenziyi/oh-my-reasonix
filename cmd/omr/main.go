@@ -143,10 +143,11 @@ func runConfig(args []string) error {
 	if err != nil {
 		if *jsonOutput {
 			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path  string `json:"path"`
-				Valid bool   `json:"valid"`
-				Error string `json:"error"`
-			}{Path: path, Error: err.Error()})
+				Path   string   `json:"path"`
+				Valid  bool     `json:"valid"`
+				Error  string   `json:"error"`
+				Errors []string `json:"errors"`
+			}{Path: path, Error: err.Error(), Errors: []string{err.Error()}})
 		}
 		if os.IsNotExist(err) {
 			return fmt.Errorf("OMR config not found: %s", path)
