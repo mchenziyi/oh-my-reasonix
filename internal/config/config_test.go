@@ -124,3 +124,30 @@ func TestLoadPreservesHashInsideQuotedValue(t *testing.T) {
 		t.Fatalf("unexpected prompt file: %+v", cfg.Agents["omr-debug"])
 	}
 }
+
+func TestLoadExpandsEnvironmentVariables(t *testing.T) {
+	t.Setenv("OMR_TEST_MODEL", "deepseek-v4-flash")
+	t.Setenv("OMR_TEST_PROMPT", "prompts/research.md")
+	path := filepath.Join(t.TempDir(), "config.toml")
+	data := "[runtime]\nmodel = \"$OMR_TEST_MODEL\"\n[agent.omr-research]\nprompt_file = \"${OMR_TEST_PROMPT}\"\n"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Model != "deepseek-v4-flash" || cfg.Agents["omr-research"].PromptFile != "prompts/research.md" {
+		t.Fatalf("unexpected expanded config: %#v", cfg)
+	}
+}
+
+func TestLoadRejectsMissingEnvironmentVariable(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[runtime]\nmodel = \"${OMR_MISSING_MODEL}\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil || !strings.Contains(err.Error(), "OMR_MISSING_MODEL") {
+		t.Fatalf("expected missing environment variable error, got %v", err)
+	}
+}

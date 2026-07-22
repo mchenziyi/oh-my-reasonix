@@ -125,7 +125,11 @@ func assign(cfg *Config, section, key, raw string) error {
 	if section == "quality" {
 		switch key {
 		case "fixtures":
-			cfg.Fixtures = stringValue(raw)
+			value, err := expandEnv(stringValue(raw))
+			if err != nil {
+				return err
+			}
+			cfg.Fixtures = value
 		case "min_qualified_rate":
 			value, err := strconv.ParseFloat(raw, 64)
 			if err != nil {
@@ -148,9 +152,17 @@ func assign(cfg *Config, section, key, raw string) error {
 	if section == "runtime" {
 		switch key {
 		case "metrics_dir":
-			cfg.MetricsDir = stringValue(raw)
+			value, err := expandEnv(stringValue(raw))
+			if err != nil {
+				return err
+			}
+			cfg.MetricsDir = value
 		case "model":
-			cfg.Model = stringValue(raw)
+			value, err := expandEnv(stringValue(raw))
+			if err != nil {
+				return err
+			}
+			cfg.Model = value
 		case "max_steps":
 			value, err := strconv.Atoi(raw)
 			if err != nil {
@@ -183,9 +195,17 @@ func assign(cfg *Config, section, key, raw string) error {
 		agent := cfg.Agents[profile]
 		switch key {
 		case "model":
-			agent.Model = stringValue(raw)
+			value, err := expandEnv(stringValue(raw))
+			if err != nil {
+				return err
+			}
+			agent.Model = value
 		case "prompt_file":
-			agent.PromptFile = stringValue(raw)
+			value, err := expandEnv(stringValue(raw))
+			if err != nil {
+				return err
+			}
+			agent.PromptFile = value
 		case "read_only":
 			value, err := strconv.ParseBool(raw)
 			if err != nil {
@@ -266,6 +286,21 @@ func stringValue(raw string) string {
 		return raw[1 : len(raw)-1]
 	}
 	return raw
+}
+
+func expandEnv(value string) (string, error) {
+	missing := ""
+	expanded := os.Expand(value, func(key string) string {
+		resolved, ok := os.LookupEnv(key)
+		if !ok && missing == "" {
+			missing = key
+		}
+		return resolved
+	})
+	if missing != "" {
+		return "", fmt.Errorf("environment variable %q is not set", missing)
+	}
+	return expanded, nil
 }
 
 func stripComment(line string) string {
