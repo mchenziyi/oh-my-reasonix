@@ -30,7 +30,7 @@
 |---|---|---|---|
 | 运行时任务强制 | 主要依赖 Orchestrator Prompt | Hook 和状态机制持续约束 Agent | P0 |
 | Todo Continuation | Orchestrator 已要求未完成 Todo 不得结束；运行时强制仍依赖 Reasonix Hook/Session | 自动强制未完成任务继续 | P0 |
-| 失败恢复 | 没有统一恢复策略 | Session recovery、auto-resume | P0 |
+| 失败恢复 | Reasonix 已提供原生 Session recovery/auto-resume；OMR 负责 Prompt 约束 | Session recovery、auto-resume | P0 |
 | 停滞检测 | Orchestrator 已覆盖空响应、重复操作和无新证据；运行时检测仍待 Hook | 空响应、循环、无进展检测 | P0 |
 | 测试失败闭环 | Orchestrator 已要求失败 → 修复 → 重测；运行时状态机仍待 Hook | 工作流机制强制回到修复流程 | P0 |
 | Review 阻塞闭环 | 已有 Review 和证据校验 | 持续执行直到 Blocking Issue 关闭 | P0 |
@@ -56,17 +56,17 @@
 
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
-| PreToolUse 检查 | 没有 | P1 |
-| PostToolUse 检查 | 没有 | P1 |
+| PreToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 尚无专用 Hook 资产 | P1 |
+| PostToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 尚无专用 Hook 资产 | P1 |
 | UserPromptSubmit 预处理 | 没有 | P2 |
 | Stop/完成拦截 | 主要依赖 `complete_step` | P1 |
-| Todo continuation enforcer | Prompt 已覆盖；运行时硬拦截待 Reasonix Hook | P0 |
-| Empty task response detector | Prompt 已覆盖；运行时检测待 Reasonix Hook | P0 |
+| Todo continuation enforcer | Reasonix 原生 goal machine 已拦截未完成 Todo；OMR 提供流程规则 | P0 |
+| Empty task response detector | Reasonix Hook/Loop 可处理空响应；OMR 提供停滞处置规则 | P0 |
 | Comment checker | 没有 | P2 |
 | Tool/Grep 输出截断 | Orchestrator 已要求精确范围和摘要化保留 | P1 |
 | Context window monitor | Orchestrator 已要求上下文不足前保留可恢复证据 | P1 |
 | Preemptive compaction | Orchestrator 已要求压缩前记录 Todo、证据和验证状态 | P1 |
-| Session recovery | 依赖 Reasonix 原生 `--continue`/`--resume`，OMR 尚无统一入口 | P0 |
+| Session recovery | Reasonix 原生 goal-state 与 `--continue`/`--resume` 已支持；OMR 尚无统一 CLI 入口 | P0 |
 | Background notification | 没有 | P1 |
 | Ralph loop | 没有 | P2 |
 | Auto-update checker | 没有 | P2 |
