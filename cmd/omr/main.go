@@ -189,8 +189,9 @@ func runConfig(args []string) error {
 
 func writeOMRConfigSchema() error {
 	schema := map[string]any{
-		"$schema": "https://json-schema.org/draft/2020-12/schema",
-		"type":    "object",
+		"$schema":              "https://json-schema.org/draft/2020-12/schema",
+		"type":                 "object",
+		"additionalProperties": false,
 		"properties": map[string]any{
 			"quality": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
 				"fixtures": map[string]string{"type": "string"}, "min_qualified_rate": map[string]any{"type": "number", "minimum": 0, "maximum": 1}, "max_cost": map[string]any{"type": "number", "minimum": 0},

@@ -247,6 +247,9 @@ func TestConfigSchema(t *testing.T) {
 	if quality["additionalProperties"] != false {
 		t.Fatalf("quality schema should reject unknown keys: %#v", quality)
 	}
+	if raw["additionalProperties"] != false {
+		t.Fatalf("root schema should reject unknown sections: %#v", raw)
+	}
 }
 
 func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
