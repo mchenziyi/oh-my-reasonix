@@ -168,7 +168,7 @@ func TestDoctorJSON(t *testing.T) {
 func TestConfigValidateJSON(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "config.toml")
-	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nread_only = true\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nread_only = true\n[quality]\nmax_cost = 1.5\n[runtime]\nconcurrency = 2\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	reader, writer, err := os.Pipe()
@@ -188,13 +188,15 @@ func TestConfigValidateJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Path  string `json:"path"`
-		Valid bool   `json:"valid"`
+		Path        string  `json:"path"`
+		Valid       bool    `json:"valid"`
+		Concurrency int     `json:"concurrency"`
+		MaxCost     float64 `json:"max_cost"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if result.Path != path || !result.Valid {
+	if result.Path != path || !result.Valid || result.Concurrency != 2 || result.MaxCost != 1.5 {
 		t.Fatalf("unexpected config result: %#v", result)
 	}
 }

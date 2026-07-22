@@ -150,11 +150,13 @@ func runConfig(args []string) error {
 	}
 	if *jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(struct {
-			Path       string                           `json:"path"`
-			Valid      bool                             `json:"valid"`
-			Agents     map[string]omrconfig.AgentConfig `json:"agents"`
-			Categories map[string]string                `json:"categories"`
-		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories})
+			Path        string                           `json:"path"`
+			Valid       bool                             `json:"valid"`
+			Agents      map[string]omrconfig.AgentConfig `json:"agents"`
+			Categories  map[string]string                `json:"categories"`
+			Concurrency int                              `json:"concurrency"`
+			MaxCost     float64                          `json:"max_cost"`
+		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost})
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
 	return nil
