@@ -34,6 +34,7 @@ func Load(path string) (Config, error) {
 	}
 	var cfg Config
 	section := ""
+	seen := make(map[string]bool)
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	for lineNo := 1; scanner.Scan(); lineNo++ {
 		line := strings.TrimSpace(strings.SplitN(scanner.Text(), "#", 2)[0])
@@ -55,6 +56,11 @@ func Load(path string) (Config, error) {
 			return Config{}, fmt.Errorf("%s:%d: expected key = value", path, lineNo)
 		}
 		key, value := strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1])
+		seenKey := section + "." + key
+		if seen[seenKey] {
+			return Config{}, fmt.Errorf("%s:%d: duplicate key %q", path, lineNo, key)
+		}
+		seen[seenKey] = true
 		if err := assign(&cfg, section, key, value); err != nil {
 			return Config{}, fmt.Errorf("%s:%d: %w", path, lineNo, err)
 		}

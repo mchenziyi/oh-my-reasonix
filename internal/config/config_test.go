@@ -56,3 +56,13 @@ func TestLoadRejectsInvalidAgentProfile(t *testing.T) {
 		t.Fatal("expected invalid agent profile to be rejected")
 	}
 }
+
+func TestLoadRejectsDuplicateKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[runtime]\nmax_steps = 4\nmax_steps = 8\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected duplicate key to be rejected")
+	}
+}
