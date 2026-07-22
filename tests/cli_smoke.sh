@@ -20,8 +20,8 @@ go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
 mkdir -p "$project_dir/.reasonix/omr"
 cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
 [agent.omr-research]
-model = "$OMR_SMOKE_MODEL"
-read_only = true
+model = "$OMR_SMOKE_MODEL" // smoke model
+read_only = true // read-only profile
 EOF
 go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doctor.json"
 go run ./cmd/omr profile list --project-dir "$project_dir" --json > "$project_dir/profiles.json"
