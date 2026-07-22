@@ -54,7 +54,7 @@ func TestLoadCategoryRouting(t *testing.T) {
 
 func TestLoadDisabledProfiles(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(path, []byte("[profiles]\ndisabled = \"omr-debug, omr-research\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("[profiles]\ndisabled = \"omr-debug, omr-research, omr-debug\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(path)

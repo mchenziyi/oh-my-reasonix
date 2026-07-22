@@ -77,6 +77,17 @@ func Load(path string) (Config, error) {
 	if cfg.MaxSteps < 0 || cfg.Concurrency < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.MaxCost < 0 || cfg.Timeout < 0 {
 		return Config{}, fmt.Errorf("invalid OMR benchmark configuration")
 	}
+	if len(cfg.DisabledProfiles) > 1 {
+		seenProfiles := make(map[string]bool, len(cfg.DisabledProfiles))
+		uniqueProfiles := cfg.DisabledProfiles[:0]
+		for _, profile := range cfg.DisabledProfiles {
+			if !seenProfiles[profile] {
+				seenProfiles[profile] = true
+				uniqueProfiles = append(uniqueProfiles, profile)
+			}
+		}
+		cfg.DisabledProfiles = uniqueProfiles
+	}
 	for profile, agent := range cfg.Agents {
 		if strings.TrimSpace(profile) != profile || strings.ContainsAny(profile, " \t/\\") {
 			return Config{}, fmt.Errorf("invalid agent profile %q", profile)
