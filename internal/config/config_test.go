@@ -151,3 +151,18 @@ func TestLoadRejectsMissingEnvironmentVariable(t *testing.T) {
 		t.Fatalf("expected missing environment variable error, got %v", err)
 	}
 }
+
+func TestLoadSupportsSlashCommentsWithoutTruncatingQuotedURLs(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	data := "[agent.omr-research]\nprompt_file = \"https://example.com/research.md\" // trailing comment\n"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Agents["omr-research"].PromptFile; got != "https://example.com/research.md" {
+		t.Fatalf("quoted URL was truncated: %q", got)
+	}
+}

@@ -119,6 +119,8 @@ explore = "omr-explore"
 
 OMR 配置中的 `fixtures`、`metrics_dir`、`model` 和 `[agent.<profile>]` 的 `model`/`prompt_file` 支持 `$VAR` 或 `${VAR}` 环境变量展开；变量未设置时配置校验会失败。
 
+配置支持 TOML 原生 `#` 注释以及行尾 `//` 注释；引号内的 URL 和路径内容会保留。
+
 `fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
 带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
 `--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。

@@ -316,6 +316,9 @@ func stripComment(line string) string {
 		if r == '#' && quote == 0 {
 			return line[:i]
 		}
+		if r == '/' && quote == 0 && i+1 < len(line) && line[i+1] == '/' {
+			return line[:i]
+		}
 	}
 	return line
 }
