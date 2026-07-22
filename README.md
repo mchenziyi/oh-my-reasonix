@@ -101,7 +101,7 @@ read_only = true
 
 `[agent.<profile>]` 可为 OMR Profile 声明模型、附加 Prompt 文件和只读约束；`omr config validate` 与 `omr doctor` 会校验 Profile 名称、项目相对 Prompt 路径、文件存在性和字段格式，实际执行仍由 Reasonix 原生 Profile 负责。
 
-使用 `omr profile list --json` 可以同时查看已安装 Profile 及其 `model`、`prompt_file`、`read_only` 配置覆盖。
+使用 `omr profile list --json` 可以同时查看已安装 Profile 及其 `model`、`prompt_file`、`prompt_file_exists`、`read_only` 配置覆盖。
 
 复杂项目可以在 `.reasonix/omr/config.toml` 中覆盖任务类别路由：
 

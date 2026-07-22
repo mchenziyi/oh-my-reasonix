@@ -86,7 +86,14 @@ func TestProfileListJSON(t *testing.T) {
 	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\n[routing]\nresearch = \"omr-research\"\n[profiles]\ndisabled = \"omr-debug\"\n"), 0o600); err != nil {
+	promptPath := filepath.Join(root, "prompts", "research.md")
+	if err := os.MkdirAll(filepath.Dir(promptPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(promptPath, []byte("research"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\nprompt_file = \"prompts/research.md\"\n[routing]\nresearch = \"omr-research\"\n[profiles]\ndisabled = \"omr-debug\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	reader, writer, err := os.Pipe()
@@ -106,10 +113,11 @@ func TestProfileListJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var profiles []struct {
-		ID         string   `json:"id"`
-		Model      string   `json:"model"`
-		Categories []string `json:"categories"`
-		Disabled   bool     `json:"disabled"`
+		ID               string   `json:"id"`
+		Model            string   `json:"model"`
+		PromptFileExists *bool    `json:"prompt_file_exists"`
+		Categories       []string `json:"categories"`
+		Disabled         bool     `json:"disabled"`
 	}
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
@@ -119,6 +127,9 @@ func TestProfileListJSON(t *testing.T) {
 	}
 	if profiles[1].Model != "deepseek-v4-flash" {
 		t.Fatalf("expected configured model: %#v", profiles[1])
+	}
+	if profiles[1].PromptFileExists == nil || !*profiles[1].PromptFileExists {
+		t.Fatalf("expected existing Prompt file marker: %#v", profiles[1])
 	}
 	if len(profiles[1].Categories) != 1 || profiles[1].Categories[0] != "research" {
 		t.Fatalf("expected category mapping: %#v", profiles[1])

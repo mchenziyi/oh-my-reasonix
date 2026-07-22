@@ -89,7 +89,7 @@
 |---|---|---|
 | 独立 OMR 配置文件 | 已支持项目级 `.reasonix/omr/config.toml`，覆盖质量基准和 Runtime 默认值 | P1 |
 | Agent 模型覆盖 | 已支持 `[agent.<profile>] model` 声明，实际执行由 Reasonix 原生 Profile 负责 | P1 |
-| Agent Prompt 覆盖 | 已支持 `[agent.<profile>] prompt_file` 声明，实际加载由宿主负责 | P1 |
+| Agent Prompt 覆盖 | 已支持 `[agent.<profile>] prompt_file` 声明，并在 Profile JSON 中报告文件存在性；实际加载由宿主负责 | P1 |
 | Agent 权限覆盖 | 已支持 `[agent.<profile>] read_only` 声明校验，执行仍依赖 Reasonix 原生 | P1 |
 | Hook 禁用列表 | 没有 | P1 |
 | Profile 禁用列表 | 已支持 `[profiles] disabled`，影响 OMR 路由和诊断标记；Doctor 会阻止类别路由到已禁用 Profile，不删除文件 | P1 |

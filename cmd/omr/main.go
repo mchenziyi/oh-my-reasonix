@@ -280,14 +280,15 @@ func runProfile(args []string) error {
 	profiles := m.NormalizedProfiles()
 	if *jsonOutput {
 		type profileJSON struct {
-			ID            string   `json:"id"`
-			Path          string   `json:"path"`
-			ContentSHA256 string   `json:"content_sha256"`
-			Model         string   `json:"model,omitempty"`
-			PromptFile    string   `json:"prompt_file,omitempty"`
-			ReadOnly      *bool    `json:"read_only,omitempty"`
-			Categories    []string `json:"categories,omitempty"`
-			Disabled      bool     `json:"disabled,omitempty"`
+			ID               string   `json:"id"`
+			Path             string   `json:"path"`
+			ContentSHA256    string   `json:"content_sha256"`
+			Model            string   `json:"model,omitempty"`
+			PromptFile       string   `json:"prompt_file,omitempty"`
+			PromptFileExists *bool    `json:"prompt_file_exists,omitempty"`
+			ReadOnly         *bool    `json:"read_only,omitempty"`
+			Categories       []string `json:"categories,omitempty"`
+			Disabled         bool     `json:"disabled,omitempty"`
 		}
 		configured := map[string]omrconfig.AgentConfig{}
 		categoryByProfile := map[string][]string{}
@@ -311,6 +312,17 @@ func runProfile(args []string) error {
 			item := profileJSON{ID: profile.ID, Path: profile.Path, ContentSHA256: profile.ContentSHA256}
 			if agent, ok := configured[profile.ID]; ok {
 				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
+				if agent.PromptFile != "" {
+					promptPath := agent.PromptFile
+					if !filepath.IsAbs(promptPath) {
+						promptPath = filepath.Join(root, promptPath)
+					}
+					exists := false
+					if info, statErr := os.Stat(promptPath); statErr == nil && !info.IsDir() {
+						exists = true
+					}
+					item.PromptFileExists = &exists
+				}
 			}
 			item.Categories = append([]string(nil), categoryByProfile[profile.ID]...)
 			sort.Strings(item.Categories)
