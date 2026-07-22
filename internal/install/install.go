@@ -120,7 +120,7 @@ func Init(opts Options) (Report, error) {
 
 	baseText := string(opts.Assets.BasePrompt)
 	orchestratorText := string(opts.Assets.Orchestrator)
-	omrConfigPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	omrConfigPath := omrconfig.FindConfig(root)
 	if omrCfg, configErr := omrconfig.Load(omrConfigPath); configErr == nil {
 		orchestratorText += omrCfg.CategoryPrompt() + omrCfg.DisabledProfilePrompt()
 	} else if !os.IsNotExist(configErr) {

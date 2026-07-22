@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -52,7 +53,39 @@ func (c Config) DisabledRoutingConflicts() []string {
 	return categories
 }
 
+// Load reads and parses an OMR config file.
+// Supports .toml (custom TOML parser) and .jsonc/.json (JSONC parser).
 func Load(path string) (Config, error) {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".jsonc", ".json":
+		return loadJSONC(path)
+	default:
+		return loadTOML(path)
+	}
+}
+
+// FindConfig returns the path to an existing OMR config in the given project root.
+// It prefers .jsonc over .toml. Returns empty string if neither exists.
+func FindConfig(root string) string {
+	// Prefer .jsonc over .json over .toml
+	jsoncPath := filepath.Join(root, ".reasonix", "omr", "config.jsonc")
+	if _, err := os.Stat(jsoncPath); err == nil {
+		return jsoncPath
+	}
+	jsonPath := filepath.Join(root, ".reasonix", "omr", "config.json")
+	if _, err := os.Stat(jsonPath); err == nil {
+		return jsonPath
+	}
+	tomlPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if _, err := os.Stat(tomlPath); err == nil {
+		return tomlPath
+	}
+	// Return .toml path as default (even if nonexistent, caller reports error)
+	return tomlPath
+}
+
+func loadTOML(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Config{}, err

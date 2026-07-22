@@ -130,14 +130,14 @@ func runConfig(args []string) error {
 	flags := flag.NewFlagSet("config validate", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
-	configPath := flags.String("config", "", "OMR config TOML path")
+	configPath := flags.String("config", "", "OMR config path (TOML or JSONC)")
 	jsonOutput := flags.Bool("json", false, "write JSON output")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
 	path := *configPath
 	if path == "" {
-		path = filepath.Join(*projectDir, ".reasonix", "omr", "config.toml")
+		path = omrconfig.FindConfig(*projectDir)
 	}
 	cfg, err := omrconfig.Load(path)
 	if err != nil {
@@ -293,7 +293,7 @@ func runProfile(args []string) error {
 		configured := map[string]omrconfig.AgentConfig{}
 		categoryByProfile := map[string][]string{}
 		disabled := map[string]bool{}
-		configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+		configPath := omrconfig.FindConfig(root)
 		if _, statErr := os.Stat(configPath); statErr == nil {
 			cfg, configErr := omrconfig.Load(configPath)
 			if configErr != nil {
@@ -333,7 +333,7 @@ func runProfile(args []string) error {
 	}
 	categoryByProfile := map[string][]string{}
 	disabled := map[string]bool{}
-	configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	configPath := omrconfig.FindConfig(root)
 	if _, statErr := os.Stat(configPath); statErr == nil {
 		cfg, configErr := omrconfig.Load(configPath)
 		if configErr != nil {
@@ -539,13 +539,13 @@ func runQualityBenchmark(args []string) error {
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
 	maxCost := flags.Float64("max-cost", 0, "optional aggregate cost budget; 0 disables the gate")
-	configPath := flags.String("config", "", "optional OMR config TOML (default: <project>/.reasonix/omr/config.toml)")
+	configPath := flags.String("config", "", "optional OMR config (TOML or JSONC; default: <project>/.reasonix/omr/config.jsonc or config.toml)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	configFile := *configPath
 	if configFile == "" {
-		configFile = filepath.Join(*projectDir, ".reasonix", "omr", "config.toml")
+		configFile = omrconfig.FindConfig(*projectDir)
 	}
 	if cfg, configErr := omrconfig.Load(configFile); configErr == nil {
 		if !flagWasSet(flags, "fixtures") && cfg.Fixtures != "" {

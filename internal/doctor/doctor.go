@@ -63,7 +63,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, fmt.Errorf("reasonix.toml not found")
 	}
 	result.Checks = append(result.Checks, Check{Name: "reasonix.config", Status: "PASS", Detail: configPath})
-	omrConfigPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	omrConfigPath := omrconfig.FindConfig(root)
 	if _, statErr := os.Stat(omrConfigPath); statErr == nil {
 		if loaded, configErr := omrconfig.Load(omrConfigPath); configErr != nil {
 			result.Errors = append(result.Errors, fmt.Sprintf("invalid OMR config: %v", configErr))
