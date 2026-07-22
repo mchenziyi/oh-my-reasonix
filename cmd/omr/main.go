@@ -170,6 +170,18 @@ func runConfig(args []string) error {
 		}
 		return err
 	}
+	if promptErrors := validatePromptFiles(cfg, *projectDir); len(promptErrors) > 0 {
+		err = errors.New(strings.Join(promptErrors, "; "))
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Path   string   `json:"path"`
+				Valid  bool     `json:"valid"`
+				Error  string   `json:"error"`
+				Errors []string `json:"errors"`
+			}{Path: path, Error: err.Error(), Errors: promptErrors})
+		}
+		return err
+	}
 	if *jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(struct {
 			Path             string                           `json:"path"`
@@ -192,6 +204,29 @@ func runConfig(args []string) error {
 		fmt.Printf("  categories: %d\n", len(cfg.Categories))
 	}
 	return nil
+}
+
+func validatePromptFiles(cfg omrconfig.Config, projectDir string) []string {
+	profiles := make([]string, 0, len(cfg.Agents))
+	for profile := range cfg.Agents {
+		profiles = append(profiles, profile)
+	}
+	sort.Strings(profiles)
+	errorsFound := []string{}
+	for _, profile := range profiles {
+		promptFile := cfg.Agents[profile].PromptFile
+		if promptFile == "" {
+			continue
+		}
+		path := promptFile
+		if !filepath.IsAbs(path) {
+			path = filepath.Join(projectDir, path)
+		}
+		if info, err := os.Stat(path); err != nil || info.IsDir() {
+			errorsFound = append(errorsFound, fmt.Sprintf("Prompt file for Profile %q not found: %s", profile, promptFile))
+		}
+	}
+	return errorsFound
 }
 
 func writeOMRConfigSchema() error {

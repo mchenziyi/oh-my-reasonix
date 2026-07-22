@@ -368,6 +368,17 @@ func TestConfigValidateJSONReportsAllDisabledRoutingErrors(t *testing.T) {
 	}
 }
 
+func TestConfigValidateRejectsMissingPromptFile(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr-research]\nprompt_file = \"prompts/missing.md\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runConfig([]string{"validate", "--project-dir", root, "--config", path}); err == nil || !strings.Contains(err.Error(), "omr-research") {
+		t.Fatalf("expected missing Prompt file error, got %v", err)
+	}
+}
+
 func TestSessionRequiresResume(t *testing.T) {
 	if err := runSession(nil); err == nil {
 		t.Fatal("expected session subcommand requirement")

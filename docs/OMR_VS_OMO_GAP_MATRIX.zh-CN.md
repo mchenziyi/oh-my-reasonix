@@ -95,7 +95,7 @@
 | Profile 禁用列表 | 已支持 `[profiles] disabled`，影响 OMR 路由和诊断标记；Doctor 会阻止类别路由到已禁用 Profile，不删除文件 | P1 |
 | 并发上限配置 | 已支持 `[runtime] concurrency`（质量基准） | P1 |
 | Category 自定义 | 已支持项目级 `[routing]` 覆盖 | P2 |
-| 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、路径和只读声明，并提供 `omr config schema`；完整 Reasonix TOML 仍由宿主负责 | P1 |
+| 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、Prompt 路径/文件、只读声明，并提供 `omr config schema`；完整 Reasonix TOML 仍由宿主负责 | P1 |
 | 用户级配置 | 明确不支持 | P2 |
 | JSONC/注释配置 | OMR TOML 已支持 `#` 与行尾 `//` 注释；完整 JSONC 对象格式仍未支持 | P2 |
 | 环境变量展开 | 已支持路径和模型字段的 `$VAR`/`${VAR}` 展开，未设置变量会阻断配置校验 | P2 |
