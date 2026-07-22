@@ -121,8 +121,11 @@ func runDoctor(args []string) error {
 }
 
 func runConfig(args []string) error {
-	if len(args) == 0 || (args[0] != "validate" && args[0] != "schema") {
-		return errors.New("config requires validate or schema")
+	if len(args) == 0 || (args[0] != "validate" && args[0] != "schema" && args[0] != "migrate") {
+		return errors.New("config requires validate, schema, or migrate")
+	}
+	if args[0] == "migrate" {
+		return runConfigMigrate(args[1:])
 	}
 	if args[0] == "schema" {
 		return writeOMRConfigSchema()
@@ -203,6 +206,49 @@ func runConfig(args []string) error {
 	if len(cfg.Categories) > 0 {
 		fmt.Printf("  categories: %d\n", len(cfg.Categories))
 	}
+	return nil
+}
+
+func runConfigMigrate(args []string) error {
+	flags := flag.NewFlagSet("config migrate", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	doWrite := flags.Bool("write", false, "execute the migration (default: dry-run)")
+	doForce := flags.Bool("force", false, "overwrite existing JSONC destination")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	sourcePath, destPath := omrconfig.DefaultConfigPaths(*projectDir)
+	plan := omrconfig.PlanMigration(sourcePath, destPath)
+
+	if !*doWrite {
+		// Dry-run mode: print plan
+		fmt.Printf("OMR config migration plan\n")
+		fmt.Printf("  Source: %s\n", sourcePath)
+		fmt.Printf("  Dest:   %s\n", destPath)
+		fmt.Printf("  Backup: %s\n", sourcePath+".bak")
+		if !plan.SourceExists {
+			fmt.Printf("  Status: source not found\n")
+			return fmt.Errorf("source config not found: %s", sourcePath)
+		}
+		if plan.AlreadyDone {
+			fmt.Printf("  Status: already up-to-date (no migration needed)\n")
+			return nil
+		}
+		if plan.Conflict != "" {
+			fmt.Printf("  Status: conflict — %s\n", plan.Conflict)
+			return fmt.Errorf("migration blocked: %s (use --force to overwrite)", plan.Conflict)
+		}
+		fmt.Printf("  Status: ready to migrate (use --write to apply)\n")
+		return nil
+	}
+
+	if err := omrconfig.ExecuteMigration(sourcePath, destPath, *doForce); err != nil {
+		return fmt.Errorf("migration failed: %w", err)
+	}
+	fmt.Printf("Migrated: %s → %s\n", sourcePath, destPath)
+	fmt.Printf("  Backup: %s\n", sourcePath+".bak")
 	return nil
 }
 
