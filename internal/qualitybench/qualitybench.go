@@ -198,6 +198,18 @@ func CheckGate(report Report, minimumRate float64) error {
 	return nil
 }
 
+// CheckCostGate rejects a report whose aggregate cost exceeds the configured
+// budget. A zero budget disables this optional gate.
+func CheckCostGate(report Report, maximumCost float64) error {
+	if maximumCost < 0 {
+		return fmt.Errorf("maximum cost must be non-negative")
+	}
+	if maximumCost > 0 && report.Metrics.Cost > maximumCost {
+		return fmt.Errorf("cost %.4f exceeds maximum %.4f", report.Metrics.Cost, maximumCost)
+	}
+	return nil
+}
+
 // Replay executes a fixture's deterministic transcript without contacting a
 // provider. The explicit outcome is kept in the fixture so the same run is
 // reproducible on every platform.

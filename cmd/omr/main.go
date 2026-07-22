@@ -360,6 +360,7 @@ func runQualityBenchmark(args []string) error {
 	concurrency := flags.Int("concurrency", 1, "maximum concurrent --runtime fixtures")
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
+	maxCost := flags.Float64("max-cost", 0, "optional aggregate cost budget; 0 disables the gate")
 	configPath := flags.String("config", "", "optional OMR config TOML (default: <project>/.reasonix/omr/config.toml)")
 	if err := flags.Parse(args); err != nil {
 		return err
@@ -389,6 +390,9 @@ func runQualityBenchmark(args []string) error {
 		}
 		if !flagWasSet(flags, "min-qualified-rate") && cfg.MinQualifiedRateSet {
 			*minQualifiedRate = cfg.MinQualifiedRate
+		}
+		if !flagWasSet(flags, "max-cost") && cfg.MaxCostSet {
+			*maxCost = cfg.MaxCost
 		}
 	} else if !os.IsNotExist(configErr) {
 		return fmt.Errorf("load OMR config: %w", configErr)
@@ -457,7 +461,7 @@ func runQualityBenchmark(args []string) error {
 		if err := writeJSONValue(*outputPath, report); err != nil {
 			return err
 		}
-		if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
 			return fmt.Errorf("quality runtime failed: %w", err)
 		}
 		return nil
@@ -486,7 +490,7 @@ func runQualityBenchmark(args []string) error {
 		if report.EvaluatedCount == 0 {
 			return errors.New("no fixtures contain replay outcomes")
 		}
-		if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
 			return fmt.Errorf("quality replay failed: %w", err)
 		}
 		return nil
@@ -507,10 +511,17 @@ func runQualityBenchmark(args []string) error {
 	if err := writeJSONValue(*outputPath, report); err != nil {
 		return err
 	}
-	if err := qualitybench.CheckGate(report, *minQualifiedRate); err != nil {
+	if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
 		return fmt.Errorf("quality benchmark failed: %w", err)
 	}
 	return nil
+}
+
+func checkQualityGates(report qualitybench.Report, minimumRate, maximumCost float64) error {
+	if err := qualitybench.CheckGate(report, minimumRate); err != nil {
+		return err
+	}
+	return qualitybench.CheckCostGate(report, maximumCost)
 }
 
 func projectRelativePath(projectDir, path string) string {

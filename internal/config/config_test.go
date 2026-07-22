@@ -10,14 +10,14 @@ import (
 
 func TestLoad(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(path, []byte("[quality]\nfixtures = \"fixtures\"\nmin_qualified_rate = 0.9\n[runtime]\nmetrics_dir = \"metrics\"\nmodel = 'deepseek'\nmax_steps = 4\nconcurrency = 2\ntimeout = \"30s\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("[quality]\nfixtures = \"fixtures\"\nmin_qualified_rate = 0.9\nmax_cost = 1.5\n[runtime]\nmetrics_dir = \"metrics\"\nmodel = 'deepseek'\nmax_steps = 4\nconcurrency = 2\ntimeout = \"30s\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := Load(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if cfg.Fixtures != "fixtures" || cfg.MinQualifiedRate != 0.9 || cfg.Model != "deepseek" || cfg.MaxSteps != 4 || cfg.Concurrency != 2 || cfg.Timeout != 30*time.Second {
+	if cfg.Fixtures != "fixtures" || cfg.MinQualifiedRate != 0.9 || cfg.MaxCost != 1.5 || cfg.Model != "deepseek" || cfg.MaxSteps != 4 || cfg.Concurrency != 2 || cfg.Timeout != 30*time.Second {
 		t.Fatalf("unexpected config: %+v", cfg)
 	}
 }

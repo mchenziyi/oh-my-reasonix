@@ -19,6 +19,8 @@ type Config struct {
 	Timeout             time.Duration
 	MinQualifiedRate    float64
 	MinQualifiedRateSet bool
+	MaxCost             float64
+	MaxCostSet          bool
 	TimeoutSet          bool
 	Agents              map[string]AgentConfig
 	Categories          map[string]string
@@ -71,7 +73,7 @@ func Load(path string) (Config, error) {
 	if err := scanner.Err(); err != nil {
 		return Config{}, err
 	}
-	if cfg.MaxSteps < 0 || cfg.Concurrency < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.Timeout < 0 {
+	if cfg.MaxSteps < 0 || cfg.Concurrency < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.MaxCost < 0 || cfg.Timeout < 0 {
 		return Config{}, fmt.Errorf("invalid OMR benchmark configuration")
 	}
 	for profile, agent := range cfg.Agents {
@@ -100,6 +102,13 @@ func assign(cfg *Config, section, key, raw string) error {
 			}
 			cfg.MinQualifiedRate = value
 			cfg.MinQualifiedRateSet = true
+		case "max_cost":
+			value, err := strconv.ParseFloat(raw, 64)
+			if err != nil {
+				return fmt.Errorf("invalid max_cost")
+			}
+			cfg.MaxCost = value
+			cfg.MaxCostSet = true
 		default:
 			return fmt.Errorf("unsupported quality key %q", key)
 		}

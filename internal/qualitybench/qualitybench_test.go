@@ -71,6 +71,15 @@ func TestCheckGateRejectsLowRate(t *testing.T) {
 	}
 }
 
+func TestCheckCostGate(t *testing.T) {
+	if err := CheckCostGate(Report{Metrics: Metrics{Cost: 1.2}}, 1); err == nil {
+		t.Fatal("expected cost gate failure")
+	}
+	if err := CheckCostGate(Report{Metrics: Metrics{Cost: 1.2}}, 0); err != nil {
+		t.Fatalf("zero budget should disable cost gate: %v", err)
+	}
+}
+
 func TestEvaluateAllAggregatesMetrics(t *testing.T) {
 	fixtures := []Fixture{{ID: "a", Task: "a"}}
 	report := EvaluateAll(fixtures, map[string]RunResult{"a": {

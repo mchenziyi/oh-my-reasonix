@@ -114,6 +114,8 @@ explore = "omr-explore"
 Native/OMR 质量结果可用 `--native-results native.json --omr-results omr.json` 生成配对对照报告。
 
 真实 Runtime 基准默认串行执行；可通过 `--concurrency N` 或 `.reasonix/omr/config.toml` 的 `[runtime] concurrency = N` 并发执行多个夹具。若使用共享 `--events` 事件流，必须保持并发数为 1。
+
+质量门禁可通过 `--max-cost` 或 `[quality] max_cost = 1.5` 设置总成本上限；默认值 `0` 表示不启用成本门禁。
 真实 Runtime 如有宿主提供的结构化 JSONL 事件日志，可通过 `--events path/to/events.jsonl` 接入证据评分；OMR 不会从人类可读 stdout 推断事件。
 
 ## 范围
