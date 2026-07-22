@@ -18,6 +18,7 @@ func testAssets() Assets {
 		Explore:      []byte("skill\n"),
 		Research:     []byte("research\n"),
 		Debug:        []byte("debug\n"),
+		Planner:      []byte("planner\n"),
 		ReviewBrief:  []byte("review\n"),
 	}
 }
@@ -53,7 +54,7 @@ func TestInitIsIdempotentAndUninstallRestoresConfig(t *testing.T) {
 		t.Fatalf("manifest invalid: %v %#v", err, manifestData)
 	}
 	profiles := manifestData.NormalizedProfiles()
-	if len(profiles) != 3 || profiles[0].ID != "omr-explore" || profiles[0].Path != ExploreProfileRel || profiles[1].ID != "omr-research" || profiles[1].Path != ResearchProfileRel || profiles[2].ID != "omr-debug" || profiles[2].Path != DebugProfileRel {
+	if len(profiles) != 4 || profiles[0].ID != "omr-explore" || profiles[0].Path != ExploreProfileRel || profiles[1].ID != "omr-research" || profiles[1].Path != ResearchProfileRel || profiles[2].ID != "omr-debug" || profiles[2].Path != DebugProfileRel || profiles[3].ID != "omr-planner" || profiles[3].Path != PlannerProfileRel {
 		t.Fatalf("manifest profiles invalid: %#v", profiles)
 	}
 	if _, err := Uninstall(Options{ProjectDir: root}); err != nil {

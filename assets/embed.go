@@ -23,3 +23,6 @@ var Research []byte
 
 //go:embed skills/omr-debug/SKILL.md
 var Debug []byte
+
+//go:embed skills/omr-planner/SKILL.md
+var Planner []byte
