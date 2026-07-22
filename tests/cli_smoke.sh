@@ -9,6 +9,8 @@ export OMR_SMOKE_MODEL="deepseek-v4-flash"
 trap 'rm -rf "$project_dir"' EXIT
 
 printf '[agent]\n' > "$project_dir/reasonix.toml"
+mkdir -p "$project_dir/prompts"
+printf 'research prompt\n' > "$project_dir/prompts/research.md"
 cat > "$fake_binary" <<'EOF'
 #!/usr/bin/env bash
 printf '%s\n' "$@" > "$OMR_SESSION_CAPTURE"
@@ -21,11 +23,12 @@ mkdir -p "$project_dir/.reasonix/omr"
 cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
 [agent.omr-research]
 model = "$OMR_SMOKE_MODEL" // smoke model
+prompt_file = "prompts/research.md" // existing prompt
 read_only = true // read-only profile
 EOF
 go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doctor.json"
 go run ./cmd/omr profile list --project-dir "$project_dir" --json > "$project_dir/profiles.json"
-go run ./cmd/omr config validate --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/config.json"
+go run ./cmd/omr config validate --project-dir "$project_dir" --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/config.json"
 go run ./cmd/omr config schema > "$project_dir/schema.json"
 go run ./cmd/omr benchmark quality --replay --fixtures benchmarks/fixtures/metrics-summary --max-cost 1 --output "$project_dir/quality-pass.json"
 go run ./cmd/omr upgrade --project-dir "$project_dir" --dry-run > "$project_dir/upgrade.txt"
