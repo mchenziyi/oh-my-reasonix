@@ -52,6 +52,17 @@ func TestLoadCategoryRouting(t *testing.T) {
 	}
 }
 
+func TestLoadDisabledProfiles(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[profiles]\ndisabled = \"omr-debug, omr-research\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil || len(cfg.DisabledProfiles) != 2 || !strings.Contains(cfg.DisabledProfilePrompt(), "`omr-debug`") {
+		t.Fatalf("unexpected disabled profiles: %#v, err=%v", cfg.DisabledProfiles, err)
+	}
+}
+
 func TestLoadRejectsInvalidAgentPromptPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nprompt_file = \"/tmp/debug.md\"\n"), 0o600); err != nil {

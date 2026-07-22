@@ -151,13 +151,14 @@ func runConfig(args []string) error {
 	}
 	if *jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(struct {
-			Path        string                           `json:"path"`
-			Valid       bool                             `json:"valid"`
-			Agents      map[string]omrconfig.AgentConfig `json:"agents"`
-			Categories  map[string]string                `json:"categories"`
-			Concurrency int                              `json:"concurrency"`
-			MaxCost     float64                          `json:"max_cost"`
-		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost})
+			Path             string                           `json:"path"`
+			Valid            bool                             `json:"valid"`
+			Agents           map[string]omrconfig.AgentConfig `json:"agents"`
+			Categories       map[string]string                `json:"categories"`
+			Concurrency      int                              `json:"concurrency"`
+			MaxCost          float64                          `json:"max_cost"`
+			DisabledProfiles []string                         `json:"disabled_profiles"`
+		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles})
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
 	if cfg.Concurrency > 0 {
@@ -204,9 +205,11 @@ func runProfile(args []string) error {
 			PromptFile    string   `json:"prompt_file,omitempty"`
 			ReadOnly      *bool    `json:"read_only,omitempty"`
 			Categories    []string `json:"categories,omitempty"`
+			Disabled      bool     `json:"disabled,omitempty"`
 		}
 		configured := map[string]omrconfig.AgentConfig{}
 		categoryByProfile := map[string][]string{}
+		disabled := map[string]bool{}
 		configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
 		if _, statErr := os.Stat(configPath); statErr == nil {
 			cfg, configErr := omrconfig.Load(configPath)
@@ -217,6 +220,9 @@ func runProfile(args []string) error {
 			for category, profile := range cfg.Categories {
 				categoryByProfile[profile] = append(categoryByProfile[profile], category)
 			}
+			for _, profile := range cfg.DisabledProfiles {
+				disabled[profile] = true
+			}
 		}
 		output := make([]profileJSON, 0, len(profiles))
 		for _, profile := range profiles {
@@ -226,6 +232,7 @@ func runProfile(args []string) error {
 			}
 			item.Categories = append([]string(nil), categoryByProfile[profile.ID]...)
 			sort.Strings(item.Categories)
+			item.Disabled = disabled[profile.ID]
 			output = append(output, item)
 		}
 		return json.NewEncoder(os.Stdout).Encode(output)

@@ -92,7 +92,7 @@
 | Agent Prompt 覆盖 | 已支持 `[agent.<profile>] prompt_file` 声明，实际加载由宿主负责 | P1 |
 | Agent 权限覆盖 | 已支持 `[agent.<profile>] read_only` 声明校验，执行仍依赖 Reasonix 原生 | P1 |
 | Hook 禁用列表 | 没有 | P1 |
-| Profile 禁用列表 | 没有 | P1 |
+| Profile 禁用列表 | 已支持 `[profiles] disabled`，仅影响 OMR 路由和诊断标记，不删除文件 | P1 |
 | 并发上限配置 | 已支持 `[runtime] concurrency`（质量基准） | P1 |
 | Category 自定义 | 已支持项目级 `[routing]` 覆盖 | P2 |
 | 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、路径和只读声明；完整 TOML Schema 仍未实现 | P1 |

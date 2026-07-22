@@ -24,6 +24,7 @@ type Config struct {
 	TimeoutSet          bool
 	Agents              map[string]AgentConfig
 	Categories          map[string]string
+	DisabledProfiles    []string
 }
 
 type AgentConfig struct {
@@ -48,7 +49,7 @@ func Load(path string) (Config, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" && section != "routing" && !strings.HasPrefix(section, "agent.") {
+			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") {
 				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
 			}
 			if strings.HasPrefix(section, "agent.") && strings.TrimSpace(strings.TrimPrefix(section, "agent.")) == "" {
@@ -181,6 +182,19 @@ func assign(cfg *Config, section, key, raw string) error {
 		cfg.Categories[key] = profile
 		return nil
 	}
+	if section == "profiles" {
+		if key != "disabled" {
+			return fmt.Errorf("unsupported profiles key %q", key)
+		}
+		for _, profile := range strings.Split(stringValue(raw), ",") {
+			profile = strings.TrimSpace(profile)
+			if profile == "" || strings.ContainsAny(profile, " \t/\\") {
+				return fmt.Errorf("invalid disabled Profile %q", profile)
+			}
+			cfg.DisabledProfiles = append(cfg.DisabledProfiles, profile)
+		}
+		return nil
+	}
 	return fmt.Errorf("key %q must be under [quality] or [runtime]", key)
 }
 
@@ -199,6 +213,20 @@ func (c Config) CategoryPrompt() string {
 	b.WriteString("When a task matches one of these categories, prefer the configured Profile:\n")
 	for _, key := range keys {
 		fmt.Fprintf(&b, "- `%s` → `%s`\n", key, c.Categories[key])
+	}
+	return b.String()
+}
+
+func (c Config) DisabledProfilePrompt() string {
+	if len(c.DisabledProfiles) == 0 {
+		return ""
+	}
+	profiles := append([]string(nil), c.DisabledProfiles...)
+	sort.Strings(profiles)
+	var b strings.Builder
+	b.WriteString("\n\n## Disabled OMR Profiles\n\nDo not route tasks to these Profiles:\n")
+	for _, profile := range profiles {
+		fmt.Fprintf(&b, "- `%s`\n", profile)
 	}
 	return b.String()
 }

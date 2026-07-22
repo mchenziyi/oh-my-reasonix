@@ -118,6 +118,11 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR config references uninstalled Profile %q", profile))
 			}
 		}
+		for _, profile := range omrConfig.DisabledProfiles {
+			if !installed[profile] {
+				result.Errors = append(result.Errors, fmt.Sprintf("OMR config disables uninstalled Profile %q", profile))
+			}
+		}
 		for category, profile := range omrConfig.Categories {
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q references uninstalled Profile %q", category, profile))

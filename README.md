@@ -120,6 +120,8 @@ Native/OMR 质量结果可用 `--native-results native.json --omr-results omr.js
 
 质量门禁可通过 `--max-cost` 或 `[quality] max_cost = 1.5` 设置总成本上限；默认值 `0` 表示不启用成本门禁。
 
+不希望某个 OMR Profile 被路由时，可配置：`[profiles] disabled = "omr-debug, omr-research"`。OMR 会在生成 Prompt、Doctor 和 Profile JSON 中标记这些 Profile，但不会删除其文件。
+
 质量报告的 `metrics` 还会汇总 `readiness_checks`、`readiness_blocks` 和 `readiness_recoveries`，用于观察停滞检测与自动恢复效果。
 Native/OMR 对照报告还会输出这三项指标的 `_delta`，正值表示 OMR 相对 Native 增加，负值表示减少；对照模式同样应用 `--max-cost` 成本门禁。
 真实 Runtime 如有宿主提供的结构化 JSONL 事件日志，可通过 `--events path/to/events.jsonl` 接入证据评分；OMR 不会从人类可读 stdout 推断事件。
