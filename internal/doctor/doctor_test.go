@@ -165,6 +165,13 @@ func TestResolveReasonixBinaryFromEnvironment(t *testing.T) {
 	}
 }
 
+func TestResolveReasonixBinaryRejectsMissingConfiguredPath(t *testing.T) {
+	t.Setenv("OMR_REASONIX_BIN", filepath.Join(t.TempDir(), "missing-reasonix"))
+	if _, err := resolveReasonixBinary(); err == nil {
+		t.Fatal("expected missing configured Reasonix binary error")
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
