@@ -19,6 +19,9 @@ jobs:
       - run: go test ./...
       - run: go vet ./...
       - run: go build ./cmd/omr
+      - name: CLI smoke
+        shell: bash
+        run: ./tests/cli_smoke.sh
       - name: Replay quality fixtures
         run: go run ./cmd/omr benchmark quality --replay --min-qualified-rate 1
       - name: Compare cache traces
