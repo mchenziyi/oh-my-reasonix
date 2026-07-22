@@ -227,11 +227,17 @@ func TestConfigSchema(t *testing.T) {
 		t.Fatal(err)
 	}
 	var schema struct {
-		Schema string `json:"$schema"`
-		Type   string `json:"type"`
+		Schema     string `json:"$schema"`
+		Type       string `json:"type"`
+		Properties map[string]struct {
+			AdditionalProperties map[string]any `json:"additionalProperties"`
+		} `json:"properties"`
 	}
 	if err := json.Unmarshal(data, &schema); err != nil || schema.Schema == "" || schema.Type != "object" {
 		t.Fatalf("invalid config schema: %s, err=%v", data, err)
+	}
+	if _, ok := schema.Properties["agent"]; !ok {
+		t.Fatalf("schema missing agent properties: %s", data)
 	}
 }
 

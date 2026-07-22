@@ -198,6 +198,11 @@ func writeOMRConfigSchema() error {
 			"runtime": map[string]any{"type": "object", "properties": map[string]any{
 				"metrics_dir": map[string]string{"type": "string"}, "model": map[string]string{"type": "string"}, "max_steps": map[string]any{"type": "integer", "minimum": 0}, "concurrency": map[string]any{"type": "integer", "minimum": 0}, "timeout": map[string]string{"type": "string"},
 			}},
+			"agent": map[string]any{"type": "object", "additionalProperties": map[string]any{
+				"type": "object", "properties": map[string]any{
+					"model": map[string]string{"type": "string"}, "prompt_file": map[string]string{"type": "string"}, "read_only": map[string]any{"type": "boolean"},
+				},
+			}},
 			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}},
 			"profiles": map[string]any{"type": "object", "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
 		},
