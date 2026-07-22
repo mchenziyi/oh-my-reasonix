@@ -160,6 +160,15 @@ func runConfig(args []string) error {
 		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost})
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
+	if cfg.Concurrency > 0 {
+		fmt.Printf("  concurrency: %d\n", cfg.Concurrency)
+	}
+	if cfg.MaxCost > 0 {
+		fmt.Printf("  max_cost: %.4f\n", cfg.MaxCost)
+	}
+	if len(cfg.Categories) > 0 {
+		fmt.Printf("  categories: %d\n", len(cfg.Categories))
+	}
 	return nil
 }
 
