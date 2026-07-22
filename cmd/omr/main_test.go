@@ -128,6 +128,43 @@ func TestProfileListJSON(t *testing.T) {
 	}
 }
 
+func TestProfileListHumanShowsRoutingState(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "reasonix.toml"), []byte("[agent]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assets, err := loadAssetsFromInvocation()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[routing]\nfrontend = \"omr-frontend\"\n[profiles]\ndisabled = \"omr-debug\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runProfile([]string{"list", "--project-dir", root})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(data)
+	if !strings.Contains(output, "omr-frontend") || !strings.Contains(output, "categories=frontend") || !strings.Contains(output, "omr-debug") || !strings.Contains(output, "disabled") {
+		t.Fatalf("profile list missing routing state: %q", output)
+	}
+}
+
 func TestDoctorJSON(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "reasonix.toml"), []byte("[agent]\n"), 0o644); err != nil {
