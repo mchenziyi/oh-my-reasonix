@@ -66,7 +66,7 @@
 | Tool/Grep 输出截断 | Orchestrator 已要求精确范围和摘要化保留 | P1 |
 | Context window monitor | Orchestrator 已要求上下文不足前保留可恢复证据 | P1 |
 | Preemptive compaction | Orchestrator 已要求压缩前记录 Todo、证据和验证状态 | P1 |
-| Session recovery | Reasonix 原生 goal-state 与 `--continue`/`--resume` 已支持；OMR 尚无统一 CLI 入口 | P0 |
+| Session recovery | 已增加 `omr session resume`，复用 Reasonix 原生 goal-state 与 `--continue`/`--resume` | P0 |
 | Background notification | 没有 | P1 |
 | Ralph loop | 没有 | P2 |
 | Auto-update checker | 没有 | P2 |

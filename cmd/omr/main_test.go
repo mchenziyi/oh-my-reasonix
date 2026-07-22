@@ -231,3 +231,9 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 		t.Fatalf("unexpected invalid config result: %#v", result)
 	}
 }
+
+func TestSessionRequiresResume(t *testing.T) {
+	if err := runSession(nil); err == nil {
+		t.Fatal("expected session resume requirement")
+	}
+}

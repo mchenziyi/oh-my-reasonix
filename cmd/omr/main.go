@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -39,6 +40,8 @@ func main() {
 		err = runConfig(os.Args[2:])
 	case "profile":
 		err = runProfile(os.Args[2:])
+	case "session":
+		err = runSession(os.Args[2:])
 	case "benchmark":
 		err = runBenchmark(os.Args[2:])
 	case "version":
@@ -210,6 +213,36 @@ func runProfile(args []string) error {
 		fmt.Printf("%s\t%s\t%s\n", profile.ID, profile.Path, profile.ContentSHA256)
 	}
 	return nil
+}
+
+func runSession(args []string) error {
+	if len(args) == 0 || args[0] != "resume" {
+		return errors.New("session requires resume")
+	}
+	flags := flag.NewFlagSet("session resume", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	copySession := flags.Bool("copy", false, "resume a duplicated session")
+	if err := flags.Parse(args[1:]); err != nil {
+		return err
+	}
+	path := *binary
+	if !filepath.IsAbs(path) {
+		resolved, err := exec.LookPath(path)
+		if err != nil {
+			return fmt.Errorf("Reasonix executable not found: %w", err)
+		}
+		path = resolved
+	}
+	commandArgs := []string{"--continue"}
+	if *copySession {
+		commandArgs = append(commandArgs, "--copy")
+	}
+	cmd := exec.Command(path, commandArgs...)
+	cmd.Dir = *projectDir
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
 }
 
 func runBenchmark(args []string) error {
@@ -525,6 +558,6 @@ func loadAssetsFromInvocation() (install.Assets, error) {
 
 func usage() {
 	name := filepath.Base(os.Args[0])
-	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|benchmark|version\n", name)
+	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|session|benchmark|version\n", name)
 	fmt.Println("Use --help on a command for flags.")
 }
