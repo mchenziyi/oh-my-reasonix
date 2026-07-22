@@ -51,6 +51,12 @@ Release 二进制内嵌 Prompt/Profile 发行资产；本地开发时 CLI 会优
 
 ## 基准 Smoke
 
+CLI 安装链路 Smoke 测试（使用临时目录，不读取或修改真实项目）：
+
+```bash
+./tests/cli_smoke.sh
+```
+
 ```bash
 go run ./cmd/omr benchmark quality
 go run ./cmd/omr benchmark quality --replay
