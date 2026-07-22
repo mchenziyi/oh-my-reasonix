@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
@@ -131,6 +132,20 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			} else if info.IsDir() {
 				result.Errors = append(result.Errors, fmt.Sprintf("Prompt file for Profile %q is a directory: %s", profile, agent.PromptFile))
 			}
+			if agent.ReadOnly != nil && *agent.ReadOnly {
+				for _, installedProfile := range m.NormalizedProfiles() {
+					if installedProfile.ID != profile {
+						continue
+					}
+					profileData, readErr := os.ReadFile(install.ProfilePath(root, installedProfile.Path))
+					if readErr != nil {
+						break
+					}
+					if !profileFrontmatterReadOnly(string(profileData)) {
+						result.Errors = append(result.Errors, fmt.Sprintf("Profile %q is configured read_only but its Skill is not read-only", profile))
+					}
+				}
+			}
 		}
 		if len(result.Errors) == 0 {
 			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles are installed"})
@@ -171,6 +186,15 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		result.Checks = append(result.Checks, Check{Name: "asset.source", Status: "PASS", Detail: assets.Root})
 	}
 	return result, resultError(result)
+}
+
+func profileFrontmatterReadOnly(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		if strings.TrimSpace(line) == "read-only: true" {
+			return true
+		}
+	}
+	return false
 }
 
 func resultError(result Result) error {

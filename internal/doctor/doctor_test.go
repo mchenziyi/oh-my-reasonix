@@ -130,3 +130,12 @@ func TestRunRejectsMissingAgentPromptFile(t *testing.T) {
 		t.Fatalf("missing prompt file error not reported: %#v", result.Errors)
 	}
 }
+
+func TestProfileFrontmatterReadOnly(t *testing.T) {
+	if !profileFrontmatterReadOnly("---\nread-only: true\n---\n") {
+		t.Fatal("expected read-only frontmatter to be recognized")
+	}
+	if profileFrontmatterReadOnly("---\nread-only: false\n---\n") {
+		t.Fatal("did not expect read-only false to be recognized")
+	}
+}
