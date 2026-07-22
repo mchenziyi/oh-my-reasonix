@@ -143,7 +143,7 @@
 | 用户级安装 | 没有 | P2 |
 | 自动更新提示 | 没有 | P2 |
 | 配置格式迁移 | 没有 | P2 |
-| 版本升级冲突诊断 | 已有基础能力，仍需增强 | P1 |
+| 版本升级冲突诊断 | 已支持来源 Hash 漂移检测，并为 Base/Orchestrator/User Prompt 提供对应修复提示 | P1 |
 | Claude Code Commands 兼容 | 没有 | P2 |
 | Claude Code Agents 兼容 | 没有 | P2 |
 | Claude Code Skills 兼容 | 仅支持 Reasonix 原生 Skill | P1 |
