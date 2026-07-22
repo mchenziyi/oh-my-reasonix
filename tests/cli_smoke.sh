@@ -20,6 +20,7 @@ chmod +x "$fake_binary"
 cd "$repo_dir"
 go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
 mkdir -p "$project_dir/.reasonix/omr"
+mkdir -p "$project_dir/.reasonix/omr"
 cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
 [agent.omr-research]
 model = "$OMR_SMOKE_MODEL" // smoke model
@@ -51,6 +52,18 @@ grep -q 'cost' "$project_dir/quality-fail.txt"
 grep -q 'NOOP\|PLAN' "$project_dir/upgrade.txt"
 grep -q 'PLAN\|REMOVE' "$project_dir/uninstall.txt"
 
+OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
+grep -qx -- '--continue' "$capture"
+OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary" --copy
+grep -qx -- '--continue' "$capture"
+grep -qx -- '--copy' "$capture"
+
+go run ./cmd/omr uninstall --project-dir "$project_dir" > "$project_dir/uninstall-real.txt"
+test ! -e "$project_dir/.reasonix/omr/manifest.lock.yaml"
+test ! -e "$project_dir/.reasonix/omr/generated/system-prompt.md"
+! grep -q 'system_prompt_file' "$project_dir/reasonix.toml"
+
+go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
 printf '\nmanual drift\n' >> "$project_dir/.reasonix/omr/generated/system-prompt.md"
 if go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/drift.json"; then
   echo "expected generated Prompt drift to fail doctor" >&2
@@ -58,12 +71,7 @@ if go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/d
 fi
 grep -q 'generated Prompt hash drift detected' "$project_dir/drift.json"
 
-OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
-grep -qx -- '--continue' "$capture"
-OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary" --copy
-grep -qx -- '--continue' "$capture"
-grep -qx -- '--copy' "$capture"
-
+mkdir -p "$project_dir/.reasonix/omr"
 cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
 [runtime]
 max_steps = 4
