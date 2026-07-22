@@ -205,6 +205,32 @@ func TestConfigValidateJSON(t *testing.T) {
 	}
 }
 
+func TestConfigSchema(t *testing.T) {
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"schema"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var schema struct {
+		Schema string `json:"$schema"`
+		Type   string `json:"type"`
+	}
+	if err := json.Unmarshal(data, &schema); err != nil || schema.Schema == "" || schema.Type != "object" {
+		t.Fatalf("invalid config schema: %s, err=%v", data, err)
+	}
+}
+
 func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 	root := t.TempDir()
 	path := filepath.Join(root, "config.toml")

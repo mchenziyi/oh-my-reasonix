@@ -120,8 +120,11 @@ func runDoctor(args []string) error {
 }
 
 func runConfig(args []string) error {
-	if len(args) == 0 || args[0] != "validate" {
-		return errors.New("config requires validate")
+	if len(args) == 0 || (args[0] != "validate" && args[0] != "schema") {
+		return errors.New("config requires validate or schema")
+	}
+	if args[0] == "schema" {
+		return writeOMRConfigSchema()
 	}
 	flags := flag.NewFlagSet("config validate", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
@@ -171,6 +174,26 @@ func runConfig(args []string) error {
 		fmt.Printf("  categories: %d\n", len(cfg.Categories))
 	}
 	return nil
+}
+
+func writeOMRConfigSchema() error {
+	schema := map[string]any{
+		"$schema": "https://json-schema.org/draft/2020-12/schema",
+		"type":    "object",
+		"properties": map[string]any{
+			"quality": map[string]any{"type": "object", "properties": map[string]any{
+				"fixtures": map[string]string{"type": "string"}, "min_qualified_rate": map[string]any{"type": "number", "minimum": 0, "maximum": 1}, "max_cost": map[string]any{"type": "number", "minimum": 0},
+			}},
+			"runtime": map[string]any{"type": "object", "properties": map[string]any{
+				"metrics_dir": map[string]string{"type": "string"}, "model": map[string]string{"type": "string"}, "max_steps": map[string]any{"type": "integer", "minimum": 0}, "concurrency": map[string]any{"type": "integer", "minimum": 0}, "timeout": map[string]string{"type": "string"},
+			}},
+			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}},
+			"profiles": map[string]any{"type": "object", "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
+		},
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(schema)
 }
 
 func runProfile(args []string) error {
