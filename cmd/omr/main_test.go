@@ -197,3 +197,37 @@ func TestConfigValidateJSON(t *testing.T) {
 		t.Fatalf("unexpected config result: %#v", result)
 	}
 }
+
+func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(path, []byte("[unsupported]\nvalue = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr == nil {
+		t.Fatal("expected invalid config error")
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Valid bool   `json:"valid"`
+		Error string `json:"error"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if result.Valid || result.Error == "" {
+		t.Fatalf("unexpected invalid config result: %#v", result)
+	}
+}

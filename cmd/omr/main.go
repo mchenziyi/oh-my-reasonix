@@ -132,6 +132,13 @@ func runConfig(args []string) error {
 	}
 	cfg, err := omrconfig.Load(path)
 	if err != nil {
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Path  string `json:"path"`
+				Valid bool   `json:"valid"`
+				Error string `json:"error"`
+			}{Path: path, Error: err.Error()})
+		}
 		if os.IsNotExist(err) {
 			return fmt.Errorf("OMR config not found: %s", path)
 		}
