@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -288,10 +289,10 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 
 func TestConfigValidateRejectsDisabledRouting(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
-	if err := os.WriteFile(path, []byte("[routing]\nexplore = \"omr-explore\"\n[profiles]\ndisabled = \"omr-explore\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(path, []byte("[routing]\nz = \"omr-debug\"\na = \"omr-explore\"\n[profiles]\ndisabled = \"omr-explore, omr-debug\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := runConfig([]string{"validate", "--config", path}); err == nil {
+	if err := runConfig([]string{"validate", "--config", path}); err == nil || !strings.Contains(err.Error(), "category \"a\"") || !strings.Contains(err.Error(), "category \"z\"") {
 		t.Fatal("expected disabled routing validation error")
 	}
 }

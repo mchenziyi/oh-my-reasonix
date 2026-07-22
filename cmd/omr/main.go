@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -153,13 +154,18 @@ func runConfig(args []string) error {
 		return err
 	}
 	if conflicts := cfg.DisabledRoutingConflicts(); len(conflicts) > 0 {
-		err = fmt.Errorf("OMR category %q routes to disabled Profile %q", conflicts[0], cfg.Categories[conflicts[0]])
+		messages := make([]string, 0, len(conflicts))
+		for _, category := range conflicts {
+			messages = append(messages, fmt.Sprintf("OMR category %q routes to disabled Profile %q", category, cfg.Categories[category]))
+		}
+		err = errors.New(strings.Join(messages, "; "))
 		if *jsonOutput {
 			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path  string `json:"path"`
-				Valid bool   `json:"valid"`
-				Error string `json:"error"`
-			}{Path: path, Error: err.Error()})
+				Path   string   `json:"path"`
+				Valid  bool     `json:"valid"`
+				Error  string   `json:"error"`
+				Errors []string `json:"errors"`
+			}{Path: path, Error: err.Error(), Errors: messages})
 		}
 		return err
 	}
