@@ -21,6 +21,7 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
+	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
 var version = "1.1.1"
@@ -459,12 +460,45 @@ func runProfile(args []string) error {
 }
 
 func runSession(args []string) error {
-	if len(args) == 0 || (args[0] != "resume" && args[0] != "export") {
-		return errors.New("session requires resume or export")
+	if len(args) == 0 {
+		return errors.New("session requires list, status, resume, or export")
 	}
-	if args[0] == "export" {
+	switch args[0] {
+	case "list":
+		return runSessionList()
+	case "status":
+		return runSessionStatus(args[1:])
+	case "export":
 		return runSessionExport(args[1:])
+	default:
+		return runSessionResume(args)
 	}
+}
+
+func runSessionList() error {
+	sessions, err := reasonix.ListSessions()
+	if err != nil {
+		return err
+	}
+	if len(sessions) == 0 {
+		fmt.Println("[]")
+		return nil
+	}
+	return json.NewEncoder(os.Stdout).Encode(sessions)
+}
+
+func runSessionStatus(args []string) error {
+	if len(args) == 0 {
+		return errors.New("session status requires a session ID")
+	}
+	info, err := reasonix.ReadSessionStatus(args[0])
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(info)
+}
+
+func runSessionResume(args []string) error {
 	flags := flag.NewFlagSet("session resume", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
