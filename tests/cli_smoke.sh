@@ -5,6 +5,7 @@ repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 project_dir=$(mktemp -d "${TMPDIR:-/tmp}/omr-cli-smoke.XXXXXX")
 fake_binary="$project_dir/fake-reasonix"
 capture="$project_dir/session-args.txt"
+export OMR_SMOKE_MODEL="deepseek-v4-flash"
 trap 'rm -rf "$project_dir"' EXIT
 
 printf '[agent]\n' > "$project_dir/reasonix.toml"
@@ -19,7 +20,7 @@ go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
 mkdir -p "$project_dir/.reasonix/omr"
 cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
 [agent.omr-research]
-model = "deepseek-v4-flash"
+model = "$OMR_SMOKE_MODEL"
 read_only = true
 EOF
 go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doctor.json"
