@@ -91,6 +91,8 @@ prompt_file = "prompts/research.md"
 read_only = true
 ```
 
+当前内置 Profile 包括 `omr-explore`、`omr-research`、`omr-debug` 和 `omr-planner`。其中 Planner 用于复杂任务的阶段拆分、验收条件和风险识别。
+
 `[agent.<profile>]` 可为 OMR Profile 声明模型、附加 Prompt 文件和只读约束；`omr doctor` 会校验 Profile 名称、项目相对 Prompt 路径和字段格式，实际执行仍由 Reasonix 原生 Profile 负责。
 
 使用 `omr profile list --json` 可以同时查看已安装 Profile 及其 `model`、`prompt_file`、`read_only` 配置覆盖。
