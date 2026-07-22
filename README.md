@@ -97,6 +97,16 @@ read_only = true
 
 使用 `omr profile list --json` 可以同时查看已安装 Profile 及其 `model`、`prompt_file`、`read_only` 配置覆盖。
 
+复杂项目可以在 `.reasonix/omr/config.toml` 中覆盖任务类别路由：
+
+```toml
+[routing]
+frontend = "omr-frontend"
+explore = "omr-explore"
+```
+
+执行 `omr upgrade` 后，路由会以稳定、可审计的附加段写入生成 Prompt；`omr config validate --json` 会同时输出 `categories`。
+
 `fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
 带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
 `--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。

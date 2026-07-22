@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 	"github.com/mchenziyi/oh-my-reasonix/internal/promptcompose"
@@ -119,6 +120,12 @@ func Init(opts Options) (Report, error) {
 
 	baseText := string(opts.Assets.BasePrompt)
 	orchestratorText := string(opts.Assets.Orchestrator)
+	omrConfigPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if omrCfg, configErr := omrconfig.Load(omrConfigPath); configErr == nil {
+		orchestratorText += omrCfg.CategoryPrompt()
+	} else if !os.IsNotExist(configErr) {
+		return Report{Root: root, Errors: []string{fmt.Sprintf("load OMR config: %v", configErr)}}, configErr
+	}
 	composition := promptcompose.Compose(baseText, userPrompt, orchestratorText)
 	profiles := profileAssets(opts.Assets)
 

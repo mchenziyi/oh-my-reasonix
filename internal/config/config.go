@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -19,6 +20,7 @@ type Config struct {
 	MinQualifiedRateSet bool
 	TimeoutSet          bool
 	Agents              map[string]AgentConfig
+	Categories          map[string]string
 }
 
 type AgentConfig struct {
@@ -43,7 +45,7 @@ func Load(path string) (Config, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" && !strings.HasPrefix(section, "agent.") {
+			if section != "quality" && section != "runtime" && section != "routing" && !strings.HasPrefix(section, "agent.") {
 				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
 			}
 			if strings.HasPrefix(section, "agent.") && strings.TrimSpace(strings.TrimPrefix(section, "agent.")) == "" {
@@ -149,7 +151,40 @@ func assign(cfg *Config, section, key, raw string) error {
 		cfg.Agents[profile] = agent
 		return nil
 	}
+	if section == "routing" {
+		if key == "" || strings.ContainsAny(key, " \t/\\") {
+			return fmt.Errorf("invalid category %q", key)
+		}
+		profile := stringValue(raw)
+		if profile == "" || strings.ContainsAny(profile, "\r\n\t /\\") {
+			return fmt.Errorf("invalid category profile for %q", key)
+		}
+		if cfg.Categories == nil {
+			cfg.Categories = make(map[string]string)
+		}
+		cfg.Categories[key] = profile
+		return nil
+	}
 	return fmt.Errorf("key %q must be under [quality] or [runtime]", key)
+}
+
+// CategoryPrompt renders deterministic project routing instructions.
+func (c Config) CategoryPrompt() string {
+	if len(c.Categories) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(c.Categories))
+	for key := range c.Categories {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	b.WriteString("\n\n## Project Category Routing\n\n")
+	b.WriteString("When a task matches one of these categories, prefer the configured Profile:\n")
+	for _, key := range keys {
+		fmt.Fprintf(&b, "- `%s` → `%s`\n", key, c.Categories[key])
+	}
+	return b.String()
 }
 
 func stringValue(raw string) string {

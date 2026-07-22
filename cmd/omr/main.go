@@ -149,10 +149,11 @@ func runConfig(args []string) error {
 	}
 	if *jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(struct {
-			Path   string                           `json:"path"`
-			Valid  bool                             `json:"valid"`
-			Agents map[string]omrconfig.AgentConfig `json:"agents"`
-		}{Path: path, Valid: true, Agents: cfg.Agents})
+			Path       string                           `json:"path"`
+			Valid      bool                             `json:"valid"`
+			Agents     map[string]omrconfig.AgentConfig `json:"agents"`
+			Categories map[string]string                `json:"categories"`
+		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories})
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
 	return nil

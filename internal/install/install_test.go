@@ -91,6 +91,28 @@ func TestComposeRequiresPersistenceConfirmation(t *testing.T) {
 	}
 }
 
+func TestUpgradeComposesCategoryRouting(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	configDir := filepath.Join(root, ".reasonix", "omr")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(configDir, "config.toml"), []byte("[routing]\nfrontend = \"omr-frontend\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Init(Options{ProjectDir: root, Upgrade: true, Assets: assets}); err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	generated, err := os.ReadFile(GeneratedPromptPath(root))
+	if err != nil || !strings.Contains(string(generated), "`frontend` → `omr-frontend`") {
+		t.Fatalf("category routing missing: err=%v prompt=%q", err, generated)
+	}
+}
+
 func TestProfileCollisionDoesNotOverwrite(t *testing.T) {
 	root := newProject(t, "[agent]\n")
 	profilePath := ExploreProfilePath(root)

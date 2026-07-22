@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -34,6 +35,20 @@ func TestLoadAgentOverrides(t *testing.T) {
 	agent, ok := cfg.Agents["omr-research"]
 	if !ok || agent.Model != "deepseek-v4-flash" || agent.PromptFile != "prompts/research.md" || agent.ReadOnly == nil || !*agent.ReadOnly {
 		t.Fatalf("unexpected agent config: %+v", cfg.Agents)
+	}
+}
+
+func TestLoadCategoryRouting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\nfrontend = 'omr-frontend'\nexplore = \"omr-explore\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil || cfg.Categories["frontend"] != "omr-frontend" {
+		t.Fatalf("unexpected categories: %#v, err=%v", cfg.Categories, err)
+	}
+	if got := cfg.CategoryPrompt(); !strings.Contains(got, "`explore` → `omr-explore`") || !strings.Contains(got, "`frontend` → `omr-frontend`") {
+		t.Fatalf("unexpected category prompt: %q", got)
 	}
 }
 
