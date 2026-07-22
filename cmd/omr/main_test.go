@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -67,5 +69,39 @@ func TestProfileListReadsInstalledProfiles(t *testing.T) {
 	}
 	if err := runProfile([]string{"list", "--project-dir", root}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestProfileListJSON(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "reasonix.toml"), []byte("[agent]\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	assets := install.Assets{Root: "test-assets", BasePrompt: []byte("base\n"), Orchestrator: []byte("orchestrator\n"), Explore: []byte("explore\n"), Research: []byte("research\n"), Debug: []byte("debug\n"), ReviewBrief: []byte("review\n")}
+	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runProfile([]string{"list", "--project-dir", root, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var profiles []struct{ ID string `json:"id"` }
+	if err := json.Unmarshal(data, &profiles); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if len(profiles) != 3 || profiles[0].ID != "omr-explore" {
+		t.Fatalf("unexpected profiles: %#v", profiles)
 	}
 }

@@ -139,6 +139,7 @@ func runProfile(args []string) error {
 	flags := flag.NewFlagSet("profile list", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
+	jsonOutput := flags.Bool("json", false, "write JSON output")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -153,7 +154,11 @@ func runProfile(args []string) error {
 		}
 		return err
 	}
-	for _, profile := range m.NormalizedProfiles() {
+	profiles := m.NormalizedProfiles()
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(profiles)
+	}
+	for _, profile := range profiles {
 		fmt.Printf("%s\t%s\t%s\n", profile.ID, profile.Path, profile.ContentSHA256)
 	}
 	return nil
