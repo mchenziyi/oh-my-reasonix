@@ -138,12 +138,17 @@ func TestDoctorJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Checks []struct{ Name string `json:"name"` } `json:"checks"`
+		Checks   []struct{ Name string `json:"name"` } `json:"checks"`
+		Warnings []string `json:"warnings"`
+		Errors   []string `json:"errors"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
 	if len(result.Checks) == 0 {
 		t.Fatalf("expected doctor checks in JSON: %s", data)
+	}
+	if result.Warnings == nil || result.Errors == nil {
+		t.Fatalf("expected JSON arrays for warnings/errors: %s", data)
 	}
 }

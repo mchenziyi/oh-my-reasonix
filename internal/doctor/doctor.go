@@ -53,7 +53,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	result := Result{Root: root}
+	result := Result{Root: root, Checks: []Check{}, Warnings: []string{}, Errors: []string{}}
 	var omrConfig omrconfig.Config
 	var hasOMRConfig bool
 	configPath := filepath.Join(root, "reasonix.toml")
