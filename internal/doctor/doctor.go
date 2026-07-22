@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -113,7 +114,12 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		for _, profile := range m.NormalizedProfiles() {
 			installed[profile.ID] = true
 		}
+		agentProfiles := make([]string, 0, len(omrConfig.Agents))
 		for profile := range omrConfig.Agents {
+			agentProfiles = append(agentProfiles, profile)
+		}
+		sort.Strings(agentProfiles)
+		for _, profile := range agentProfiles {
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR config references uninstalled Profile %q", profile))
 			}
@@ -123,7 +129,13 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR config disables uninstalled Profile %q", profile))
 			}
 		}
-		for category, profile := range omrConfig.Categories {
+		categories := make([]string, 0, len(omrConfig.Categories))
+		for category := range omrConfig.Categories {
+			categories = append(categories, category)
+		}
+		sort.Strings(categories)
+		for _, category := range categories {
+			profile := omrConfig.Categories[category]
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q references uninstalled Profile %q", category, profile))
 			}

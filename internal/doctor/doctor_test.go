@@ -117,6 +117,22 @@ func TestRunRejectsCategoryForDisabledProfile(t *testing.T) {
 	}
 }
 
+func TestRunSortsProfileConfigErrors(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	data := "[agent.z-profile]\nmodel = \"deepseek\"\n[agent.a-profile]\nmodel = \"deepseek\"\n[routing]\nz = \"z-profile\"\na = \"a-profile\"\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || len(result.Errors) < 4 {
+		t.Fatalf("expected sorted profile errors: %#v, err=%v", result.Errors, err)
+	}
+	if !strings.Contains(result.Errors[0], "a-profile") || !strings.Contains(result.Errors[1], "z-profile") {
+		t.Fatalf("profile errors are not sorted: %#v", result.Errors)
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
