@@ -205,7 +205,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		}
 	}
 	for _, drift := range install.PromptSourceDrift(root, m, assets) {
-		result.Errors = append(result.Errors, drift)
+		result.Errors = append(result.Errors, sourceDriftMessage(drift))
 	}
 	if len(result.Errors) == 0 {
 		result.Checks = append(result.Checks, Check{Name: "prompt.sources", Status: "PASS", Detail: "source hashes match Manifest"})
@@ -225,6 +225,19 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		result.Checks = append(result.Checks, Check{Name: "asset.source", Status: "PASS", Detail: assets.Root})
 	}
 	return result, resultError(result)
+}
+
+func sourceDriftMessage(drift string) string {
+	switch drift {
+	case "Reasonix base Prompt source hash changed":
+		return drift + "; rerun `omr upgrade --accept-reasonix-base-update`"
+	case "OMR Orchestrator Prompt source hash changed":
+		return drift + "; rerun `omr upgrade`"
+	case "User Prompt source hash changed", "User Prompt source is missing":
+		return drift + "; inspect the configured user Prompt source before upgrading"
+	default:
+		return drift
+	}
 }
 
 func profileFrontmatterReadOnly(content string) bool {

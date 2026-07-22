@@ -148,6 +148,15 @@ func TestRunSortsDisabledProfileErrors(t *testing.T) {
 	}
 }
 
+func TestSourceDriftMessageIncludesRemediation(t *testing.T) {
+	if got := sourceDriftMessage("Reasonix base Prompt source hash changed"); !strings.Contains(got, "accept-reasonix-base-update") {
+		t.Fatalf("missing base update remediation: %q", got)
+	}
+	if got := sourceDriftMessage("OMR Orchestrator Prompt source hash changed"); !strings.Contains(got, "omr upgrade") {
+		t.Fatalf("missing orchestrator remediation: %q", got)
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
