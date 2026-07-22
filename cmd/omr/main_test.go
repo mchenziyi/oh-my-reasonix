@@ -85,7 +85,7 @@ func TestProfileListJSON(t *testing.T) {
 	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\n[routing]\nresearch = \"omr-research\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	reader, writer, err := os.Pipe()
@@ -105,8 +105,9 @@ func TestProfileListJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var profiles []struct {
-		ID    string `json:"id"`
-		Model string `json:"model"`
+		ID         string   `json:"id"`
+		Model      string   `json:"model"`
+		Categories []string `json:"categories"`
 	}
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
@@ -116,6 +117,9 @@ func TestProfileListJSON(t *testing.T) {
 	}
 	if profiles[1].Model != "deepseek-v4-flash" {
 		t.Fatalf("expected configured model: %#v", profiles[1])
+	}
+	if len(profiles[1].Categories) != 1 || profiles[1].Categories[0] != "research" {
+		t.Fatalf("expected category mapping: %#v", profiles[1])
 	}
 }
 

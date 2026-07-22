@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"sync"
 	"time"
 
@@ -187,14 +188,16 @@ func runProfile(args []string) error {
 	profiles := m.NormalizedProfiles()
 	if *jsonOutput {
 		type profileJSON struct {
-			ID            string `json:"id"`
-			Path          string `json:"path"`
-			ContentSHA256 string `json:"content_sha256"`
-			Model         string `json:"model,omitempty"`
-			PromptFile    string `json:"prompt_file,omitempty"`
-			ReadOnly      *bool  `json:"read_only,omitempty"`
+			ID            string   `json:"id"`
+			Path          string   `json:"path"`
+			ContentSHA256 string   `json:"content_sha256"`
+			Model         string   `json:"model,omitempty"`
+			PromptFile    string   `json:"prompt_file,omitempty"`
+			ReadOnly      *bool    `json:"read_only,omitempty"`
+			Categories    []string `json:"categories,omitempty"`
 		}
 		configured := map[string]omrconfig.AgentConfig{}
+		categoryByProfile := map[string][]string{}
 		configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
 		if _, statErr := os.Stat(configPath); statErr == nil {
 			cfg, configErr := omrconfig.Load(configPath)
@@ -202,6 +205,9 @@ func runProfile(args []string) error {
 				return configErr
 			}
 			configured = cfg.Agents
+			for category, profile := range cfg.Categories {
+				categoryByProfile[profile] = append(categoryByProfile[profile], category)
+			}
 		}
 		output := make([]profileJSON, 0, len(profiles))
 		for _, profile := range profiles {
@@ -209,6 +215,8 @@ func runProfile(args []string) error {
 			if agent, ok := configured[profile.ID]; ok {
 				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
 			}
+			item.Categories = append([]string(nil), categoryByProfile[profile.ID]...)
+			sort.Strings(item.Categories)
 			output = append(output, item)
 		}
 		return json.NewEncoder(os.Stdout).Encode(output)
