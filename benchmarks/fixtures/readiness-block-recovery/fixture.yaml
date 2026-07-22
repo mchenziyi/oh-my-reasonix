@@ -1,0 +1,27 @@
+{
+  "id": "readiness-block-recovery",
+  "description": "Readiness 检查发现停滞时自动恢复。Agent 需处理被阻断的任务并恢复执行。",
+  "task": "执行 docs/recovery-plan.md 中的步骤 1-3。步骤 2 可能被阻断（工具不可用），验证 readiness 后重试或跳过，记录到 docs/recovery-log.md。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f docs/recovery-log.md"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "readiness_check", "output": "READY"},
+    {"role": "assistant", "kind": "step1", "output": "步骤 1 完成。"},
+    {"role": "user", "kind": "readiness_check", "output": "BLOCKED: git status 返回非零"},
+    {"role": "assistant", "kind": "step2_retry", "output": "git 不可用，等待后重试..."},
+    {"role": "user", "kind": "readiness_check", "output": "READY"},
+    {"role": "assistant", "kind": "step2", "output": "步骤 2 完成。"},
+    {"role": "assistant", "kind": "step3", "output": "步骤 3 完成。"}
+  ],
+  "replay": {
+    "changed_paths": ["docs/recovery-log.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
+}

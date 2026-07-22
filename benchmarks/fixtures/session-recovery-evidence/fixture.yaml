@@ -1,0 +1,21 @@
+{
+  "id": "session-recovery-evidence",
+  "description": "Session 恢复时证据链不完整应暂停并请求人工介入。",
+  "task": "恢复一个中断的 Session：docs/session-snapshot.json 包含最近的 Todo、修改的文件和 Review 状态。验证证据完整性，如果缺少关键证据则记录到 docs/recovery-gap.md 并请求人工确认。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f docs/recovery-gap.md"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "session_data", "output": "Session snapshot: id=ses-123, todos=[todo-1(completed), todo-2(in_progress)], files=[src/handler.go], review=blocked"}
+  ],
+  "replay": {
+    "changed_paths": ["docs/recovery-gap.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
+}

@@ -6,12 +6,96 @@
     "required_effects_met": true,
     "events": ["omr-explore", "aggregation.deduplicated", "aggregation.conflict", "complete_step"]
   },
+  "backup-restore": {
+    "changed_paths": ["docs/backup-restore.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "base-prompt-drift": {
+    "changed_paths": ["docs/base-prompt-drift.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "body-integrity": {
+    "changed_paths": ["docs/body-integrity.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
+  },
+  "cache-ambiguous": {
+    "changed_paths": ["docs/cache-ambiguous.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
+  },
+  "cache-divergence": {
+    "changed_paths": ["docs/cache-divergence.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
+  },
+  "cache-stability": {
+    "changed_paths": ["docs/cache-stability.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
+  },
+  "concurrency-cap": {
+    "changed_paths": ["docs/batch-report.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "cost-overrun-gate": {
+    "changed_paths": ["docs/cost-analysis.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
   "cross-module-bug": {
     "changed_paths": ["internal/api/handler.go", "internal/storage/store.go", "tests/request_test.go"],
     "hidden_tests_passed": true,
     "regression_passed": true,
     "required_effects_met": true,
     "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"]
+  },
+  "cross-platform-paths": {
+    "changed_paths": ["docs/platform-paths.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "empty-response-loop": {
+    "changed_paths": ["docs/api-endpoints.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "install-idempotency": {
+    "changed_paths": ["reasonix.toml", ".reasonix/omr/manifest.lock.yaml"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "license-audit": {
+    "changed_paths": ["docs/license-audit.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
   },
   "m0-explore-review-complete": {
     "changed_paths": ["src/handler.go", "tests/handler_test.go"],
@@ -20,8 +104,106 @@
     "required_effects_met": true,
     "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"]
   },
+  "metrics-summary": {
+    "changed_paths": ["docs/metrics-summary.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "profile-collision": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "prompt-compose-order": {
+    "changed_paths": ["docs/prompt-compose-order.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "prompt-drift-detection": {
+    "changed_paths": ["docs/prompt-drift-report.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "complete_step"]
+  },
+  "quality-report": {
+    "changed_paths": ["docs/quality-report.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "readiness-block-recovery": {
+    "changed_paths": ["docs/recovery-log.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "review-blocker": {
+    "changed_paths": ["src/handler.go", "tests/handler_test.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "review", "review_report", "complete_step"]
+  },
+  "review-report-delivery": {
+    "changed_paths": ["docs/review-report-delivery.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["review", "review_report", "complete_step"]
+  },
+  "runtime-readonly": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "complete_step"]
+  },
+  "session-recovery-evidence": {
+    "changed_paths": ["docs/recovery-gap.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
   "simple-fix": {
     "changed_paths": ["README.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "test-fail-fix-retry": {
+    "changed_paths": ["src/math.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "review", "review_report", "complete_step"]
+  },
+  "tool-fingerprint": {
+    "changed_paths": ["docs/tool-fingerprint.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["omr-explore", "complete_step"]
+  },
+  "uninstall-preserve-user": {
+    "changed_paths": ["reasonix.toml"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"]
+  },
+  "user-prompt-persistence": {
+    "changed_paths": ["docs/user-prompt-persistence.md"],
     "hidden_tests_passed": true,
     "regression_passed": true,
     "required_effects_met": true,

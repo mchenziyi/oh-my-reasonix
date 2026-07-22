@@ -1,0 +1,23 @@
+{
+  "id": "empty-response-loop",
+  "description": "空响应与重复操作检测。Agent 收到空响应后应重试而非重复相同操作。",
+  "task": "查询 docs/api.md 中的 API 端点列表。如果返回空结果，重试一次；如果连续两次空则报告并进入 review。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": ["**/*.go", ".reasonix/**"],
+  "hidden_tests": ["test -f docs/api-endpoints.md"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "empty", "output": ""},
+    {"role": "assistant", "kind": "retry", "output": "API query returned empty, retrying..."},
+    {"role": "user", "kind": "data", "output": "Endpoints:\\n- GET /api/users\\n- POST /api/orders"}
+  ],
+  "replay": {
+    "changed_paths": ["docs/api-endpoints.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
+}

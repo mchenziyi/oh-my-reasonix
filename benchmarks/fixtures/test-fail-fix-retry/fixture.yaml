@@ -1,0 +1,23 @@
+{
+  "id": "test-fail-fix-retry",
+  "description": "测试失败 → 修复 → 重测闭环。Agent 必须运行测试，失败后修复代码，重跑直到通过。",
+  "task": "修复单元测试失败：src/math.go 中的 Add 函数返回 a+b 而非 a*b。先运行 tests/math_test.go 确认失败，修复后重跑直到通过。",
+  "allowed_paths": ["src/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f src/math.go", "test -f tests/math_test.go"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "review", "review_report", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "test_output", "output": "--- FAIL: TestAdd (0.00s)\\n    math_test.go:10: Add(2, 3) = 6, want 5"},
+    {"role": "assistant", "kind": "fix", "output": "Changed Add to return a+b."},
+    {"role": "user", "kind": "test_output", "output": "PASS"}
+  ],
+  "replay": {
+    "changed_paths": ["src/math.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
+}

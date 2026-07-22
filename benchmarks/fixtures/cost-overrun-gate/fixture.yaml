@@ -1,0 +1,21 @@
+{
+  "id": "cost-overrun-gate",
+  "description": "成本超限时质量门禁阻断，Agent 需调整策略降低成本。",
+  "task": "分析 docs/budget.md 中的三个方案，选择成本最低的方案并记录理由。如果总估算成本超过 $5.00 则必须缩小范围。",
+  "allowed_paths": ["docs/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f docs/cost-analysis.md"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay_outputs": [
+    {"role": "assistant", "kind": "cost_estimate", "output": "方案 A: $3.20, 方案 B: $2.10, 方案 C: $1.50"}
+  ],
+  "replay": {
+    "changed_paths": ["docs/cost-analysis.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
+}
