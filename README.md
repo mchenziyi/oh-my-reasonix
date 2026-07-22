@@ -22,6 +22,7 @@ go run ./cmd/omr init
 go run ./cmd/omr doctor
 go run ./cmd/omr doctor --json
 go run ./cmd/omr config validate
+go run ./cmd/omr config validate --json
 go run ./cmd/omr profile list
 go run ./cmd/omr profile list --json
 go run ./cmd/omr upgrade --dry-run
