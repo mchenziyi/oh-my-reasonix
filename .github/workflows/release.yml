@@ -22,6 +22,7 @@ jobs:
           set -eu
           go test ./...
           go vet ./...
+          ./tests/cli_smoke.sh
           go run ./cmd/omr benchmark quality --replay --min-qualified-rate 1
           go run ./cmd/omr benchmark cache \
             --native-trace benchmarks/cache/native.jsonl \
