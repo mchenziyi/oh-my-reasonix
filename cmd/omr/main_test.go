@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
+	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
 )
 
 func TestQualityBenchmarkConfigPathsAreProjectRelative(t *testing.T) {
@@ -235,6 +236,13 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 func TestSessionRequiresResume(t *testing.T) {
 	if err := runSession(nil); err == nil {
 		t.Fatal("expected session subcommand requirement")
+	}
+}
+
+func TestQualityGatesApplyCostBudget(t *testing.T) {
+	report := qualitybench.Report{FixtureCount: 1, EvaluatedCount: 1, QualifiedCount: 1, QualifiedRate: 1, Metrics: qualitybench.Metrics{Cost: 1.2}}
+	if err := checkQualityGates(report, 1, 1); err == nil {
+		t.Fatal("expected cost budget failure")
 	}
 }
 

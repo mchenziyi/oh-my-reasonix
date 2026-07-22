@@ -456,6 +456,9 @@ func runQualityBenchmark(args []string) error {
 		if !comparison.Passed {
 			return errors.New("quality comparison failed hard gate")
 		}
+		if err := qualitybench.CheckCostGate(comparison.OMR, *maxCost); err != nil {
+			return fmt.Errorf("quality comparison cost gate failed: %w", err)
+		}
 		return nil
 	}
 	if *runtimeRun {
