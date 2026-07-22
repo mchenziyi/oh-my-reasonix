@@ -70,6 +70,20 @@ func TestEmbeddedOrchestratorConstrainsToolOutputAndContext(t *testing.T) {
 	}
 }
 
+func TestEmbeddedReviewProtocolUsesReviewEvidence(t *testing.T) {
+	t.Setenv("OMR_ASSET_DIR", "")
+	assets, err := LoadAssets(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	protocol := string(assets.ReviewBrief)
+	for _, required := range []string{"complete_step", "review", "verification.command", "task(profile=\"review\")"} {
+		if !strings.Contains(protocol, required) {
+			t.Fatalf("review protocol does not mention %s", required)
+		}
+	}
+}
+
 func TestLoadAssetsInvalidConfiguredDirectoryDoesNotFallback(t *testing.T) {
 	t.Setenv("OMR_ASSET_DIR", t.TempDir()+"/missing")
 	if _, err := LoadAssets(t.TempDir()); err == nil {
