@@ -43,9 +43,9 @@
 |---|---|---|---|
 | 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
 | Agent 独立模型配置 | 已支持 `[agent.<profile>]` 的模型、Prompt 文件和只读声明；实际执行由 Reasonix 原生 Profile 负责 | 每个 Agent 可覆盖模型、Prompt、权限 | P1 |
-| 任务类别路由 | 已有只读 Profile Prompt 路由，Planner 已用于复杂任务拆解，尚无可配置 Category | visual、business-logic 等 Category | P1 |
+| 任务类别路由 | 支持内置路由与项目级 `[routing]` Category → Profile 覆盖 | visual、business-logic 等 Category | P1 |
 | 后台 Agent 编排 | 依赖 Reasonix 原生，OMR 不统一编排 | 多 Agent 并行执行 | P1 |
-| 并发策略 | 没有 OMR 层策略 | 按 Provider/Model 配置并发上限 | P1 |
+| 并发策略 | 质量 Runtime 基准支持项目级并发上限；生产任务编排仍依赖 Reasonix 原生 | 按 Provider/Model 配置并发上限 | P1 |
 | 后台结果汇聚 | 没有统一协议 | 通知、收集结果并继续主任务 | P1 |
 | Debug Agent | 已有只读 `omr-debug` | Oracle 等架构/调试 Agent | P1 |
 | Research Agent | 已有只读 `omr-research` | Librarian/Research 类 Agent | P1 |
@@ -93,8 +93,8 @@
 | Agent 权限覆盖 | 已支持 `[agent.<profile>] read_only` 声明校验，执行仍依赖 Reasonix 原生 | P1 |
 | Hook 禁用列表 | 没有 | P1 |
 | Profile 禁用列表 | 没有 | P1 |
-| 并发上限配置 | 没有 | P1 |
-| Category 自定义 | 没有 | P2 |
+| 并发上限配置 | 已支持 `[runtime] concurrency`（质量基准） | P1 |
+| Category 自定义 | 已支持项目级 `[routing]` 覆盖 | P2 |
 | 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、路径和只读声明；完整 TOML Schema 仍未实现 | P1 |
 | 用户级配置 | 明确不支持 | P2 |
 | JSONC/注释配置 | 没有 | P2 |
@@ -158,7 +158,7 @@
 |---|---|---|
 | 一键增强模式（类似 `ultrawork`） | 没有 | P3 |
 | Think Mode | 没有 OMR 层规则 | P3 |
-| 多模型成本策略 | 没有 OMR 层策略 | P1 |
+| 多模型成本策略 | 已支持质量基准 `max_cost` 门禁；Provider fallback 仍依赖 Reasonix | P1 |
 | Provider fallback | 主要依赖 Reasonix | P1 |
 | 交互式终端/Tmux | 没有 | P2 |
 | 自动更新提示 | 没有 | P2 |
