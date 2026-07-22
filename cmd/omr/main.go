@@ -163,7 +163,32 @@ func runProfile(args []string) error {
 	}
 	profiles := m.NormalizedProfiles()
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(profiles)
+		type profileJSON struct {
+			ID            string `json:"id"`
+			Path          string `json:"path"`
+			ContentSHA256 string `json:"content_sha256"`
+			Model         string `json:"model,omitempty"`
+			PromptFile    string `json:"prompt_file,omitempty"`
+			ReadOnly      *bool  `json:"read_only,omitempty"`
+		}
+		configured := map[string]omrconfig.AgentConfig{}
+		configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+		if _, statErr := os.Stat(configPath); statErr == nil {
+			cfg, configErr := omrconfig.Load(configPath)
+			if configErr != nil {
+				return configErr
+			}
+			configured = cfg.Agents
+		}
+		output := make([]profileJSON, 0, len(profiles))
+		for _, profile := range profiles {
+			item := profileJSON{ID: profile.ID, Path: profile.Path, ContentSHA256: profile.ContentSHA256}
+			if agent, ok := configured[profile.ID]; ok {
+				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
+			}
+			output = append(output, item)
+		}
+		return json.NewEncoder(os.Stdout).Encode(output)
 	}
 	for _, profile := range profiles {
 		fmt.Printf("%s\t%s\t%s\n", profile.ID, profile.Path, profile.ContentSHA256)

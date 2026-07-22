@@ -84,6 +84,9 @@ func TestProfileListJSON(t *testing.T) {
 	if _, err := install.Init(install.Options{ProjectDir: root, Assets: assets}); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	reader, writer, err := os.Pipe()
 	if err != nil {
 		t.Fatal(err)
@@ -100,12 +103,18 @@ func TestProfileListJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var profiles []struct{ ID string `json:"id"` }
+	var profiles []struct {
+		ID    string `json:"id"`
+		Model string `json:"model"`
+	}
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
 	if len(profiles) != 3 || profiles[0].ID != "omr-explore" {
 		t.Fatalf("unexpected profiles: %#v", profiles)
+	}
+	if profiles[1].Model != "deepseek-v4-flash" {
+		t.Fatalf("expected configured model: %#v", profiles[1])
 	}
 }
 
@@ -138,7 +147,9 @@ func TestDoctorJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Checks   []struct{ Name string `json:"name"` } `json:"checks"`
+		Checks []struct {
+			Name string `json:"name"`
+		} `json:"checks"`
 		Warnings []string `json:"warnings"`
 		Errors   []string `json:"errors"`
 	}
