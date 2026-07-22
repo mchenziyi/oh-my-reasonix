@@ -30,6 +30,12 @@ go run ./cmd/omr upgrade --dry-run
 go run ./cmd/omr uninstall --dry-run
 ```
 
+如果恢复时提示 Session 被其他 Reasonix 进程占用，先关闭原窗口；需要保留原进程时可使用：
+
+```bash
+go run ./cmd/omr session resume --project-dir . --copy
+```
+
 ## 让 Reasonix 自己安装
 
 可以把 [安装提示词](docs/INSTALL_PROMPT.md) 交给正在运行的 Reasonix；它会读取
