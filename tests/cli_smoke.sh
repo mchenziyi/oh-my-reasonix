@@ -38,6 +38,13 @@ grep -q '"valid":true' "$project_dir/config.json"
 grep -q 'NOOP\|PLAN' "$project_dir/upgrade.txt"
 grep -q 'PLAN\|REMOVE' "$project_dir/uninstall.txt"
 
+printf '\nmanual drift\n' >> "$project_dir/.reasonix/omr/generated/system-prompt.md"
+if go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/drift.json"; then
+  echo "expected generated Prompt drift to fail doctor" >&2
+  exit 1
+fi
+grep -q 'generated Prompt hash drift detected' "$project_dir/drift.json"
+
 OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
 grep -qx -- '--continue' "$capture"
 OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary" --copy
