@@ -108,7 +108,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, err
 	}
 	result.Checks = append(result.Checks, Check{Name: "manifest", Status: "PASS", Detail: "schema and required fields valid"})
-	if hasOMRConfig && len(omrConfig.Agents) > 0 {
+	if hasOMRConfig && (len(omrConfig.Agents) > 0 || len(omrConfig.Categories) > 0) {
 		installed := make(map[string]bool)
 		for _, profile := range m.NormalizedProfiles() {
 			installed[profile.ID] = true
@@ -116,6 +116,11 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		for profile := range omrConfig.Agents {
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR config references uninstalled Profile %q", profile))
+			}
+		}
+		for category, profile := range omrConfig.Categories {
+			if !installed[profile] {
+				result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q references uninstalled Profile %q", category, profile))
 			}
 		}
 		for profile, agent := range omrConfig.Agents {
@@ -148,7 +153,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			}
 		}
 		if len(result.Errors) == 0 {
-			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles are installed"})
+			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles and categories are installed"})
 		}
 	}
 	generated := install.GeneratedPromptPathForDoctor(root)

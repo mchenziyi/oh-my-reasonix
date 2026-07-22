@@ -89,6 +89,18 @@ func TestRunReportsValidOMRConfig(t *testing.T) {
 	}
 }
 
+func TestRunRejectsCategoryForUninstalledProfile(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\nfrontend = \"missing-profile\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || len(result.Errors) == 0 || !strings.Contains(result.Errors[0], "category") {
+		t.Fatalf("expected category installation error: %#v, err=%v", result.Errors, err)
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
