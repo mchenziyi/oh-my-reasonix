@@ -3,9 +3,16 @@ set -euo pipefail
 
 repo_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 project_dir=$(mktemp -d "${TMPDIR:-/tmp}/omr-cli-smoke.XXXXXX")
+fake_binary="$project_dir/fake-reasonix"
+capture="$project_dir/session-args.txt"
 trap 'rm -rf "$project_dir"' EXIT
 
 printf '[agent]\n' > "$project_dir/reasonix.toml"
+cat > "$fake_binary" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$OMR_SESSION_CAPTURE"
+EOF
+chmod +x "$fake_binary"
 
 cd "$repo_dir"
 go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
@@ -20,5 +27,11 @@ grep -q '"id":"omr-explore"' "$project_dir/profiles.json"
 grep -q '"id":"omr-research"' "$project_dir/profiles.json"
 grep -q '"id":"omr-debug"' "$project_dir/profiles.json"
 grep -q '"valid":true' "$project_dir/config.json"
+
+OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
+grep -qx -- '--continue' "$capture"
+OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary" --copy
+grep -qx -- '--continue' "$capture"
+grep -qx -- '--copy' "$capture"
 
 echo "OMR CLI smoke: PASS"
