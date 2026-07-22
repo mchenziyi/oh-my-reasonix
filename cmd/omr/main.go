@@ -283,8 +283,33 @@ func runProfile(args []string) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(output)
 	}
+	categoryByProfile := map[string][]string{}
+	disabled := map[string]bool{}
+	configPath := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if _, statErr := os.Stat(configPath); statErr == nil {
+		cfg, configErr := omrconfig.Load(configPath)
+		if configErr != nil {
+			return configErr
+		}
+		for category, profile := range cfg.Categories {
+			categoryByProfile[profile] = append(categoryByProfile[profile], category)
+		}
+		for profile := range categoryByProfile {
+			sort.Strings(categoryByProfile[profile])
+		}
+		for _, profile := range cfg.DisabledProfiles {
+			disabled[profile] = true
+		}
+	}
 	for _, profile := range profiles {
-		fmt.Printf("%s\t%s\t%s\n", profile.ID, profile.Path, profile.ContentSHA256)
+		suffix := ""
+		if categories := categoryByProfile[profile.ID]; len(categories) > 0 {
+			suffix += "\tcategories=" + strings.Join(categories, ",")
+		}
+		if disabled[profile.ID] {
+			suffix += "\tdisabled"
+		}
+		fmt.Printf("%s\t%s\t%s%s\n", profile.ID, profile.Path, profile.ContentSHA256, suffix)
 	}
 	return nil
 }
