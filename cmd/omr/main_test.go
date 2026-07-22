@@ -297,6 +297,39 @@ func TestConfigValidateRejectsDisabledRouting(t *testing.T) {
 	}
 }
 
+func TestConfigValidateJSONReportsAllDisabledRoutingErrors(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\nz = \"omr-debug\"\na = \"omr-explore\"\n[profiles]\ndisabled = \"omr-explore, omr-debug\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr == nil {
+		t.Fatal("expected disabled routing validation error")
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Valid  bool     `json:"valid"`
+		Errors []string `json:"errors"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s", data)
+	}
+	if result.Valid || len(result.Errors) != 2 {
+		t.Fatalf("unexpected errors: %#v", result)
+	}
+}
+
 func TestSessionRequiresResume(t *testing.T) {
 	if err := runSession(nil); err == nil {
 		t.Fatal("expected session subcommand requirement")
