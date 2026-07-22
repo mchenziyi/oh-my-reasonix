@@ -56,14 +56,17 @@ type RunResult struct {
 }
 
 type Metrics struct {
-	PromptTokens     int     `json:"prompt_tokens"`
-	CompletionTokens int     `json:"completion_tokens"`
-	CacheHitTokens   int     `json:"cache_hit_tokens"`
-	CacheMissTokens  int     `json:"cache_miss_tokens"`
-	Steps            int     `json:"steps"`
-	Cost             float64 `json:"cost"`
-	Currency         string  `json:"currency,omitempty"`
-	Compactions      int     `json:"compactions"`
+	PromptTokens        int     `json:"prompt_tokens"`
+	CompletionTokens    int     `json:"completion_tokens"`
+	CacheHitTokens      int     `json:"cache_hit_tokens"`
+	CacheMissTokens     int     `json:"cache_miss_tokens"`
+	Steps               int     `json:"steps"`
+	Cost                float64 `json:"cost"`
+	Currency            string  `json:"currency,omitempty"`
+	Compactions         int     `json:"compactions"`
+	ReadinessChecks     int     `json:"readiness_checks"`
+	ReadinessBlocks     int     `json:"readiness_blocks"`
+	ReadinessRecoveries int     `json:"readiness_recoveries"`
 }
 
 type Evaluation struct {
@@ -173,6 +176,9 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult) Report {
 		report.Metrics.Steps += result.Metrics.Steps
 		report.Metrics.Cost += result.Metrics.Cost
 		report.Metrics.Compactions += result.Metrics.Compactions
+		report.Metrics.ReadinessChecks += result.Metrics.ReadinessChecks
+		report.Metrics.ReadinessBlocks += result.Metrics.ReadinessBlocks
+		report.Metrics.ReadinessRecoveries += result.Metrics.ReadinessRecoveries
 		if report.Metrics.Currency == "" {
 			report.Metrics.Currency = result.Metrics.Currency
 		}

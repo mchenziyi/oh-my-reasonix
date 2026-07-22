@@ -84,9 +84,9 @@ func TestEvaluateAllAggregatesMetrics(t *testing.T) {
 	fixtures := []Fixture{{ID: "a", Task: "a"}}
 	report := EvaluateAll(fixtures, map[string]RunResult{"a": {
 		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true,
-		Metrics: Metrics{PromptTokens: 10, CacheHitTokens: 4, Cost: 0.25, Currency: "USD"},
+		Metrics: Metrics{PromptTokens: 10, CacheHitTokens: 4, Cost: 0.25, Currency: "USD", ReadinessChecks: 3, ReadinessBlocks: 1, ReadinessRecoveries: 1},
 	}})
-	if report.Metrics.PromptTokens != 10 || report.Metrics.CacheHitTokens != 4 || report.Metrics.Cost != 0.25 || report.Metrics.Currency != "USD" {
+	if report.Metrics.PromptTokens != 10 || report.Metrics.CacheHitTokens != 4 || report.Metrics.Cost != 0.25 || report.Metrics.Currency != "USD" || report.Metrics.ReadinessChecks != 3 || report.Metrics.ReadinessBlocks != 1 || report.Metrics.ReadinessRecoveries != 1 {
 		t.Fatalf("metrics were not aggregated: %#v", report.Metrics)
 	}
 }

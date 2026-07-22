@@ -119,6 +119,8 @@ Native/OMR 质量结果可用 `--native-results native.json --omr-results omr.js
 真实 Runtime 基准默认串行执行；可通过 `--concurrency N` 或 `.reasonix/omr/config.toml` 的 `[runtime] concurrency = N` 并发执行多个夹具。若使用共享 `--events` 事件流，必须保持并发数为 1。
 
 质量门禁可通过 `--max-cost` 或 `[quality] max_cost = 1.5` 设置总成本上限；默认值 `0` 表示不启用成本门禁。
+
+质量报告的 `metrics` 还会汇总 `readiness_checks`、`readiness_blocks` 和 `readiness_recoveries`，用于观察停滞检测与自动恢复效果。
 真实 Runtime 如有宿主提供的结构化 JSONL 事件日志，可通过 `--events path/to/events.jsonl` 接入证据评分；OMR 不会从人类可读 stdout 推断事件。
 
 ## 范围

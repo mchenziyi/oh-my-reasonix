@@ -95,7 +95,8 @@ func ExecuteRuntime(ctx context.Context, fixture Fixture, projectDir, binary, me
 			PromptTokens: metrics.PromptTokens, CompletionTokens: metrics.CompletionTokens,
 			CacheHitTokens: metrics.CacheHitTokens, CacheMissTokens: metrics.CacheMissTokens,
 			Steps: metrics.Steps, Cost: metrics.Cost, Currency: metrics.Currency,
-			Compactions: metrics.Compactions,
+			Compactions: metrics.Compactions, ReadinessChecks: metrics.ReadinessChecks,
+			ReadinessBlocks: metrics.ReadinessBlocks, ReadinessRecoveries: metrics.ReadinessRecoveries,
 		}
 	}
 	hidden, err := runChecks(ctx, projectDir, fixture.HiddenTests)
