@@ -169,6 +169,9 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		if omrConfig.MaxCost > 0 && len(result.Errors) == 0 {
 			result.Checks = append(result.Checks, Check{Name: "omr.config.max_cost", Status: "PASS", Detail: fmt.Sprintf("quality cost budget=%.4f", omrConfig.MaxCost)})
 		}
+		if len(omrConfig.DisabledProfiles) > 0 && len(result.Errors) == 0 {
+			result.Checks = append(result.Checks, Check{Name: "omr.config.disabled", Status: "PASS", Detail: fmt.Sprintf("%d Profiles disabled", len(omrConfig.DisabledProfiles))})
+		}
 	}
 	generated := install.GeneratedPromptPathForDoctor(root)
 	if actual, err := fileutil.SHA256File(generated); err != nil || actual != m.Prompt.FinalSHA256 {
