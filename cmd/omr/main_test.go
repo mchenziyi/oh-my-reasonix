@@ -230,7 +230,7 @@ func TestConfigSchema(t *testing.T) {
 		Schema     string `json:"$schema"`
 		Type       string `json:"type"`
 		Properties map[string]struct {
-			AdditionalProperties map[string]any `json:"additionalProperties"`
+			AdditionalProperties any `json:"additionalProperties"`
 		} `json:"properties"`
 	}
 	if err := json.Unmarshal(data, &schema); err != nil || schema.Schema == "" || schema.Type != "object" {
@@ -238,6 +238,14 @@ func TestConfigSchema(t *testing.T) {
 	}
 	if _, ok := schema.Properties["agent"]; !ok {
 		t.Fatalf("schema missing agent properties: %s", data)
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		t.Fatal(err)
+	}
+	quality := raw["properties"].(map[string]any)["quality"].(map[string]any)
+	if quality["additionalProperties"] != false {
+		t.Fatalf("quality schema should reject unknown keys: %#v", quality)
 	}
 }
 

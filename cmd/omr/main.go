@@ -192,19 +192,19 @@ func writeOMRConfigSchema() error {
 		"$schema": "https://json-schema.org/draft/2020-12/schema",
 		"type":    "object",
 		"properties": map[string]any{
-			"quality": map[string]any{"type": "object", "properties": map[string]any{
+			"quality": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
 				"fixtures": map[string]string{"type": "string"}, "min_qualified_rate": map[string]any{"type": "number", "minimum": 0, "maximum": 1}, "max_cost": map[string]any{"type": "number", "minimum": 0},
 			}},
-			"runtime": map[string]any{"type": "object", "properties": map[string]any{
+			"runtime": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{
 				"metrics_dir": map[string]string{"type": "string"}, "model": map[string]string{"type": "string"}, "max_steps": map[string]any{"type": "integer", "minimum": 0}, "concurrency": map[string]any{"type": "integer", "minimum": 0}, "timeout": map[string]string{"type": "string"},
 			}},
 			"agent": map[string]any{"type": "object", "additionalProperties": map[string]any{
-				"type": "object", "properties": map[string]any{
+				"type": "object", "additionalProperties": false, "properties": map[string]any{
 					"model": map[string]string{"type": "string"}, "prompt_file": map[string]string{"type": "string"}, "read_only": map[string]any{"type": "boolean"},
 				},
 			}},
 			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}},
-			"profiles": map[string]any{"type": "object", "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
+			"profiles": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
 		},
 	}
 	encoder := json.NewEncoder(os.Stdout)
