@@ -242,6 +242,9 @@ func profileAssets(assets Assets) []profileAsset {
 	if len(assets.Planner) > 0 {
 		profiles = append(profiles, profileAsset{ID: "omr-planner", Rel: PlannerProfileRel, Data: assets.Planner, Hash: fileutil.SHA256(assets.Planner)})
 	}
+	if len(assets.Frontend) > 0 {
+		profiles = append(profiles, profileAsset{ID: "omr-frontend", Rel: FrontendProfileRel, Data: assets.Frontend, Hash: fileutil.SHA256(assets.Frontend)})
+	}
 	return profiles
 }
 

@@ -41,7 +41,7 @@
 
 | 能力 | OMR 当前状态 | OMO 对应能力 | 优先级 |
 |---|---|---|---|
-| 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
+| 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
 | Agent 独立模型配置 | 已支持 `[agent.<profile>]` 的模型、Prompt 文件和只读声明；实际执行由 Reasonix 原生 Profile 负责 | 每个 Agent 可覆盖模型、Prompt、权限 | P1 |
 | 任务类别路由 | 已有只读 Profile Prompt 路由，Planner 已用于复杂任务拆解，尚无可配置 Category | visual、business-logic 等 Category | P1 |
 | 后台 Agent 编排 | 依赖 Reasonix 原生，OMR 不统一编排 | 多 Agent 并行执行 | P1 |
@@ -197,7 +197,7 @@
 1. `omr-research`；
 2. `omr-debug`；
 3. `omr-planner`（已完成）；
-4. `omr-frontend`；
+4. `omr-frontend`（已完成）；
 5. Category 路由；
 6. 并发、成本和 Provider fallback 策略；
 7. 后台结果汇聚。

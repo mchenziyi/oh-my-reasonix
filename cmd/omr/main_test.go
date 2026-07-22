@@ -110,7 +110,7 @@ func TestProfileListJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if len(profiles) != 4 || profiles[0].ID != "omr-explore" {
+	if len(profiles) != 5 || profiles[0].ID != "omr-explore" {
 		t.Fatalf("unexpected profiles: %#v", profiles)
 	}
 	if profiles[1].Model != "deepseek-v4-flash" {
