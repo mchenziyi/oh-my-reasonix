@@ -1,6 +1,8 @@
 package install
 
 import (
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -25,6 +27,36 @@ func TestLoadAssetsFallsBackToEmbeddedReleaseAssets(t *testing.T) {
 		if len(data) == 0 {
 			t.Errorf("embedded %s is empty", name)
 		}
+	}
+}
+
+func TestLoadAssetsFromExternalDirectory(t *testing.T) {
+	root := t.TempDir()
+	for _, rel := range []string{
+		"prompts/reasonix-base-464d494.md",
+		"prompts/orchestrator.zh.md",
+		"prompts/review-task-protocol.zh.md",
+		"skills/omr-explore/SKILL.md",
+		"skills/omr-research/SKILL.md",
+		"skills/omr-debug/SKILL.md",
+		"skills/omr-planner/SKILL.md",
+		"skills/omr-frontend/SKILL.md",
+	} {
+		path := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(rel), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("OMR_ASSET_DIR", root)
+	assets, err := LoadAssets(t.TempDir())
+	if err != nil {
+		t.Fatalf("LoadAssets: %v", err)
+	}
+	if assets.Root != root || string(assets.Frontend) != "skills/omr-frontend/SKILL.md" || string(assets.ReviewBrief) != "prompts/review-task-protocol.zh.md" {
+		t.Fatalf("unexpected external assets: %#v", assets)
 	}
 }
 
