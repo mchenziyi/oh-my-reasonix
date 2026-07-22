@@ -269,6 +269,16 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 	}
 }
 
+func TestConfigValidateRejectsDisabledRouting(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\nexplore = \"omr-explore\"\n[profiles]\ndisabled = \"omr-explore\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runConfig([]string{"validate", "--config", path}); err == nil {
+		t.Fatal("expected disabled routing validation error")
+	}
+}
+
 func TestSessionRequiresResume(t *testing.T) {
 	if err := runSession(nil); err == nil {
 		t.Fatal("expected session subcommand requirement")

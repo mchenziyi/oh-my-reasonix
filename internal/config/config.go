@@ -33,6 +33,25 @@ type AgentConfig struct {
 	ReadOnly   *bool
 }
 
+// DisabledRoutingConflicts returns category routes that target a disabled Profile.
+func (c Config) DisabledRoutingConflicts() []string {
+	if len(c.Categories) == 0 || len(c.DisabledProfiles) == 0 {
+		return nil
+	}
+	disabled := make(map[string]bool, len(c.DisabledProfiles))
+	for _, profile := range c.DisabledProfiles {
+		disabled[profile] = true
+	}
+	categories := make([]string, 0)
+	for category, profile := range c.Categories {
+		if disabled[profile] {
+			categories = append(categories, category)
+		}
+	}
+	sort.Strings(categories)
+	return categories
+}
+
 func Load(path string) (Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {

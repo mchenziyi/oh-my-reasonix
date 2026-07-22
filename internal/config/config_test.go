@@ -63,6 +63,14 @@ func TestLoadDisabledProfiles(t *testing.T) {
 	}
 }
 
+func TestDisabledRoutingConflictsAreSorted(t *testing.T) {
+	cfg := Config{Categories: map[string]string{"z": "omr-debug", "a": "omr-research"}, DisabledProfiles: []string{"omr-debug", "omr-research"}}
+	got := cfg.DisabledRoutingConflicts()
+	if len(got) != 2 || got[0] != "a" || got[1] != "z" {
+		t.Fatalf("unexpected conflicts: %#v", got)
+	}
+}
+
 func TestLoadRejectsInvalidAgentPromptPath(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nprompt_file = \"/tmp/debug.md\"\n"), 0o600); err != nil {

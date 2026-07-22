@@ -127,11 +127,9 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q references uninstalled Profile %q", category, profile))
 			}
-			for _, disabled := range omrConfig.DisabledProfiles {
-				if profile == disabled {
-					result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q routes to disabled Profile %q", category, profile))
-				}
-			}
+		}
+		for _, category := range omrConfig.DisabledRoutingConflicts() {
+			result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q routes to disabled Profile %q", category, omrConfig.Categories[category]))
 		}
 		for profile, agent := range omrConfig.Agents {
 			if agent.PromptFile == "" {

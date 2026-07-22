@@ -152,6 +152,17 @@ func runConfig(args []string) error {
 		}
 		return err
 	}
+	if conflicts := cfg.DisabledRoutingConflicts(); len(conflicts) > 0 {
+		err = fmt.Errorf("OMR category %q routes to disabled Profile %q", conflicts[0], cfg.Categories[conflicts[0]])
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Path  string `json:"path"`
+				Valid bool   `json:"valid"`
+				Error string `json:"error"`
+			}{Path: path, Error: err.Error()})
+		}
+		return err
+	}
 	if *jsonOutput {
 		return json.NewEncoder(os.Stdout).Encode(struct {
 			Path             string                           `json:"path"`
