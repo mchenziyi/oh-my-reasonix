@@ -237,3 +237,9 @@ func TestSessionRequiresResume(t *testing.T) {
 		t.Fatal("expected session resume requirement")
 	}
 }
+
+func TestSessionResumeRejectsMissingBinary(t *testing.T) {
+	if err := runSession([]string{"resume", "--project-dir", t.TempDir(), "--binary", "missing-reasonix"}); err == nil {
+		t.Fatal("expected missing Reasonix binary error")
+	}
+}
