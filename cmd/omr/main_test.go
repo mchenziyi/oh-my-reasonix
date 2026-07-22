@@ -163,3 +163,37 @@ func TestDoctorJSON(t *testing.T) {
 		t.Fatalf("expected JSON arrays for warnings/errors: %s", data)
 	}
 }
+
+func TestConfigValidateJSON(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr-debug]\nread_only = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Path  string `json:"path"`
+		Valid bool   `json:"valid"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if result.Path != path || !result.Valid {
+		t.Fatalf("unexpected config result: %#v", result)
+	}
+}

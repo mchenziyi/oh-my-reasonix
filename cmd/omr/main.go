@@ -122,6 +122,7 @@ func runConfig(args []string) error {
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
 	configPath := flags.String("config", "", "OMR config TOML path")
+	jsonOutput := flags.Bool("json", false, "write JSON output")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -129,11 +130,19 @@ func runConfig(args []string) error {
 	if path == "" {
 		path = filepath.Join(*projectDir, ".reasonix", "omr", "config.toml")
 	}
-	if _, err := omrconfig.Load(path); err != nil {
+	cfg, err := omrconfig.Load(path)
+	if err != nil {
 		if os.IsNotExist(err) {
 			return fmt.Errorf("OMR config not found: %s", path)
 		}
 		return err
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(struct {
+			Path   string                           `json:"path"`
+			Valid  bool                             `json:"valid"`
+			Agents map[string]omrconfig.AgentConfig `json:"agents"`
+		}{Path: path, Valid: true, Agents: cfg.Agents})
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
 	return nil
