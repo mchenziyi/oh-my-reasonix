@@ -31,6 +31,8 @@ go run ./cmd/omr upgrade --dry-run
 go run ./cmd/omr uninstall --dry-run
 ```
 
+Doctor 默认从 PATH 查找 `reasonix`；如果不希望修改全局 PATH，可通过 `OMR_REASONIX_BIN=/Applications/Reasonix.app/Contents/MacOS/reasonix` 指定可执行文件。
+
 如果恢复时提示 Session 被其他 Reasonix 进程占用，先关闭原窗口；需要保留原进程时可使用：
 
 ```bash

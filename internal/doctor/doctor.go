@@ -75,7 +75,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	} else if !os.IsNotExist(statErr) {
 		result.Errors = append(result.Errors, fmt.Sprintf("read OMR config: %v", statErr))
 	}
-	binary, err := exec.LookPath("reasonix")
+	binary, err := resolveReasonixBinary()
 	if err != nil {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
 	} else {
@@ -225,6 +225,20 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		result.Checks = append(result.Checks, Check{Name: "asset.source", Status: "PASS", Detail: assets.Root})
 	}
 	return result, resultError(result)
+}
+
+func resolveReasonixBinary() (string, error) {
+	configured := strings.TrimSpace(os.Getenv("OMR_REASONIX_BIN"))
+	if configured == "" {
+		return exec.LookPath("reasonix")
+	}
+	if filepath.IsAbs(configured) {
+		if info, err := os.Stat(configured); err == nil && !info.IsDir() {
+			return configured, nil
+		}
+		return "", fmt.Errorf("OMR_REASONIX_BIN is not an executable file: %s", configured)
+	}
+	return exec.LookPath(configured)
 }
 
 func sourceDriftMessage(drift string) string {

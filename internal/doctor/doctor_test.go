@@ -157,6 +157,14 @@ func TestSourceDriftMessageIncludesRemediation(t *testing.T) {
 	}
 }
 
+func TestResolveReasonixBinaryFromEnvironment(t *testing.T) {
+	t.Setenv("OMR_REASONIX_BIN", "/bin/sh")
+	got, err := resolveReasonixBinary()
+	if err != nil || got != "/bin/sh" {
+		t.Fatalf("unexpected configured Reasonix binary: %q, err=%v", got, err)
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
