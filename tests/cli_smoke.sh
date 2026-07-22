@@ -39,4 +39,16 @@ OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$p
 grep -qx -- '--continue' "$capture"
 grep -qx -- '--copy' "$capture"
 
+cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
+[runtime]
+max_steps = 4
+max_steps = 8
+EOF
+if go run ./cmd/omr config validate --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/invalid-config.json"; then
+  echo "expected invalid config to fail" >&2
+  exit 1
+fi
+grep -q '"valid":false' "$project_dir/invalid-config.json"
+grep -q 'duplicate key' "$project_dir/invalid-config.json"
+
 echo "OMR CLI smoke: PASS"
