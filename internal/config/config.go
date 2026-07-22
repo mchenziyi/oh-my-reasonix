@@ -37,7 +37,7 @@ func Load(path string) (Config, error) {
 	seen := make(map[string]bool)
 	scanner := bufio.NewScanner(strings.NewReader(string(data)))
 	for lineNo := 1; scanner.Scan(); lineNo++ {
-		line := strings.TrimSpace(strings.SplitN(scanner.Text(), "#", 2)[0])
+		line := strings.TrimSpace(stripComment(scanner.Text()))
 		if line == "" {
 			continue
 		}
@@ -157,4 +157,21 @@ func stringValue(raw string) string {
 		return raw[1 : len(raw)-1]
 	}
 	return raw
+}
+
+func stripComment(line string) string {
+	var quote rune
+	for i, r := range line {
+		if (r == '\'' || r == '"') && (i == 0 || line[i-1] != '\\') {
+			if quote == 0 {
+				quote = r
+			} else if quote == r {
+				quote = 0
+			}
+		}
+		if r == '#' && quote == 0 {
+			return line[:i]
+		}
+	}
+	return line
 }
