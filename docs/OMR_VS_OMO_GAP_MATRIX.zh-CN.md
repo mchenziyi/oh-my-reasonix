@@ -31,8 +31,8 @@
 | 运行时任务强制 | 主要依赖 Orchestrator Prompt | Hook 和状态机制持续约束 Agent | P0 |
 | Todo Continuation | Orchestrator 已要求未完成 Todo 不得结束；运行时强制仍依赖 Reasonix Hook/Session | 自动强制未完成任务继续 | P0 |
 | 失败恢复 | Reasonix 已提供原生 Session recovery/auto-resume；OMR 负责 Prompt 约束 | Session recovery、auto-resume | P0 |
-| 停滞检测 | Orchestrator 已覆盖空响应、重复操作和无新证据；运行时检测仍待 Hook | 空响应、循环、无进展检测 | P0 |
-| 测试失败闭环 | Orchestrator 已要求失败 → 修复 → 重测；运行时状态机仍待 Hook | 工作流机制强制回到修复流程 | P0 |
+| 停滞检测 | Orchestrator 已覆盖空响应、重复操作和无新证据；运行时强制依赖 Reasonix Hook 接口 | 空响应、循环、无进展检测 | P0 |
+| 测试失败闭环 | Orchestrator 已要求失败 → 修复 → 重测；运行时状态机依赖 Reasonix Hook/事件接口 | 工作流机制强制回到修复流程 | P0 |
 | Review 阻塞闭环 | 已有 Review 和证据校验 | 持续执行直到 Blocking Issue 关闭 | P0 |
 | 真实质量基准 | 已支持 `quality --run`，仍需扩大真实任务覆盖 | 工作流可持续执行复杂任务 | P0 |
 | 任务事件记录 | 不建立 OMR 第二套事件状态；复用 Reasonix 原生事件/Session | 有任务、Hook、后台通知链 | P0 |
@@ -46,7 +46,7 @@
 | 任务类别路由 | 支持内置路由与项目级 `[routing]` Category → Profile 覆盖 | visual、business-logic 等 Category | P1 |
 | 后台 Agent 编排 | 依赖 Reasonix 原生，OMR 不统一编排 | 多 Agent 并行执行 | P1 |
 | 并发策略 | 质量 Runtime 基准支持项目级并发上限；生产任务编排仍依赖 Reasonix 原生 | 按 Provider/Model 配置并发上限 | P1 |
-| 后台结果汇聚 | 没有统一协议 | 通知、收集结果并继续主任务 | P1 |
+| 后台结果汇聚 | 依赖 Reasonix 原生后台任务结果协议，OMR 不重复维护状态 | 通知、收集结果并继续主任务 | P1 |
 | Debug Agent | 已有只读 `omr-debug` | Oracle 等架构/调试 Agent | P1 |
 | Research Agent | 已有只读 `omr-research` | Librarian/Research 类 Agent | P1 |
 | Frontend Agent | 已有只读 `omr-frontend` | Frontend UI/UX Agent | P2 |
@@ -56,8 +56,8 @@
 
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
-| PreToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 尚无专用 Hook 资产 | P1 |
-| PostToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 尚无专用 Hook 资产 | P1 |
+| PreToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 仅需在接口稳定后提供策略资产 | P1 |
+| PostToolUse 检查 | Reasonix 原生 Hook 已支持；OMR 仅需在接口稳定后提供策略资产 | P1 |
 | UserPromptSubmit 预处理 | 没有 | P2 |
 | Stop/完成拦截 | 主要依赖 `complete_step` | P1 |
 | Todo continuation enforcer | Reasonix 原生 goal machine 已拦截未完成 Todo；OMR 提供流程规则 | P0 |
@@ -104,9 +104,9 @@
 
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
-| 官方文档查询 MCP | 没有 OMR 内置集成 | P1 |
-| GitHub 代码搜索 | 没有 | P1 |
-| Web 搜索 | 没有 OMR 内置集成 | P1 |
+| 官方文档查询 MCP | 依赖 Reasonix MCP/Research 工具注册，不在 OMR 重复集成 | P1 |
+| GitHub 代码搜索 | 依赖 Reasonix Research 工具注册 | P1 |
+| Web 搜索 | 依赖 Reasonix Research 工具注册 | P1 |
 | Skill 内嵌 MCP | 没有 | P2 |
 | LSP 优先路由 | 不由 OMR 编排 | P1 |
 | AST/AST-Grep 工作流 | 没有 | P1 |
@@ -119,9 +119,9 @@
 
 | 能力 | OMR 当前状态 | 优先级 |
 |---|---|---|
-| Session 列表 | 没有 OMR 级入口 | P1 |
+| Session 列表 | 依赖 Reasonix 原生 Session 查询接口；当前 OMR 提供恢复和诊断导出 | P1 |
 | Session 搜索 | 没有 | P2 |
-| Session 内容读取 | 没有 | P1 |
+| Session 内容读取 | 依赖 Reasonix 原生 Session 读取接口 | P1 |
 | Session 恢复 | 已提供 `omr session resume` 与 `omr session export`，复用 Reasonix 原生能力 | P0 |
 | 后台任务状态 | 没有统一 OMR 展示 | P1 |
 | Agent 调用树 | 没有 | P2 |
