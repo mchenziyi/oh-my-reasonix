@@ -49,7 +49,7 @@
 | 后台结果汇聚 | 没有统一协议 | 通知、收集结果并继续主任务 | P1 |
 | Debug Agent | 已有只读 `omr-debug` | Oracle 等架构/调试 Agent | P1 |
 | Research Agent | 已有只读 `omr-research` | Librarian/Research 类 Agent | P1 |
-| Frontend Agent | 没有 | Frontend UI/UX Agent | P2 |
+| Frontend Agent | 已有只读 `omr-frontend` | Frontend UI/UX Agent | P2 |
 | Visual Agent | 没有 | Multimodal Looker 等 | P2 |
 
 ### 3.3 Hook 与生命周期
@@ -122,7 +122,7 @@
 | Session 列表 | 没有 OMR 级入口 | P1 |
 | Session 搜索 | 没有 | P2 |
 | Session 内容读取 | 没有 | P1 |
-| Session 恢复 | 没有 | P0 |
+| Session 恢复 | 已提供 `omr session resume` 与 `omr session export`，复用 Reasonix 原生能力 | P0 |
 | 后台任务状态 | 没有统一 OMR 展示 | P1 |
 | Agent 调用树 | 没有 | P2 |
 | Token/成本统计 | Cache Guard 有部分指标 | P1 |
