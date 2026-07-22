@@ -36,7 +36,7 @@ go run ./cmd/omr uninstall --dry-run
 go run ./cmd/omr session resume --project-dir . --copy
 
 # 导出指定 Session 的 Reasonix 恢复/冲突诊断包
-go run ./cmd/omr session export <branch-id-or-session-path> --project-dir . --out /tmp/reasonix-session.zip
+go run ./cmd/omr session export --project-dir . --out /tmp/reasonix-session.zip <branch-id-or-session-path>
 ```
 
 ## 让 Reasonix 自己安装

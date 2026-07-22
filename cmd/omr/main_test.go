@@ -244,6 +244,12 @@ func TestSessionExportRequiresSession(t *testing.T) {
 	}
 }
 
+func TestSessionExportAcceptsFlagsBeforeSession(t *testing.T) {
+	if err := runSession([]string{"export", "--project-dir", t.TempDir(), "--binary", "missing-reasonix", "branch-1"}); err == nil {
+		t.Fatal("expected missing Reasonix binary error after parsing flags")
+	}
+}
+
 func TestSessionResumeRejectsMissingBinary(t *testing.T) {
 	if err := runSession([]string{"resume", "--project-dir", t.TempDir(), "--binary", "missing-reasonix"}); err == nil {
 		t.Fatal("expected missing Reasonix binary error")

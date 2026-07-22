@@ -127,7 +127,7 @@
 | Agent 调用树 | 没有 | P2 |
 | Token/成本统计 | Cache Guard 有部分指标 | P1 |
 | Hook 日志 | 没有 | P2 |
-| 失败原因归档 | Quality Benchmark 已保留 Runtime 错误、测试失败和越界原因；Session 级归档仍待统一入口 | P1 |
+| 失败原因归档 | Quality Benchmark 已保留 Runtime 错误、测试失败和越界原因；已增加 `omr session export` 统一导出 Reasonix Session 诊断包 | P1 |
 | Tmux/可视化后台终端 | 没有 OMR 层支持 | P2 |
 
 ### 3.8 安装、升级与兼容层
