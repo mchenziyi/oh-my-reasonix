@@ -79,6 +79,8 @@ read_only = true
 
 `[agent.<profile>]` 可为 OMR Profile 声明模型、附加 Prompt 文件和只读约束；`omr doctor` 会校验 Profile 名称、项目相对 Prompt 路径和字段格式，实际执行仍由 Reasonix 原生 Profile 负责。
 
+使用 `omr profile list --json` 可以同时查看已安装 Profile 及其 `model`、`prompt_file`、`read_only` 配置覆盖。
+
 `fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
 带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
 `--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。
