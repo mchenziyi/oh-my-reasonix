@@ -155,6 +155,15 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		if len(result.Errors) == 0 {
 			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles and categories are installed"})
 		}
+		if len(omrConfig.Categories) > 0 && len(result.Errors) == 0 {
+			result.Checks = append(result.Checks, Check{Name: "omr.config.routing", Status: "PASS", Detail: fmt.Sprintf("%d category routes configured", len(omrConfig.Categories))})
+		}
+		if omrConfig.Concurrency > 0 && len(result.Errors) == 0 {
+			result.Checks = append(result.Checks, Check{Name: "omr.config.concurrency", Status: "PASS", Detail: fmt.Sprintf("runtime concurrency=%d", omrConfig.Concurrency)})
+		}
+		if omrConfig.MaxCost > 0 && len(result.Errors) == 0 {
+			result.Checks = append(result.Checks, Check{Name: "omr.config.max_cost", Status: "PASS", Detail: fmt.Sprintf("quality cost budget=%.4f", omrConfig.MaxCost)})
+		}
 	}
 	generated := install.GeneratedPromptPathForDoctor(root)
 	if actual, err := fileutil.SHA256File(generated); err != nil || actual != m.Prompt.FinalSHA256 {

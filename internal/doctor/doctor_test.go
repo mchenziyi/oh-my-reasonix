@@ -71,20 +71,23 @@ func TestRunRejectsInvalidOMRConfig(t *testing.T) {
 func TestRunReportsValidOMRConfig(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
-	if err := os.WriteFile(path, []byte("[quality]\nmin_qualified_rate = 1\n"), 0o644); err != nil {
+	if err := os.WriteFile(path, []byte("[quality]\nmin_qualified_rate = 1\nmax_cost = 1\n[runtime]\nconcurrency = 2\n[routing]\nexplore = \"omr-explore\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	result, err := Run(root, doctorAssets())
 	if err != nil {
 		t.Fatalf("doctor: %v %#v", err, result)
 	}
-	found := false
+	found, routing, concurrency, cost := false, false, false, false
 	for _, check := range result.Checks {
 		if check.Name == "omr.config" && check.Status == "PASS" {
 			found = true
 		}
+		routing = routing || check.Name == "omr.config.routing"
+		concurrency = concurrency || check.Name == "omr.config.concurrency"
+		cost = cost || check.Name == "omr.config.max_cost"
 	}
-	if !found {
+	if !found || !routing || !concurrency || !cost {
 		t.Fatalf("valid config check missing: %#v", result.Checks)
 	}
 }
