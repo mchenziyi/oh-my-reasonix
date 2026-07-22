@@ -138,7 +138,7 @@ func TestDoctorJSON(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Checks []struct{ Name string `json:"Name"` } `json:"Checks"`
+		Checks []struct{ Name string `json:"name"` } `json:"checks"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)

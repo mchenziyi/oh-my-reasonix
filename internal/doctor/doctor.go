@@ -17,16 +17,16 @@ import (
 )
 
 type Result struct {
-	Root     string
-	Checks   []Check
-	Warnings []string
-	Errors   []string
+	Root     string   `json:"root"`
+	Checks   []Check  `json:"checks"`
+	Warnings []string `json:"warnings"`
+	Errors   []string `json:"errors"`
 }
 
 type Check struct {
-	Name   string
-	Status string
-	Detail string
+	Name   string `json:"name"`
+	Status string `json:"status"`
+	Detail string `json:"detail"`
 }
 
 func (r Result) Blocking() bool { return len(r.Errors) > 0 }
