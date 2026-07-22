@@ -25,6 +25,8 @@ EOF
 go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doctor.json"
 go run ./cmd/omr profile list --project-dir "$project_dir" --json > "$project_dir/profiles.json"
 go run ./cmd/omr config validate --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/config.json"
+go run ./cmd/omr upgrade --project-dir "$project_dir" --dry-run > "$project_dir/upgrade.txt"
+go run ./cmd/omr uninstall --project-dir "$project_dir" --dry-run > "$project_dir/uninstall.txt"
 
 grep -q '"name":"manifest"' "$project_dir/doctor.json"
 grep -q '"id":"omr-explore"' "$project_dir/profiles.json"
@@ -32,6 +34,8 @@ grep -q '"id":"omr-research"' "$project_dir/profiles.json"
 grep -q '"id":"omr-debug"' "$project_dir/profiles.json"
 grep -q '"model":"deepseek-v4-flash"' "$project_dir/profiles.json"
 grep -q '"valid":true' "$project_dir/config.json"
+grep -q 'NOOP\|PLAN' "$project_dir/upgrade.txt"
+grep -q 'PLAN\|REMOVE' "$project_dir/uninstall.txt"
 
 OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
 grep -qx -- '--continue' "$capture"
