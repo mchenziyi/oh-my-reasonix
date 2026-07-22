@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/cacheguard"
+	"github.com/mchenziyi/oh-my-reasonix/internal/claude"
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -47,6 +48,8 @@ func main() {
 		err = runSession(os.Args[2:])
 	case "benchmark":
 		err = runBenchmark(os.Args[2:])
+	case "claude":
+		err = runClaude(os.Args[2:])
 	case "version":
 		fmt.Printf("omr %s\n", version)
 	default:
@@ -85,6 +88,33 @@ func runInstall(args []string, upgrade bool) error {
 	})
 	report.Render(os.Stdout)
 	return runErr
+}
+
+func runClaude(args []string) error {
+	if len(args) == 0 || args[0] != "import" {
+		return errors.New("claude requires import")
+	}
+	flags := flag.NewFlagSet("claude import", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	dryRun := flags.Bool("dry-run", false, "show what would be imported")
+	force := flags.Bool("force", false, "overwrite existing files")
+	if err := flags.Parse(args[1:]); err != nil {
+		return err
+	}
+	report := claude.ImportRules(claude.Options{
+		ProjectDir: *projectDir,
+		DryRun:     *dryRun,
+		Force:      *force,
+	})
+	report.Render(os.Stdout)
+	if len(report.Errors) > 0 {
+		return fmt.Errorf("claude import failed")
+	}
+	if len(report.Conflicts) > 0 && !report.Written {
+		return fmt.Errorf("claude import blocked by conflicts")
+	}
+	return nil
 }
 
 func runUninstall(args []string) error {
