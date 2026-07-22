@@ -15,6 +15,7 @@ type Config struct {
 	MetricsDir          string
 	Model               string
 	MaxSteps            int
+	Concurrency         int
 	Timeout             time.Duration
 	MinQualifiedRate    float64
 	MinQualifiedRateSet bool
@@ -70,7 +71,7 @@ func Load(path string) (Config, error) {
 	if err := scanner.Err(); err != nil {
 		return Config{}, err
 	}
-	if cfg.MaxSteps < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.Timeout < 0 {
+	if cfg.MaxSteps < 0 || cfg.Concurrency < 0 || cfg.MinQualifiedRate < 0 || cfg.MinQualifiedRate > 1 || cfg.Timeout < 0 {
 		return Config{}, fmt.Errorf("invalid OMR benchmark configuration")
 	}
 	for profile, agent := range cfg.Agents {
@@ -116,6 +117,12 @@ func assign(cfg *Config, section, key, raw string) error {
 				return fmt.Errorf("invalid max_steps")
 			}
 			cfg.MaxSteps = value
+		case "concurrency":
+			value, err := strconv.Atoi(raw)
+			if err != nil {
+				return fmt.Errorf("invalid concurrency")
+			}
+			cfg.Concurrency = value
 		case "timeout":
 			value, err := time.ParseDuration(stringValue(raw))
 			if err != nil {

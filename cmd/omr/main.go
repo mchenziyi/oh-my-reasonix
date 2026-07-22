@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/cacheguard"
@@ -356,6 +357,7 @@ func runQualityBenchmark(args []string) error {
 	eventsPath := flags.String("events", "", "optional JSONL structured event log for --runtime")
 	model := flags.String("model", "", "optional Reasonix model for --runtime")
 	maxSteps := flags.Int("max-steps", 0, "optional Reasonix step limit for --runtime")
+	concurrency := flags.Int("concurrency", 1, "maximum concurrent --runtime fixtures")
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
 	configPath := flags.String("config", "", "optional OMR config TOML (default: <project>/.reasonix/omr/config.toml)")
@@ -378,6 +380,9 @@ func runQualityBenchmark(args []string) error {
 		}
 		if !flagWasSet(flags, "max-steps") && cfg.MaxSteps != 0 {
 			*maxSteps = cfg.MaxSteps
+		}
+		if !flagWasSet(flags, "concurrency") && cfg.Concurrency != 0 {
+			*concurrency = cfg.Concurrency
 		}
 		if !flagWasSet(flags, "timeout") && cfg.TimeoutSet {
 			*timeout = cfg.Timeout
@@ -417,26 +422,37 @@ func runQualityBenchmark(args []string) error {
 		return nil
 	}
 	if *runtimeRun {
-		results := map[string]qualitybench.RunResult{}
-		for _, fixture := range fixtures {
-			ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-			result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
-			cancel()
-			if runErr != nil {
-				// Keep evaluating the remaining fixtures so one runtime failure
-				// produces a complete report instead of hiding later failures.
-				results[fixture.ID] = result
-				continue
-			}
-			if *eventsPath != "" {
-				events, eventErr := qualitybench.ReadEventNames(*eventsPath)
-				if eventErr != nil {
-					return eventErr
-				}
-				result.Events = events
-			}
-			results[fixture.ID] = result
+		if *concurrency < 1 {
+			return errors.New("--concurrency must be at least 1")
 		}
+		if *eventsPath != "" && *concurrency > 1 {
+			return errors.New("--events requires --concurrency 1 because one event stream cannot be safely shared")
+		}
+		results := map[string]qualitybench.RunResult{}
+		var mu sync.Mutex
+		sem := make(chan struct{}, *concurrency)
+		var wg sync.WaitGroup
+		for _, fixture := range fixtures {
+			fixture := fixture
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				ctx, cancel := context.WithTimeout(context.Background(), *timeout)
+				result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
+				cancel()
+				if runErr == nil && *eventsPath != "" {
+					if events, eventErr := qualitybench.ReadEventNames(*eventsPath); eventErr == nil {
+						result.Events = events
+					}
+				}
+				mu.Lock()
+				results[fixture.ID] = result
+				mu.Unlock()
+			}()
+		}
+		wg.Wait()
 		report := qualitybench.EvaluateAll(fixtures, results)
 		if err := writeJSONValue(*outputPath, report); err != nil {
 			return err
