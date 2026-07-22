@@ -95,7 +95,7 @@
 | Profile 禁用列表 | 已支持 `[profiles] disabled`，仅影响 OMR 路由和诊断标记，不删除文件 | P1 |
 | 并发上限配置 | 已支持 `[runtime] concurrency`（质量基准） | P1 |
 | Category 自定义 | 已支持项目级 `[routing]` 覆盖 | P2 |
-| 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、路径和只读声明；完整 TOML Schema 仍未实现 | P1 |
+| 配置 Schema 校验 | 已校验当前 TOML 子集、Agent 字段、重复键、路径和只读声明，并提供 `omr config schema`；完整 Reasonix TOML 仍由宿主负责 | P1 |
 | 用户级配置 | 明确不支持 | P2 |
 | JSONC/注释配置 | 没有 | P2 |
 | 环境变量展开 | 没有 OMR 配置层 | P2 |
