@@ -17,7 +17,11 @@ chmod +x "$fake_binary"
 cd "$repo_dir"
 go run ./cmd/omr init --project-dir "$project_dir" >/dev/null
 mkdir -p "$project_dir/.reasonix/omr"
-: > "$project_dir/.reasonix/omr/config.toml"
+cat > "$project_dir/.reasonix/omr/config.toml" <<'EOF'
+[agent.omr-research]
+model = "deepseek-v4-flash"
+read_only = true
+EOF
 go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doctor.json"
 go run ./cmd/omr profile list --project-dir "$project_dir" --json > "$project_dir/profiles.json"
 go run ./cmd/omr config validate --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/config.json"
@@ -26,6 +30,7 @@ grep -q '"name":"manifest"' "$project_dir/doctor.json"
 grep -q '"id":"omr-explore"' "$project_dir/profiles.json"
 grep -q '"id":"omr-research"' "$project_dir/profiles.json"
 grep -q '"id":"omr-debug"' "$project_dir/profiles.json"
+grep -q '"model":"deepseek-v4-flash"' "$project_dir/profiles.json"
 grep -q '"valid":true' "$project_dir/config.json"
 
 OMR_SESSION_CAPTURE="$capture" go run ./cmd/omr session resume --project-dir "$project_dir" --binary "$fake_binary"
