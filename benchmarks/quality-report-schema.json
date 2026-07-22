@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/mchenziyi/oh-my-reasonix/benchmarks/quality-report-schema.json",
+  "title": "OMR Quality Report",
+  "description": "Schema for the OMR quality benchmark report output by 'omr benchmark quality'.",
+  "type": "object",
+  "required": [
+    "fixture_count",
+    "evaluated_count",
+    "qualified_count",
+    "qualified_rate",
+    "metrics",
+    "evaluations"
+  ],
+  "properties": {
+    "fixture_count": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Total number of fixtures discovered."
+    },
+    "evaluated_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of fixtures that were actually evaluated."
+    },
+    "qualified_count": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Number of fixtures that passed all qualification checks."
+    },
+    "qualified_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Rate of qualified fixtures (qualified_count / evaluated_count). 1 if evaluated_count is 0."
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "prompt_tokens",
+        "completion_tokens",
+        "cache_hit_tokens",
+        "cache_miss_tokens",
+        "steps",
+        "cost",
+        "currency",
+        "compactions",
+        "readiness_checks",
+        "readiness_blocks",
+        "readiness_recoveries"
+      ],
+      "properties": {
+        "prompt_tokens": { "type": "integer", "minimum": 0 },
+        "completion_tokens": { "type": "integer", "minimum": 0 },
+        "cache_hit_tokens": { "type": "integer", "minimum": 0 },
+        "cache_miss_tokens": { "type": "integer", "minimum": 0 },
+        "steps": { "type": "integer", "minimum": 0 },
+        "cost": { "type": "number", "minimum": 0 },
+        "currency": { "type": "string" },
+        "compactions": { "type": "integer", "minimum": 0 },
+        "readiness_checks": { "type": "integer", "minimum": 0 },
+        "readiness_blocks": { "type": "integer", "minimum": 0 },
+        "readiness_recoveries": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "evaluations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["fixture_id", "qualified_completion"],
+        "properties": {
+          "fixture_id": { "type": "string", "minLength": 1 },
+          "qualified_completion": { "type": "boolean" },
+          "failures": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
