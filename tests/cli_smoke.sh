@@ -27,6 +27,7 @@ go run ./cmd/omr doctor --project-dir "$project_dir" --json > "$project_dir/doct
 go run ./cmd/omr profile list --project-dir "$project_dir" --json > "$project_dir/profiles.json"
 go run ./cmd/omr config validate --config "$project_dir/.reasonix/omr/config.toml" --json > "$project_dir/config.json"
 go run ./cmd/omr config schema > "$project_dir/schema.json"
+go run ./cmd/omr benchmark quality --replay --fixtures benchmarks/fixtures/metrics-summary --max-cost 1 --output "$project_dir/quality-pass.json"
 go run ./cmd/omr upgrade --project-dir "$project_dir" --dry-run > "$project_dir/upgrade.txt"
 go run ./cmd/omr uninstall --project-dir "$project_dir" --dry-run > "$project_dir/uninstall.txt"
 
@@ -38,6 +39,12 @@ grep -q '"model":"deepseek-v4-flash"' "$project_dir/profiles.json"
 grep -q '"valid":true' "$project_dir/config.json"
 grep -q '"agent"' "$project_dir/schema.json"
 grep -q '"additionalProperties": false' "$project_dir/schema.json"
+grep -q '"qualified_rate": 1' "$project_dir/quality-pass.json"
+if go run ./cmd/omr benchmark quality --replay --fixtures benchmarks/fixtures/metrics-summary --max-cost 0.1 > "$project_dir/quality-fail.txt" 2>&1; then
+  echo "expected quality max-cost gate to fail" >&2
+  exit 1
+fi
+grep -q 'cost' "$project_dir/quality-fail.txt"
 grep -q 'NOOP\|PLAN' "$project_dir/upgrade.txt"
 grep -q 'PLAN\|REMOVE' "$project_dir/uninstall.txt"
 
