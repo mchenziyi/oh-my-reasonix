@@ -91,10 +91,12 @@ func runInstall(args []string, upgrade bool) error {
 }
 
 func runClaude(args []string) error {
-	if len(args) == 0 || args[0] != "import" {
-		return errors.New("claude requires import")
+	if len(args) == 0 {
+		return errors.New("claude requires import, rules, skills, agents, mcp, or hooks")
 	}
-	flags := flag.NewFlagSet("claude import", flag.ContinueOnError)
+	sub := args[0]
+
+	flags := flag.NewFlagSet("claude "+sub, flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
 	dryRun := flags.Bool("dry-run", false, "show what would be imported")
@@ -102,17 +104,35 @@ func runClaude(args []string) error {
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
-	report := claude.ImportRules(claude.Options{
+	opts := claude.Options{
 		ProjectDir: *projectDir,
 		DryRun:     *dryRun,
 		Force:      *force,
-	})
+	}
+
+	var report claude.Report
+	switch sub {
+	case "rules":
+		report = claude.ImportRules(opts)
+	case "skills":
+		report = claude.ImportSkills(opts)
+	case "agents":
+		report = claude.ImportAgents(opts)
+	case "mcp":
+		report = claude.ImportMCP(opts)
+	case "hooks":
+		report = claude.ImportHooks(opts)
+	case "import":
+		report = claude.ImportAll(opts)
+	default:
+		return fmt.Errorf("unknown claude subcommand %q (use: import, rules, skills, agents, mcp, hooks)", sub)
+	}
 	report.Render(os.Stdout)
 	if len(report.Errors) > 0 {
-		return fmt.Errorf("claude import failed")
+		return fmt.Errorf("claude %s failed", sub)
 	}
 	if len(report.Conflicts) > 0 && !report.Written {
-		return fmt.Errorf("claude import blocked by conflicts")
+		return fmt.Errorf("claude %s blocked by conflicts", sub)
 	}
 	return nil
 }

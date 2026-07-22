@@ -226,3 +226,239 @@ func TestDiscoverRulesIgnoresNonMdFiles(t *testing.T) {
 		t.Fatalf("expected 1 rule, got %d: %v", len(rules), rules)
 	}
 }
+
+// ─── Helpers for skills/agents/mcp/hooks tests ───
+
+func writeClaudeSkill(t *testing.T, root, name, content string) {
+	t.Helper()
+	dir := filepath.Join(root, filepath.FromSlash(SkillsDir))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeClaudeAgent(t *testing.T, root, name, content string) {
+	t.Helper()
+	dir := filepath.Join(root, filepath.FromSlash(AgentsDir))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeClaudeMCP(t *testing.T, root, content string) {
+	t.Helper()
+	dir := filepath.Join(root, filepath.FromSlash(".claude"))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "mcp.json"), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeClaudeHook(t *testing.T, root, name, content string) {
+	t.Helper()
+	dir := filepath.Join(root, filepath.FromSlash(HooksDir))
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// ─── ImportSkills tests ───
+
+func TestImportSkillsDryRun(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeSkill(t, root, "my-skill.yaml", "name: my-skill\ndescription: A test skill\n")
+
+	report := ImportSkills(Options{ProjectDir: root, DryRun: true})
+	if report.Errors != nil {
+		t.Fatalf("unexpected errors: %v", report.Errors)
+	}
+	if report.Written {
+		t.Fatal("dry-run should not write")
+	}
+	if report.NoOp {
+		t.Fatal("dry-run should show pending changes")
+	}
+}
+
+func TestImportSkillsWritesFiles(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeSkill(t, root, "my-skill.yaml", "name: my-skill\n")
+
+	report := ImportSkills(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+	targetPath := filepath.Join(root, filepath.FromSlash(OMRSkillsDir), "my-skill", "SKILL.md")
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("target not written: %v", err)
+	}
+	if string(data) != "name: my-skill\n" {
+		t.Fatalf("unexpected content: %q", data)
+	}
+}
+
+func TestImportSkillsNoClaudeDir(t *testing.T) {
+	root := newClaudeProject(t)
+	report := ImportSkills(Options{ProjectDir: root})
+	if !report.NoOp {
+		t.Fatal("expected no-op")
+	}
+}
+
+// ─── ImportAgents tests ───
+
+func TestImportAgentsDryRun(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeAgent(t, root, "helper.json", `{"name":"helper","tools":["read"]}`)
+
+	report := ImportAgents(Options{ProjectDir: root, DryRun: true})
+	if len(report.Changes) != 1 || report.Changes[0].Action != "IMPORT" {
+		t.Fatalf("expected 1 IMPORT, got: %v", report.Changes)
+	}
+}
+
+func TestImportAgentsWritesFiles(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeAgent(t, root, "helper.json", `{"name":"helper"}`)
+
+	report := ImportAgents(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+	targetPath := filepath.Join(root, filepath.FromSlash(OMRSkillsDir), "omr-helper", "SKILL.md")
+	if _, err := os.Stat(targetPath); err != nil {
+		t.Fatalf("target not written: %v", err)
+	}
+}
+
+func TestImportAgentsNoClaudeDir(t *testing.T) {
+	root := newClaudeProject(t)
+	report := ImportAgents(Options{ProjectDir: root})
+	if !report.NoOp {
+		t.Fatal("expected no-op")
+	}
+}
+
+// ─── ImportMCP tests ───
+
+func TestImportMCPDryRun(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeMCP(t, root, `{"mcpServers":{"server1":{"command":"node"}}}`)
+
+	report := ImportMCP(Options{ProjectDir: root, DryRun: true})
+	if len(report.Changes) != 1 {
+		t.Fatalf("expected 1 change, got: %v", report.Changes)
+	}
+}
+
+func TestImportMCPWritesFiles(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeMCP(t, root, `{"mcpServers":{"test":{"command":"test"}}}`)
+
+	report := ImportMCP(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+	targetPath := filepath.Join(root, ".reasonix", "mcp.json")
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
+		t.Fatalf("target not written: %v", err)
+	}
+	if !strings.Contains(string(data), "mcpServers") {
+		t.Fatalf("unexpected content: %q", data)
+	}
+}
+
+func TestImportMCPNoFile(t *testing.T) {
+	root := newClaudeProject(t)
+	report := ImportMCP(Options{ProjectDir: root})
+	if !report.NoOp {
+		t.Fatal("expected no-op when no .claude/mcp.json")
+	}
+}
+
+// ─── ImportHooks tests ───
+
+func TestImportHooksDryRun(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeHook(t, root, "pre-tool.js", "console.log('pre-tool')")
+
+	report := ImportHooks(Options{ProjectDir: root, DryRun: true})
+	if len(report.Changes) != 1 || report.Changes[0].Action != "IMPORT" {
+		t.Fatalf("expected 1 IMPORT, got: %v", report.Changes)
+	}
+}
+
+func TestImportHooksWritesFiles(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeHook(t, root, "pre-tool.js", "console.log('pre-tool')")
+
+	report := ImportHooks(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+	// Hook becomes a .md rule in .reasonix/rules/
+	rulesDir := filepath.Join(root, filepath.FromSlash(OMRRulesDir))
+	entries, err := os.ReadDir(rulesDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 rule file, got %d", len(entries))
+	}
+	if !strings.HasSuffix(entries[0].Name(), ".md") {
+		t.Fatalf("expected .md extension, got %q", entries[0].Name())
+	}
+}
+
+func TestImportHooksNoDir(t *testing.T) {
+	root := newClaudeProject(t)
+	report := ImportHooks(Options{ProjectDir: root})
+	if !report.NoOp {
+		t.Fatal("expected no-op")
+	}
+}
+
+// ─── ImportAll tests ───
+
+func TestImportAllCombinesAllTypes(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "style.md", "# Style")
+	writeClaudeSkill(t, root, "skill.yaml", "name: skill")
+	writeClaudeAgent(t, root, "agent.json", `{"name":"agent"}`)
+	writeClaudeMCP(t, root, `{"mcpServers":{"s":{"command":"c"}}}`)
+	writeClaudeHook(t, root, "hook.js", "hook content")
+
+	report := ImportAll(Options{ProjectDir: root, DryRun: true})
+	if report.NoOp {
+		t.Fatal("expected changes")
+	}
+	// Should have 5 changes (rules, skills, agents, mcp, hooks)
+	if len(report.Changes) != 5 {
+		t.Fatalf("expected 5 changes for all types, got %d: %v", len(report.Changes), report.Changes)
+	}
+}
+
+func TestImportAllWrite(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "style.md", "# Style")
+	writeClaudeMCP(t, root, `{}`)
+
+	report := ImportAll(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write for ImportAll")
+	}
+}
+
