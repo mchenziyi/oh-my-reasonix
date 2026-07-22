@@ -79,7 +79,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	if err != nil {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
 	} else {
-		result.Checks = append(result.Checks, Check{Name: "reasonix.binary", Status: "PASS", Detail: "found in PATH"})
+		result.Checks = append(result.Checks, Check{Name: "reasonix.binary", Status: "PASS", Detail: "found: " + binary})
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		probe, probeErr := (reasonix.Runner{Binary: binary, ProjectDir: root}).Probe(ctx)
 		cancel()
