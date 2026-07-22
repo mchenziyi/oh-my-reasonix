@@ -218,8 +218,11 @@ func runProfile(args []string) error {
 }
 
 func runSession(args []string) error {
-	if len(args) == 0 || args[0] != "resume" {
-		return errors.New("session requires resume")
+	if len(args) == 0 || (args[0] != "resume" && args[0] != "export") {
+		return errors.New("session requires resume or export")
+	}
+	if args[0] == "export" {
+		return runSessionExport(args[1:])
 	}
 	flags := flag.NewFlagSet("session resume", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
@@ -240,6 +243,36 @@ func runSession(args []string) error {
 	commandArgs := []string{"--continue"}
 	if *copySession {
 		commandArgs = append(commandArgs, "--copy")
+	}
+	cmd := exec.Command(path, commandArgs...)
+	cmd.Dir = *projectDir
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+	return cmd.Run()
+}
+
+func runSessionExport(args []string) error {
+	flags := flag.NewFlagSet("session export", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	out := flags.String("out", "", "diagnostic zip output path")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() != 1 || flags.Arg(0) == "" {
+		return errors.New("session export requires a branch id or session path")
+	}
+	path := *binary
+	if !filepath.IsAbs(path) {
+		resolved, err := exec.LookPath(path)
+		if err != nil {
+			return fmt.Errorf("Reasonix executable not found: %w", err)
+		}
+		path = resolved
+	}
+	commandArgs := []string{"doctor", "session", flags.Arg(0), "--zip"}
+	if *out != "" {
+		commandArgs = append(commandArgs, "--out", *out)
 	}
 	cmd := exec.Command(path, commandArgs...)
 	cmd.Dir = *projectDir

@@ -234,7 +234,13 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 
 func TestSessionRequiresResume(t *testing.T) {
 	if err := runSession(nil); err == nil {
-		t.Fatal("expected session resume requirement")
+		t.Fatal("expected session subcommand requirement")
+	}
+}
+
+func TestSessionExportRequiresSession(t *testing.T) {
+	if err := runSession([]string{"export", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("expected session export branch requirement")
 	}
 }
 
