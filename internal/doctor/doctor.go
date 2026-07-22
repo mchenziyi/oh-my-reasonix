@@ -98,6 +98,19 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 				result.Errors = append(result.Errors, fmt.Sprintf("Reasonix capability %q unavailable: %s", capability.Name, capability.Detail))
 			}
 		}
+		// Hook doctor: check if Reasonix supports hooks
+		hookCheck := Check{
+			Name:   "reasonix.hooks",
+			Status: "FAIL",
+			Detail: "Reasonix v1.17.17 does not expose a hook command; OMR hook strategy prompts may not be enforced at runtime",
+		}
+		// Reasonix v1.17.x doesn't have hook CLI; check if config references hooks
+		hookConfigPath := filepath.Join(root, ".reasonix", "hooks.yaml")
+		if _, err := os.Stat(hookConfigPath); err == nil {
+			hookCheck.Status = "WARN"
+			hookCheck.Detail = "hooks config file exists but Reasonix does not expose hook runtime"
+		}
+		result.Checks = append(result.Checks, hookCheck)
 	}
 	m, err := manifest.Load(install.ManifestPathForDoctor(root))
 	if err != nil {

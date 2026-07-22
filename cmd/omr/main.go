@@ -461,13 +461,17 @@ func runProfile(args []string) error {
 
 func runSession(args []string) error {
 	if len(args) == 0 {
-		return errors.New("session requires list, status, resume, or export")
+		return errors.New("session requires list, status, events, results, resume, or export")
 	}
 	switch args[0] {
 	case "list":
 		return runSessionList()
 	case "status":
 		return runSessionStatus(args[1:])
+	case "events":
+		return runSessionEvents(args[1:])
+	case "results":
+		return runSessionResults(args[1:])
 	case "export":
 		return runSessionExport(args[1:])
 	default:
@@ -496,6 +500,36 @@ func runSessionStatus(args []string) error {
 		return err
 	}
 	return json.NewEncoder(os.Stdout).Encode(info)
+}
+
+func runSessionEvents(args []string) error {
+	if len(args) == 0 {
+		return errors.New("session events requires a session ID")
+	}
+	limit := 20
+	if len(args) > 1 {
+		fmt.Sscanf(args[1], "%d", &limit)
+	}
+	events, err := reasonix.ReadSessionEvents(args[0], limit)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(events)
+}
+
+func runSessionResults(args []string) error {
+	if len(args) == 0 {
+		return errors.New("session results requires a session ID")
+	}
+	limit := 20
+	if len(args) > 1 {
+		fmt.Sscanf(args[1], "%d", &limit)
+	}
+	calls, err := reasonix.ReadSessionToolCalls(args[0], limit)
+	if err != nil {
+		return err
+	}
+	return json.NewEncoder(os.Stdout).Encode(calls)
 }
 
 func runSessionResume(args []string) error {

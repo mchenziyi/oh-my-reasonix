@@ -178,3 +178,141 @@ func decodeProjectDirHeuristic(encoded string) string {
 	}
 	return encoded
 }
+
+// EventEntry represents a single event from the events.jsonl event log.
+type EventEntry struct {
+	SchemaVersion int    `json:"schema_version"`
+	Type          string `json:"type"`
+	Revision      int    `json:"revision"`
+	Reason        string `json:"reason,omitempty"`
+	CreatedAt     string `json:"created_at"`
+	MessageIndex  int    `json:"message_index,omitempty"`
+}
+
+// ReadSessionEvents reads the event stream for a session.
+// Returns the events without their full message bodies (metadata only).
+func ReadSessionEvents(sessionID string, limit int) ([]EventEntry, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	projectsDir := filepath.Join(home, sessionStoreRel, "projects")
+	entries, _ := os.ReadDir(projectsDir)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		eventsPath := filepath.Join(projectsDir, entry.Name(), "sessions", sessionID+"-session.events.jsonl")
+		if _, err := os.Stat(eventsPath); err != nil {
+			continue
+		}
+
+		data, err := os.ReadFile(eventsPath)
+		if err != nil {
+			return nil, err
+		}
+
+		var events []EventEntry
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		start := 0
+		if limit > 0 && len(lines) > limit {
+			start = len(lines) - limit
+		}
+		for _, line := range lines[start:] {
+			var ev EventEntry
+			if err := json.Unmarshal([]byte(line), &ev); err != nil {
+				continue
+			}
+			events = append(events, ev)
+		}
+		return events, nil
+	}
+
+	return nil, fmt.Errorf("session %q events not found", sessionID)
+}
+
+// ToolCallInfo represents a tool invocation from the event stream.
+type ToolCallInfo struct {
+	MessageIndex int    `json:"message_index"`
+	ToolName     string `json:"tool_name"`
+	CreatedAt    string `json:"created_at"`
+}
+
+// ReadSessionToolCalls reads the event stream and extracts tool calls.
+func ReadSessionToolCalls(sessionID string, limit int) ([]ToolCallInfo, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return nil, err
+	}
+
+	projectsDir := filepath.Join(home, sessionStoreRel, "projects")
+	entries, _ := os.ReadDir(projectsDir)
+
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		eventsPath := filepath.Join(projectsDir, entry.Name(), "sessions", sessionID+"-session.events.jsonl")
+		if _, err := os.Stat(eventsPath); err != nil {
+			continue
+		}
+
+		data, err := os.ReadFile(eventsPath)
+		if err != nil {
+			return nil, err
+		}
+
+		var calls []ToolCallInfo
+		lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+		// Read from end to get latest
+		for i := len(lines) - 1; i >= 0 && len(calls) < limit; i-- {
+			var raw map[string]interface{}
+			if err := json.Unmarshal([]byte(lines[i]), &raw); err != nil {
+				continue
+			}
+			// Check if this event has assistant messages with tool_calls
+			msgs, ok := raw["messages"].([]interface{})
+			if !ok {
+				continue
+			}
+			for _, msg := range msgs {
+				m, ok := msg.(map[string]interface{})
+				if !ok {
+					continue
+				}
+				role, _ := m["role"].(string)
+				if role != "assistant" {
+					continue
+				}
+				tcs, ok := m["tool_calls"].([]interface{})
+				if !ok {
+					continue
+				}
+				for _, tc := range tcs {
+					tcMap, ok := tc.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					name, _ := tcMap["name"].(string)
+					if name == "" {
+						if fn, ok := tcMap["function"].(map[string]interface{}); ok {
+							name, _ = fn["name"].(string)
+						}
+					}
+					created, _ := raw["created_at"].(string)
+					mi, _ := raw["message_index"].(float64)
+					calls = append(calls, ToolCallInfo{
+						MessageIndex: int(mi),
+						ToolName:     name,
+						CreatedAt:    created,
+					})
+				}
+			}
+		}
+		return calls, nil
+	}
+
+	return nil, fmt.Errorf("session %q not found", sessionID)
+}
