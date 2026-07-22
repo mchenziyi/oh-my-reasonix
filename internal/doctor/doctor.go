@@ -108,7 +108,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, err
 	}
 	result.Checks = append(result.Checks, Check{Name: "manifest", Status: "PASS", Detail: "schema and required fields valid"})
-	if hasOMRConfig && (len(omrConfig.Agents) > 0 || len(omrConfig.Categories) > 0) {
+	if hasOMRConfig && (len(omrConfig.Agents) > 0 || len(omrConfig.Categories) > 0 || len(omrConfig.DisabledProfiles) > 0) {
 		installed := make(map[string]bool)
 		for _, profile := range m.NormalizedProfiles() {
 			installed[profile.ID] = true
@@ -126,6 +126,11 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		for category, profile := range omrConfig.Categories {
 			if !installed[profile] {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q references uninstalled Profile %q", category, profile))
+			}
+			for _, disabled := range omrConfig.DisabledProfiles {
+				if profile == disabled {
+					result.Errors = append(result.Errors, fmt.Sprintf("OMR category %q routes to disabled Profile %q", category, profile))
+				}
 			}
 		}
 		for profile, agent := range omrConfig.Agents {

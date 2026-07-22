@@ -105,6 +105,18 @@ func TestRunRejectsCategoryForUninstalledProfile(t *testing.T) {
 	}
 }
 
+func TestRunRejectsCategoryForDisabledProfile(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\nexplore = \"omr-explore\"\n[profiles]\ndisabled = \"omr-explore\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || len(result.Errors) == 0 || !strings.Contains(result.Errors[0], "disabled Profile") {
+		t.Fatalf("expected disabled routing error: %#v, err=%v", result.Errors, err)
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
