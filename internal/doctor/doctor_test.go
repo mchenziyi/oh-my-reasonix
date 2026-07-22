@@ -172,6 +172,17 @@ func TestResolveReasonixBinaryRejectsMissingConfiguredPath(t *testing.T) {
 	}
 }
 
+func TestResolveReasonixBinaryRejectsNonExecutableFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "reasonix")
+	if err := os.WriteFile(path, []byte("not executable"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OMR_REASONIX_BIN", path)
+	if _, err := resolveReasonixBinary(); err == nil {
+		t.Fatal("expected non-executable configured Reasonix binary error")
+	}
+}
+
 func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")

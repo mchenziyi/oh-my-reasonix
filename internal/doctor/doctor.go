@@ -233,7 +233,7 @@ func resolveReasonixBinary() (string, error) {
 		return exec.LookPath("reasonix")
 	}
 	if filepath.IsAbs(configured) {
-		if info, err := os.Stat(configured); err == nil && !info.IsDir() {
+		if info, err := os.Stat(configured); err == nil && !info.IsDir() && info.Mode().Perm()&0o111 != 0 {
 			return configured, nil
 		}
 		return "", fmt.Errorf("OMR_REASONIX_BIN is not an executable file: %s", configured)
