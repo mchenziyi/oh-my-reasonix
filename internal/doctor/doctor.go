@@ -117,6 +117,21 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 				result.Errors = append(result.Errors, fmt.Sprintf("OMR config references uninstalled Profile %q", profile))
 			}
 		}
+		for profile, agent := range omrConfig.Agents {
+			if agent.PromptFile == "" {
+				continue
+			}
+			promptPath := agent.PromptFile
+			if !filepath.IsAbs(promptPath) {
+				promptPath = filepath.Join(root, promptPath)
+			}
+			info, statErr := os.Stat(promptPath)
+			if statErr != nil {
+				result.Errors = append(result.Errors, fmt.Sprintf("Prompt file for Profile %q is unavailable: %v", profile, statErr))
+			} else if info.IsDir() {
+				result.Errors = append(result.Errors, fmt.Sprintf("Prompt file for Profile %q is a directory: %s", profile, agent.PromptFile))
+			}
+		}
 		if len(result.Errors) == 0 {
 			result.Checks = append(result.Checks, Check{Name: "omr.config.profiles", Status: "PASS", Detail: "all configured Profiles are installed"})
 		}

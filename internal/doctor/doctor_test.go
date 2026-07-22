@@ -3,6 +3,7 @@ package doctor
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -106,5 +107,26 @@ func TestRunRejectsConfigForUninstalledProfile(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("missing Profile error not reported: %#v", result.Errors)
+	}
+}
+
+func TestRunRejectsMissingAgentPromptFile(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.omr-explore]\nprompt_file = \"prompts/missing.md\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || len(result.Errors) == 0 {
+		t.Fatalf("expected missing prompt file error: %#v %v", result, err)
+	}
+	found := false
+	for _, issue := range result.Errors {
+		if strings.HasPrefix(issue, "Prompt file for Profile \"omr-explore\"") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("missing prompt file error not reported: %#v", result.Errors)
 	}
 }
