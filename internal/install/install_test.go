@@ -177,3 +177,20 @@ func TestUpgradeRequiresManifestAndPreservesBaseline(t *testing.T) {
 		t.Fatal("expected upgrade without manifest to fail")
 	}
 }
+
+func TestInitDryRunDoesNotWriteFiles(t *testing.T) {
+	root := newProject(t, "[agent]\n")
+	report, err := Init(Options{ProjectDir: root, Assets: testAssets(), DryRun: true})
+	if err != nil {
+		t.Fatalf("dry-run init: %v %#v", err, report)
+	}
+	if report.Written || report.NoOp {
+		t.Fatalf("dry-run should not report a write or no-op: %#v", report)
+	}
+	if _, err := os.Stat(ManifestPath(root)); !os.IsNotExist(err) {
+		t.Fatalf("dry-run wrote manifest: %v", err)
+	}
+	if _, err := os.Stat(GeneratedPromptPath(root)); !os.IsNotExist(err) {
+		t.Fatalf("dry-run wrote generated Prompt: %v", err)
+	}
+}
