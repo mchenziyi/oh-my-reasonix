@@ -104,16 +104,21 @@ func classifyFailure(fixtureID string, result RunResult, eval Evaluation) string
 }
 
 // isInfraError checks if an error message indicates infrastructure failure.
+// Uses Go runtime/OS error prefixes rather than substring matching to avoid
+// false positives from agent output text containing similar words.
 func isInfraError(errMsg string) bool {
 	if errMsg == "" {
 		return false
 	}
 	lower := strings.ToLower(errMsg)
-	infraKeywords := []string{"timeout", "context deadline exceeded",
-		"connection refused", "no such host",
-		"permission denied", "executable not found"}
-	for _, kw := range infraKeywords {
-		if strings.Contains(lower, kw) {
+	infraPrefixes := []string{
+		"context deadline exceeded",
+		"signal: killed",
+		"exec: ",
+		"fork/exec ",
+	}
+	for _, p := range infraPrefixes {
+		if strings.HasPrefix(lower, p) {
 			return true
 		}
 	}

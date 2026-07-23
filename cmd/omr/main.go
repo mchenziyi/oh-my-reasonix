@@ -627,6 +627,7 @@ func runQualityBenchmark(args []string) error {
 	omrResultsPath := flags.String("omr-results", "", "OMR JSON results for quality comparison")
 	outputPath := flags.String("output", "", "optional JSON report path")
 	replay := flags.Bool("replay", false, "run fixtures with deterministic replay outcomes")
+	paired := flags.Bool("paired", false, "run native/omr paired replay comparison (requires full-flow fixtures with native_replay/omr_replay)")
 	runtimeRun := flags.Bool("runtime", false, "run fixtures through the real Reasonix CLI")
 	runTests := flags.Bool("run-tests", false, "run fixture hidden and regression tests")
 	projectDir := flags.String("project-dir", ".", "project directory for fixture tests")
@@ -750,6 +751,30 @@ func runQualityBenchmark(args []string) error {
 		}
 		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
 			return fmt.Errorf("quality runtime failed: %w", err)
+		}
+		return nil
+	}
+	if *paired {
+		nativeResults := map[string]qualitybench.RunResult{}
+		omrResults := map[string]qualitybench.RunResult{}
+		for _, fixture := range fixtures {
+			native, omr, err := qualitybench.ReplayPaired(fixture)
+			if err != nil {
+				continue
+			}
+			nativeResults[fixture.ID] = native
+			omrResults[fixture.ID] = omr
+		}
+		nativeReport := qualitybench.EvaluateAll(fixtures, nativeResults)
+		omrReport := qualitybench.EvaluateAll(fixtures, omrResults)
+		comparison := qualitybench.CompareReports(nativeReport, omrReport)
+		if err := writeJSONValue(*outputPath, comparison); err != nil {
+			return err
+		}
+		if !comparison.Passed {
+			return fmt.Errorf("paired comparison failed: native=%d/%d omr=%d/%d",
+				nativeReport.QualifiedCount, nativeReport.EvaluatedCount,
+				omrReport.QualifiedCount, omrReport.EvaluatedCount)
 		}
 		return nil
 	}

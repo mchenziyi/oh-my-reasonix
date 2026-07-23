@@ -20,5 +20,21 @@
     "required_effects_met": true,
     "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
     "tests_skipped": false
+  },
+  "native_replay": {
+    "changed_paths": ["internal/config/loader.go", "internal/server/handler.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  },
+  "omr_replay": {
+    "changed_paths": ["internal/config/loader.go", "internal/server/handler.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
   }
 }

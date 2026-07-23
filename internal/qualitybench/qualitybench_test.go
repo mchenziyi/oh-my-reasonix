@@ -125,7 +125,7 @@ func TestEvaluateCategorizesPass(t *testing.T) {
 
 func TestEvaluateCategorizesInfra(t *testing.T) {
 	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
-		Failed: true, Error: "timeout",
+		Failed: true, Error: "context deadline exceeded",
 	})
 	if eval.Category != "infra" {
 		t.Fatalf("expected infra category, got %q", eval.Category)
@@ -249,6 +249,19 @@ func TestFullFlowFixtureReplayable(t *testing.T) {
 		}
 		if len(result.ChangedPaths) < 2 {
 			t.Fatalf("%s: expected >=2 changed files, got %d", id, len(result.ChangedPaths))
+		}
+		// Also verify paired replay works for this fixture
+		native, omr, pairErr := ReplayPaired(f)
+		if pairErr != nil {
+			t.Fatalf("%s: paired replay failed: %v", id, pairErr)
+		}
+		nativeEval := Evaluate(f, native)
+		omrEval := Evaluate(f, omr)
+		if !nativeEval.QualifiedCompletion {
+			t.Fatalf("%s: native paired replay not qualified: %v", id, nativeEval.Failures)
+		}
+		if !omrEval.QualifiedCompletion {
+			t.Fatalf("%s: omr paired replay not qualified: %v", id, omrEval.Failures)
 		}
 	}
 }
