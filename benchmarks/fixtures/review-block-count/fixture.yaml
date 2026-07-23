@@ -1,0 +1,20 @@
+{
+  "id": "review-block-count",
+  "description": "Review blocker 计数验证：Review 发现 blocking issue 后修复重新审查。",
+  "task": "修复 internal/auth/session.go 中的认证绕过漏洞。第一次 Review 被 blocker 阻塞，修复后第二次 Review 通过。",
+  "allowed_paths": ["internal/auth/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "review", "review_report", "complete_step"],
+  "replay": {
+    "changed_paths": ["internal/auth/session.go", "internal/auth/token.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "review", "review_report", "complete_step"],
+    "tests_skipped": false,
+    "review_block_count": 2,
+    "retry_count": 1
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "id": "stall-detection",
+  "description": "停滞检测：当 Agent 连续返回空响应时记录 stall_reason。",
+  "task": "修复 internal/parser/buffer.go 中的死循环。每次空响应循环后被记录 stall_reason。期望最终修复并完成。",
+  "allowed_paths": ["internal/parser/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay": {
+    "changed_paths": ["internal/parser/buffer.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false,
+    "stall_reason": "empty_response_loop",
+    "retry_count": 2
+  }
+}

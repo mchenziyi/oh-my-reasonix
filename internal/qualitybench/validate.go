@@ -235,7 +235,8 @@ func absFloat(f float64) float64 {
 // no schema_version, run_id, or execution_mode fields.
 func MigrateReport(raw []byte) (Report, error) {
 	var report Report
-	if err := unmarshalStrict(raw, &report); err != nil {
+	// First try strict parsing with schema_version check
+	if err := unmarshalStrict(raw, &report); err != nil || report.SchemaVersion == 0 {
 		// Try v0 migration: old reports don't have schema_version
 		var v0 struct {
 			FixtureCount   int          `json:"fixture_count"`
@@ -248,7 +249,7 @@ func MigrateReport(raw []byte) (Report, error) {
 		if err2 := unmarshalStrict(raw, &v0); err2 != nil {
 			return Report{}, err
 		}
-		report = Report{
+		return Report{
 			SchemaVersion:  0,
 			RunID:          "v0-migrated",
 			ExecutionMode:  ExecutionModeReplay,
@@ -258,7 +259,7 @@ func MigrateReport(raw []byte) (Report, error) {
 			QualifiedRate:  v0.QualifiedRate,
 			Metrics:        v0.Metrics,
 			Evaluations:    v0.Evaluations,
-		}
+		}, nil
 	}
 	if report.SchemaVersion == 0 {
 		report.SchemaVersion = 0
