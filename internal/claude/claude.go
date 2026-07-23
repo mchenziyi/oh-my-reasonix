@@ -15,6 +15,7 @@ const (
 	RulesDir     = ".claude/rules"
 	SkillsDir    = ".claude/skills"
 	AgentsDir    = ".claude/agents"
+	CommandsDir  = ".claude/commands"
 	MCPFile      = ".claude/mcp.json"
 	HooksDir     = ".claude/hooks"
 	OMRRulesDir  = ".reasonix/rules"

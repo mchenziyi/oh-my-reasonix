@@ -92,7 +92,7 @@ func runInstall(args []string, upgrade bool) error {
 
 func runClaude(args []string) error {
 	if len(args) == 0 {
-		return errors.New("claude requires import, rules, skills, agents, mcp, or hooks")
+		return errors.New("claude requires import, rules, skills, agents, commands, mcp, or hooks")
 	}
 	sub := args[0]
 
@@ -118,6 +118,8 @@ func runClaude(args []string) error {
 		report = claude.ImportSkills(opts)
 	case "agents":
 		report = claude.ImportAgents(opts)
+	case "commands":
+		report = claude.ImportCommands(opts)
 	case "mcp":
 		report = claude.ImportMCP(opts)
 	case "hooks":
@@ -125,7 +127,7 @@ func runClaude(args []string) error {
 	case "import":
 		report = claude.ImportAll(opts)
 	default:
-		return fmt.Errorf("unknown claude subcommand %q (use: import, rules, skills, agents, mcp, hooks)", sub)
+		return fmt.Errorf("unknown claude subcommand %q (use: import, rules, skills, agents, commands, mcp, hooks)", sub)
 	}
 	report.Render(os.Stdout)
 	if len(report.Errors) > 0 {

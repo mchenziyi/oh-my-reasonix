@@ -362,6 +362,99 @@ func ImportHooks(opts Options) Report {
 	return importFiles(opts, files)
 }
 
+// CommandFile represents a single command file from .claude/commands/.
+type CommandFile struct {
+	Name      string // command name (without extension)
+	SourceRel string // original filename
+	Content   []byte
+}
+
+// DiscoverCommands finds all text files in .claude/commands/.
+func DiscoverCommands(root string) ([]CommandFile, error) {
+	cmdDir := filepath.Join(root, filepath.FromSlash(CommandsDir))
+	entries, err := os.ReadDir(cmdDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var commands []CommandFile
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		ext := filepath.Ext(name)
+		// Only accept known text extensions
+		if ext != "" && ext != ".md" && ext != ".txt" && ext != ".sh" {
+			continue
+		}
+		data, err := os.ReadFile(filepath.Join(cmdDir, name))
+		if err != nil {
+			return nil, fmt.Errorf("read command %q: %w", name, err)
+		}
+		if len(data) == 0 {
+			continue
+		}
+		// Strip extension for skill name
+		cmdName := name
+		if ext != "" {
+			cmdName = strings.TrimSuffix(name, ext)
+		}
+		commands = append(commands, CommandFile{
+			Name:      cmdName,
+			SourceRel: name,
+			Content:   data,
+		})
+	}
+	return commands, nil
+}
+
+// commandToSkillContent wraps a Claude command in Reasonix skill frontmatter.
+func commandToSkillContent(name string, content []byte) []byte {
+	var b strings.Builder
+	b.WriteString("---\n")
+	fmt.Fprintf(&b, "name: %q\n", "cmd-"+name)
+	fmt.Fprintf(&b, "description: Imported Claude command %q\n", name)
+	fmt.Fprintf(&b, "runAs: subagent\ninvocation: command\nread-only: false\n---\n\n")
+	b.WriteString("# [导入] 此命令从 .claude/commands/ 转换而来，不保证等价于原始执行\n\n")
+	b.Write(content)
+	return []byte(b.String())
+}
+
+// ImportCommands imports .claude/commands/* into .reasonix/skills/cmd-<name>/SKILL.md.
+func ImportCommands(opts Options) Report {
+	root, err := ProjectRoot(opts.ProjectDir)
+	if err != nil {
+		return Report{Root: opts.ProjectDir, Errors: []string{err.Error()}}
+	}
+	commands, err := DiscoverCommands(root)
+	if err != nil {
+		return Report{Root: root, Errors: []string{err.Error()}}
+	}
+	// Check for duplicate names
+	seen := map[string]bool{}
+	var files []importFile
+	for _, c := range commands {
+		if seen[c.Name] {
+			return Report{Root: root, Conflicts: []string{
+				fmt.Sprintf("duplicate command name %q in .claude/commands/", c.Name),
+			}}
+		}
+		seen[c.Name] = true
+		targetRel := filepath.Join(OMRSkillsDir, "cmd-"+c.Name, "SKILL.md")
+		files = append(files, importFile{
+			SourceRel:  c.SourceRel,
+			TargetRel:  targetRel,
+			Content:    commandToSkillContent(c.Name, c.Content),
+			SourceDesc: ".claude/commands/",
+			TargetDesc: ".reasonix/skills/",
+		})
+	}
+	return importFiles(opts, files)
+}
+
 // ImportAll imports all Claude configuration types at once.
 func ImportAll(opts Options) Report {
 	root, err := ProjectRoot(opts.ProjectDir)
@@ -378,6 +471,7 @@ func ImportAll(opts Options) Report {
 		ImportRules(planOpts),
 		ImportSkills(planOpts),
 		ImportAgents(planOpts),
+		ImportCommands(planOpts),
 		ImportMCP(planOpts),
 		ImportHooks(planOpts),
 	}
@@ -391,6 +485,7 @@ func ImportAll(opts Options) Report {
 		ImportRules(opts),
 		ImportSkills(opts),
 		ImportAgents(opts),
+		ImportCommands(opts),
 		ImportMCP(opts),
 		ImportHooks(opts),
 	}
