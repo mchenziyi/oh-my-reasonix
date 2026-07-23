@@ -14,6 +14,8 @@ const (
 	DebugProfileRel    = ".reasonix/skills/omr-debug/SKILL.md"
 	PlannerProfileRel  = ".reasonix/skills/omr-planner/SKILL.md"
 	FrontendProfileRel = ".reasonix/skills/omr-frontend/SKILL.md"
+	GitProfileRel      = ".reasonix/skills/omr-git/SKILL.md"
+	LSPProfileRel      = ".reasonix/skills/omr-lsp/SKILL.md"
 )
 
 func ProjectRoot(start string) (string, error) {

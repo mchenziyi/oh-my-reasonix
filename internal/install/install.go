@@ -258,6 +258,12 @@ func profileAssets(assets Assets) []profileAsset {
 	if len(assets.Frontend) > 0 {
 		profiles = append(profiles, profileAsset{ID: "omr-frontend", Rel: FrontendProfileRel, Data: assets.Frontend, Hash: fileutil.SHA256(assets.Frontend)})
 	}
+	if len(assets.Git) > 0 {
+		profiles = append(profiles, profileAsset{ID: "omr-git", Rel: GitProfileRel, Data: assets.Git, Hash: fileutil.SHA256(assets.Git)})
+	}
+	if len(assets.LSP) > 0 {
+		profiles = append(profiles, profileAsset{ID: "omr-lsp", Rel: LSPProfileRel, Data: assets.LSP, Hash: fileutil.SHA256(assets.LSP)})
+	}
 	return profiles
 }
 

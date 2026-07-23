@@ -17,6 +17,8 @@ type Assets struct {
 	Debug        []byte
 	Planner      []byte
 	Frontend     []byte
+	Git          []byte
+	LSP          []byte
 	ReviewBrief  []byte
 }
 
@@ -37,6 +39,8 @@ func LoadAssets(start string) (Assets, error) {
 		Debug:        append([]byte(nil), embeddedassets.Debug...),
 		Planner:      append([]byte(nil), embeddedassets.Planner...),
 		Frontend:     append([]byte(nil), embeddedassets.Frontend...),
+		Git:          append([]byte(nil), embeddedassets.Git...),
+		LSP:          append([]byte(nil), embeddedassets.LSP...),
 		ReviewBrief:  append([]byte(nil), embeddedassets.ReviewBrief...),
 	}, nil
 }
@@ -78,11 +82,19 @@ func readAssetsFromDirectory(root string) (Assets, error) {
 	if err != nil {
 		return Assets{}, err
 	}
+	git, err := read("skills/omr-git/SKILL.md")
+	if err != nil {
+		return Assets{}, err
+	}
+	lsp, err := read("skills/omr-lsp/SKILL.md")
+	if err != nil {
+		return Assets{}, err
+	}
 	review, err := read("prompts/review-task-protocol.zh.md")
 	if err != nil {
 		return Assets{}, err
 	}
-	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, ReviewBrief: review}, nil
+	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, Git: git, LSP: lsp, ReviewBrief: review}, nil
 }
 
 func findAssetRoot(start string) (string, error) {

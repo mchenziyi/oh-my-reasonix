@@ -130,7 +130,7 @@ func TestProfileListJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if len(profiles) != 6 || profiles[0].ID != "omr-explore" {
+	if len(profiles) != 8 || profiles[0].ID != "omr-explore" {
 		t.Fatalf("unexpected profiles: %#v", profiles)
 	}
 	// Find project-only profile

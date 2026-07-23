@@ -4,7 +4,9 @@
 // release binary.
 package assets
 
-import _ "embed"
+import (
+	_ "embed"
+)
 
 //go:embed prompts/reasonix-base-464d494.md
 var BasePrompt []byte
@@ -29,3 +31,9 @@ var Planner []byte
 
 //go:embed skills/omr-frontend/SKILL.md
 var Frontend []byte
+
+//go:embed skills/omr-git/SKILL.md
+var Git []byte
+
+//go:embed skills/omr-lsp/SKILL.md
+var LSP []byte

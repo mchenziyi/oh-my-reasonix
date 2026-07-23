@@ -41,6 +41,8 @@ func TestLoadAssetsFromExternalDirectory(t *testing.T) {
 		"skills/omr-debug/SKILL.md",
 		"skills/omr-planner/SKILL.md",
 		"skills/omr-frontend/SKILL.md",
+		"skills/omr-git/SKILL.md",
+		"skills/omr-lsp/SKILL.md",
 	} {
 		path := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -55,7 +57,7 @@ func TestLoadAssetsFromExternalDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAssets: %v", err)
 	}
-	if assets.Root != root || string(assets.Frontend) != "skills/omr-frontend/SKILL.md" || string(assets.ReviewBrief) != "prompts/review-task-protocol.zh.md" {
+	if assets.Root != root || string(assets.Frontend) != "skills/omr-frontend/SKILL.md" || string(assets.ReviewBrief) != "prompts/review-task-protocol.zh.md" || string(assets.Git) != "skills/omr-git/SKILL.md" || string(assets.LSP) != "skills/omr-lsp/SKILL.md" {
 		t.Fatalf("unexpected external assets: %#v", assets)
 	}
 }
