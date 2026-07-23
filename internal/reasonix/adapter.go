@@ -7,7 +7,6 @@ import (
 )
 
 // SessionInfo corresponds to a single entry in reasonix session list --json output.
-// Only includes safe, sanitized fields.
 type SessionInfo struct {
 	BranchID      string `json:"branch_id"`
 	Status        string `json:"status"`
@@ -39,9 +38,17 @@ type SessionDetail struct {
 	ExitCode      int    `json:"exit_code"`
 }
 
+// dirArg returns --dir <path> when ProjectDir is set.
+func (r Runner) dirArg() []string {
+	if r.ProjectDir == "" {
+		return nil
+	}
+	return []string{"--dir", r.ProjectDir}
+}
+
 // SessionList calls reasonix session list --json and parses the result.
 func (r Runner) SessionList(ctx context.Context) (SessionListOutput, error) {
-	result := r.Run(ctx, "session", "list", "--json")
+	result := r.Run(ctx, append([]string{"session", "list", "--json"}, r.dirArg()...)...)
 	out := SessionListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return out, fmt.Errorf("reasonix session list failed (exit %d): %w", result.ExitCode, result.Err)
@@ -54,7 +61,8 @@ func (r Runner) SessionList(ctx context.Context) (SessionListOutput, error) {
 
 // SessionStatus calls reasonix session status <branch-id> --json.
 func (r Runner) SessionStatus(ctx context.Context, branchID string) (SessionDetail, error) {
-	result := r.Run(ctx, "session", "status", branchID, "--json")
+	args := append([]string{"session", "status", branchID, "--json"}, r.dirArg()...)
+	result := r.Run(ctx, args...)
 	detail := SessionDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return detail, fmt.Errorf("reasonix session status failed (exit %d): %w", result.ExitCode, result.Err)
@@ -67,7 +75,8 @@ func (r Runner) SessionStatus(ctx context.Context, branchID string) (SessionDeta
 
 // SessionShow calls reasonix session show <branch-id> --json.
 func (r Runner) SessionShow(ctx context.Context, branchID string) (SessionDetail, error) {
-	result := r.Run(ctx, "session", "show", branchID, "--json")
+	args := append([]string{"session", "show", branchID, "--json"}, r.dirArg()...)
+	result := r.Run(ctx, args...)
 	detail := SessionDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return detail, fmt.Errorf("reasonix session show failed (exit %d): %w", result.ExitCode, result.Err)
@@ -90,21 +99,56 @@ type HookInfo struct {
 
 // HookListOutput wraps the reasonix hook list --json response.
 type HookListOutput struct {
-	Hooks       []HookInfo `json:"hooks"`
-	SchemaVersion int      `json:"schema_version"`
-	ExitCode    int        `json:"exit_code"`
-	Stderr      string     `json:"stderr,omitempty"`
+	Hooks         []HookInfo `json:"hooks"`
+	SchemaVersion int        `json:"schema_version"`
+	ExitCode      int        `json:"exit_code"`
+	Stderr        string     `json:"stderr,omitempty"`
+}
+
+// HookStatusOutput wraps the reasonix hook status --json response.
+type HookStatusOutput struct {
+	Active        []HookInfo `json:"active,omitempty"`
+	Inactive      []HookInfo `json:"inactive,omitempty"`
+	Untrusted     []HookInfo `json:"untrusted,omitempty"`
+	SchemaVersion int        `json:"schema_version"`
+	ExitCode      int        `json:"exit_code"`
+	Stderr        string     `json:"stderr,omitempty"`
+}
+
+// hookDirArgs returns CLI args for hook commands.
+func (r Runner) hookDirArgs() []string {
+	var args []string
+	if r.ProjectDir != "" {
+		args = append(args, "--project-root", r.ProjectDir)
+	}
+	// --home-dir is not set by default; callers can set Runner.Env or extend
+	return args
 }
 
 // HookList calls reasonix hook list --json.
 func (r Runner) HookList(ctx context.Context) (HookListOutput, error) {
-	result := r.Run(ctx, "hook", "list", "--json")
+	args := append([]string{"hook", "list", "--json"}, r.hookDirArgs()...)
+	result := r.Run(ctx, args...)
 	out := HookListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return out, fmt.Errorf("reasonix hook list failed (exit %d): %w", result.ExitCode, result.Err)
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
 		return out, fmt.Errorf("parse hook list JSON: %w", err)
+	}
+	return out, nil
+}
+
+// HookStatus calls reasonix hook status --json.
+func (r Runner) HookStatus(ctx context.Context) (HookStatusOutput, error) {
+	args := append([]string{"hook", "status", "--json"}, r.hookDirArgs()...)
+	result := r.Run(ctx, args...)
+	out := HookStatusOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
+	if result.Err != nil {
+		return out, fmt.Errorf("reasonix hook status failed (exit %d): %w", result.ExitCode, result.Err)
+	}
+	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
+		return out, fmt.Errorf("parse hook status JSON: %w", err)
 	}
 	return out, nil
 }
@@ -120,15 +164,20 @@ type TaskInfo struct {
 
 // TaskListOutput wraps the reasonix task list --json response.
 type TaskListOutput struct {
-	Tasks       []TaskInfo `json:"tasks"`
-	SchemaVersion int       `json:"schema_version"`
-	ExitCode    int        `json:"exit_code"`
-	Stderr      string     `json:"stderr,omitempty"`
+	Tasks         []TaskInfo `json:"tasks"`
+	SchemaVersion int        `json:"schema_version"`
+	ExitCode      int        `json:"exit_code"`
+	Stderr        string     `json:"stderr,omitempty"`
 }
 
-// TaskList calls reasonix task list --json.
-func (r Runner) TaskList(ctx context.Context) (TaskListOutput, error) {
-	result := r.Run(ctx, "task", "list", "--json")
+// TaskList calls reasonix task list --json, optionally filtered by sessionID.
+func (r Runner) TaskList(ctx context.Context, sessionID string) (TaskListOutput, error) {
+	args := []string{"task", "list", "--json"}
+	if sessionID != "" {
+		args = append(args, "--session", sessionID)
+	}
+	args = append(args, r.dirArg()...)
+	result := r.Run(ctx, args...)
 	out := TaskListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return out, fmt.Errorf("reasonix task list failed (exit %d): %w", result.ExitCode, result.Err)
@@ -141,19 +190,24 @@ func (r Runner) TaskList(ctx context.Context) (TaskListOutput, error) {
 
 // TaskDetail corresponds to reasonix task show <task-id> --json output.
 type TaskDetail struct {
-	ID          string `json:"id"`
-	SessionID   string `json:"session_id,omitempty"`
-	Type        string `json:"type,omitempty"`
-	Status      string `json:"status"`
-	Step        int    `json:"step,omitempty"`
-	SchemaVersion int  `json:"schema_version"`
-	ExitCode    int    `json:"exit_code"`
-	Stderr      string `json:"stderr,omitempty"`
+	ID            string `json:"id"`
+	SessionID     string `json:"session_id,omitempty"`
+	Type          string `json:"type,omitempty"`
+	Status        string `json:"status"`
+	Step          int    `json:"step,omitempty"`
+	SchemaVersion int    `json:"schema_version"`
+	ExitCode      int    `json:"exit_code"`
+	Stderr        string `json:"stderr,omitempty"`
 }
 
-// TaskShow calls reasonix task show <task-id> --json.
-func (r Runner) TaskShow(ctx context.Context, taskID string) (TaskDetail, error) {
-	result := r.Run(ctx, "task", "show", taskID, "--json")
+// TaskShow calls reasonix task show <task-id> --json, optionally with sessionID.
+func (r Runner) TaskShow(ctx context.Context, taskID, sessionID string) (TaskDetail, error) {
+	args := []string{"task", "show", taskID, "--json"}
+	if sessionID != "" {
+		args = append(args, "--session", sessionID)
+	}
+	args = append(args, r.dirArg()...)
+	result := r.Run(ctx, args...)
 	detail := TaskDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return detail, fmt.Errorf("reasonix task show %s failed (exit %d): %w", taskID, result.ExitCode, result.Err)
@@ -166,13 +220,13 @@ func (r Runner) TaskShow(ctx context.Context, taskID string) (TaskDetail, error)
 
 // RecoveryInfo corresponds to reasonix session recovery --json output.
 type RecoveryInfo struct {
-	BranchID    string `json:"branch_id"`
-	Status      string `json:"status"`
-	TasksTotal  int    `json:"tasks_total,omitempty"`
-	TasksFailed int    `json:"tasks_failed,omitempty"`
-	SchemaVersion int `json:"schema_version"`
-	ExitCode    int    `json:"exit_code"`
-	Stderr      string `json:"stderr,omitempty"`
+	BranchID      string `json:"branch_id"`
+	Status        string `json:"status"`
+	TasksTotal    int    `json:"tasks_total,omitempty"`
+	TasksFailed   int    `json:"tasks_failed,omitempty"`
+	SchemaVersion int    `json:"schema_version"`
+	ExitCode      int    `json:"exit_code"`
+	Stderr        string `json:"stderr,omitempty"`
 }
 
 // SessionRecovery calls reasonix session recovery [<branch-id>] --json.
@@ -182,6 +236,7 @@ func (r Runner) SessionRecovery(ctx context.Context, branchID string) (RecoveryI
 		args = append(args, branchID)
 	}
 	args = append(args, "--json")
+	args = append(args, r.dirArg()...)
 	result := r.Run(ctx, args...)
 	info := RecoveryInfo{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -191,4 +246,11 @@ func (r Runner) SessionRecovery(ctx context.Context, branchID string) (RecoveryI
 		return info, fmt.Errorf("parse session recovery JSON: %w", err)
 	}
 	return info, nil
+}
+
+// RunWithEvents runs a task with structured JSONL events output.
+// The eventsJSONLPath is where Reasonix writes the structured event log.
+func (r Runner) RunWithEvents(ctx context.Context, prompt string, eventsJSONLPath string) Result {
+	args := []string{"run", "--events-jsonl", eventsJSONLPath, prompt}
+	return r.Run(ctx, args...)
 }

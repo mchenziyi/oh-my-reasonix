@@ -1223,20 +1223,39 @@ func runHook(args []string) error {
 	}
 	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
 	ctx := context.Background()
-	result, err := runner.HookList(ctx)
-	if err != nil {
-		return fmt.Errorf("hook doctor: %w", err)
+
+	// Call both hook list and hook status
+	listResult, listErr := runner.HookList(ctx)
+	if listErr != nil {
+		return fmt.Errorf("hook doctor: %w", listErr)
 	}
+	statusResult, statusErr := runner.HookStatus(ctx)
+	_ = statusResult // unused until status data is needed
+
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(result)
+		type hookDoctorOutput struct {
+			List   reasonix.HookListOutput   `json:"list"`
+			Status *reasonix.HookStatusOutput `json:"status,omitempty"`
+		}
+		out := hookDoctorOutput{List: listResult}
+		if statusErr == nil {
+			out.Status = &statusResult
+		}
+		return json.NewEncoder(os.Stdout).Encode(out)
 	}
-	if len(result.Hooks) == 0 {
+	if len(listResult.Hooks) == 0 {
 		fmt.Println("No hooks found")
+		if statusErr != nil {
+			fmt.Fprintf(os.Stderr, "hook status unavailable: %v\n", statusErr)
+		}
 		return nil
 	}
 	fmt.Printf("%-20s %-10s %-8s %s\n", "HOOK", "STATUS", "EVENT", "SCOPE")
-	for _, h := range result.Hooks {
+	for _, h := range listResult.Hooks {
 		fmt.Printf("%-20s %-10s %-8s %s\n", h.Name, h.Status, h.Event, h.Scope)
+	}
+	if statusErr != nil {
+		fmt.Fprintf(os.Stderr, "WARNING: hook status unavailable: %v\n", statusErr)
 	}
 	return nil
 }
@@ -1257,12 +1276,13 @@ func runTaskList(args []string) error {
 	projectDir := flags.String("project-dir", ".", "project directory")
 	binary := flags.String("binary", "reasonix", "Reasonix executable")
 	jsonOutput := flags.Bool("json", false, "output as JSON")
+	sessionID := flags.String("session", "", "filter by session ID")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
 	ctx := context.Background()
-	result, err := runner.TaskList(ctx)
+	result, err := runner.TaskList(ctx, *sessionID)
 	if err != nil {
 		return fmt.Errorf("task list: %w", err)
 	}
@@ -1286,6 +1306,7 @@ func runTaskShow(args []string) error {
 	projectDir := flags.String("project-dir", ".", "project directory")
 	binary := flags.String("binary", "reasonix", "Reasonix executable")
 	jsonOutput := flags.Bool("json", false, "output as JSON")
+	sessionID := flags.String("session", "", "session ID for the task")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
@@ -1294,7 +1315,7 @@ func runTaskShow(args []string) error {
 	}
 	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
 	ctx := context.Background()
-	detail, err := runner.TaskShow(ctx, flags.Arg(0))
+	detail, err := runner.TaskShow(ctx, flags.Arg(0), *sessionID)
 	if err != nil {
 		return fmt.Errorf("task show: %w", err)
 	}

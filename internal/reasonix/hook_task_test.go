@@ -43,7 +43,7 @@ func TestTaskListParsesOutput(t *testing.T) {
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
 	}
-	result, err := r.TaskList(context.Background())
+	result, err := r.TaskList(context.Background(), "")
 	if err != nil {
 		t.Fatalf("TaskList: %v", err)
 	}
@@ -60,7 +60,7 @@ func TestTaskListEmpty(t *testing.T) {
 		Binary:         "reasonix",
 		commandFactory: mockCommand(`{"tasks":[],"schema_version":1}`, 0),
 	}
-	result, err := r.TaskList(context.Background())
+	result, err := r.TaskList(context.Background(), "")
 	if err != nil {
 		t.Fatalf("TaskList: %v", err)
 	}
@@ -75,7 +75,7 @@ func TestTaskShowParsesOutput(t *testing.T) {
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
 	}
-	detail, err := r.TaskShow(context.Background(), "task-1")
+	detail, err := r.TaskShow(context.Background(), "task-1", "")
 	if err != nil {
 		t.Fatalf("TaskShow: %v", err)
 	}
