@@ -482,3 +482,98 @@ func TestFindConfigReturnsDefaultPathWhenNonexistent(t *testing.T) {
 		t.Fatalf("expected default config.toml, got %s", got)
 	}
 }
+
+// --- FIX-03: JSONC strict parsing tests ---
+
+func TestLoadJSONCRejectsMultipleDocuments(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := `{"quality": {"fixtures": "a"}}
+{"quality": {"fixtures": "b"}}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected multiple documents to be rejected")
+	}
+	if !strings.Contains(err.Error(), "multiple objects") {
+		t.Fatalf("expected 'multiple objects' error, got: %v", err)
+	}
+}
+
+func TestLoadJSONCRejectsDuplicateKeys(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := `{"quality": {"fixtures": "a"}, "quality": {"fixtures": "b"}}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected duplicate keys to be rejected")
+	}
+	if !strings.Contains(err.Error(), "duplicate key") {
+		t.Fatalf("expected 'duplicate key' error, got: %v", err)
+	}
+}
+
+func TestLoadJSONCPreservesEscapeSequences(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := `{"quality": {"fixtures": "path\\to\\file"}}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Fixtures != "path\\to\\file" {
+		t.Fatalf("expected escaped path preserved, got %q", cfg.Fixtures)
+	}
+}
+
+func TestLoadJSONCPreservesCommentInString(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := `{"quality": {"fixtures": "value /* not a comment */"}}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Fixtures != "value /* not a comment */" {
+		t.Fatalf("expected comment-like text in string preserved, got %q", cfg.Fixtures)
+	}
+}
+
+func TestLoadJSONCErrorContainsLineColumn(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := "{\n\t\"quality\": {\n\t\t\"fixtures\": \n\t}\n}"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected error for malformed JSON")
+	}
+	// Error should contain path, line and column
+	errStr := err.Error()
+	if !strings.Contains(errStr, ".jsonc:") || !strings.Contains(errStr, ":") {
+		t.Fatalf("expected file:line:col in error, got: %v", err)
+	}
+}
+
+func TestLoadJSONCRejectsDuplicateKeysNested(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.jsonc")
+	data := `{"quality": {"fixtures": "a", "fixtures": "b"}}`
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err := Load(path)
+	if err == nil {
+		t.Fatal("expected nested duplicate keys to be rejected")
+	}
+	if !strings.Contains(err.Error(), "duplicate key") {
+		t.Fatalf("expected 'duplicate key' error, got: %v", err)
+	}
+}

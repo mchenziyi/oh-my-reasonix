@@ -171,6 +171,19 @@ func loadJSONC(path string) (Config, error) {
 		return Config{}, fmt.Errorf("%s: %w", path, err)
 	}
 
+	// Reject multiple JSON documents (e.g., two JSON objects in one file)
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); err == nil {
+		return Config{}, fmt.Errorf("%s: JSON document contains multiple objects (only one allowed)", path)
+	} else if err.Error() != "EOF" {
+		return Config{}, fmt.Errorf("%s: JSON error after main document: %v", path, err)
+	}
+
+	// Check for duplicate keys by re-parsing into raw map
+	if dupErr := detectDuplicateKeys(stripped); dupErr != "" {
+		return Config{}, fmt.Errorf("%s:%s", path, dupErr)
+	}
+
 	var cfg Config
 	cfg.MinQualifiedRateSet = false
 	cfg.MaxCostSet = false
@@ -322,6 +335,72 @@ func loadJSONC(path string) (Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// detectDuplicateKeys scans stripped JSON text for duplicate keys at all
+// nesting levels. Uses a depth-aware scanner to avoid cross-object false positives.
+func detectDuplicateKeys(stripped []byte) string {
+	text := string(stripped)
+	inString := false
+	var quoteByte byte
+	depth := 0
+	// Collect all quoted strings that are followed by ':' at each depth
+	type keyPos struct {
+		key    string
+		offset int
+	}
+	keysAtDepth := map[int][]keyPos{}
+	keyStart := -1
+
+	for i := 0; i < len(text); i++ {
+		ch := text[i]
+		if inString {
+			if ch == '\\' {
+				i++ // skip escaped char
+				continue
+			}
+			if ch == quoteByte {
+				inString = false
+				// Check if this string is a key (followed by ':')
+				j := i + 1
+				for j < len(text) && text[j] <= ' ' {
+					j++
+				}
+				if j < len(text) && text[j] == ':' {
+					key := text[keyStart : i+1]
+					keysAtDepth[depth] = append(keysAtDepth[depth], keyPos{key, keyStart})
+				}
+				keyStart = -1
+			}
+			continue
+		}
+		if ch == '{' {
+			depth++
+			continue
+		}
+		if ch == '}' {
+			// Check for duplicates at this depth before decrementing
+			if keys, ok := keysAtDepth[depth]; ok && len(keys) > 1 {
+				seen := make(map[string]int)
+				for _, kp := range keys {
+					if first, ok := seen[kp.key]; ok {
+						return fmt.Sprintf(" duplicate key %s (first at byte %d)", kp.key, first)
+					}
+					seen[kp.key] = kp.offset
+				}
+			}
+			delete(keysAtDepth, depth)
+			depth--
+			continue
+		}
+		if ch == '"' {
+			inString = true
+			quoteByte = '"'
+			keyStart = i
+			continue
+		}
+	}
+	return ""
 }
 
 // offsetToLineCol converts a byte offset (in the original raw bytes with comments)
