@@ -162,6 +162,22 @@ func loadTOML(path string) (Config, error) {
 			return Config{}, fmt.Errorf("prompt_file for agent %q must be a project-relative path", profile)
 		}
 	}
+	// MCP server validation
+	for name, srv := range cfg.MCPServers {
+		if srv.Transport == "" {
+			srv.Transport = "stdio" // default transport
+			cfg.MCPServers[name] = srv
+		}
+		if srv.Transport != "stdio" && srv.Transport != "http" {
+			return Config{}, fmt.Errorf("invalid mcp %q: transport must be 'stdio' or 'http', got %q", name, srv.Transport)
+		}
+		if srv.Transport == "stdio" && srv.Command == "" {
+			return Config{}, fmt.Errorf("invalid mcp %q: transport stdio requires command", name)
+		}
+		if srv.Transport == "http" && srv.URL == "" {
+			return Config{}, fmt.Errorf("invalid mcp %q: transport http requires url", name)
+		}
+	}
 	return cfg, nil
 }
 
@@ -311,10 +327,9 @@ func assign(cfg *Config, section, key, raw string) error {
 		case "command":
 			srv.Command = stringValue(raw)
 		case "args":
-			// TOML array like ["a","b"] — parse as comma-separated
 			v := strings.Trim(stringValue(raw), "[]")
 			for _, a := range strings.Split(v, ",") {
-				a = strings.TrimSpace(a)
+				a = strings.Trim(strings.TrimSpace(a), `"'`)
 				if a != "" {
 					srv.Args = append(srv.Args, a)
 				}
@@ -324,7 +339,7 @@ func assign(cfg *Config, section, key, raw string) error {
 		case "capabilities":
 			v := strings.Trim(stringValue(raw), "[]")
 			for _, c := range strings.Split(v, ",") {
-				c = strings.TrimSpace(c)
+				c = strings.Trim(strings.TrimSpace(c), `"'`)
 				if c != "" {
 					srv.Capabilities = append(srv.Capabilities, c)
 				}
@@ -338,7 +353,7 @@ func assign(cfg *Config, section, key, raw string) error {
 		case "env":
 			v := strings.Trim(stringValue(raw), "[]")
 			for _, e := range strings.Split(v, ",") {
-				e = strings.TrimSpace(e)
+				e = strings.Trim(strings.TrimSpace(e), `"'`)
 				if e != "" {
 					srv.Env = append(srv.Env, e)
 				}
