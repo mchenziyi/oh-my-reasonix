@@ -1,0 +1,18 @@
+{
+  "id": "comment-checker",
+  "description": "Comment 检查：禁止无证据 TODO、检查注释与实现不一致。",
+  "task": "审查 internal/api/handler.go 中的注释。找到无证据的 TODO 注释和不一致的函数注释。输出可审计证据。",
+  "allowed_paths": ["internal/api/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "replay": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false
+  }
+}

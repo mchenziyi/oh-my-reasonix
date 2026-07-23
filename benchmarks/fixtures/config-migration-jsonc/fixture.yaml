@@ -1,0 +1,18 @@
+{
+  "id": "config-migration-jsonc",
+  "description": "TOML→JSONC 配置迁移：验证迁移后所有字段保留，无信息丢失。",
+  "task": "从 reasonix.toml 中的 [agent] 配置迁移到 .jsonc 格式。保留 model、prompt_file、read_only 字段。",
+  "allowed_paths": [".reasonix/omr/**"],
+  "forbidden_paths": [],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": [],
+  "replay": {
+    "changed_paths": [".reasonix/omr/config.jsonc"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": [],
+    "tests_skipped": false
+  }
+}
