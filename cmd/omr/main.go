@@ -231,6 +231,22 @@ func runConfig(args []string) error {
 		}
 		return err
 	}
+	// Category diagnostic: check each category routes to an existing profile
+	var categoryDiags []string
+	// Known profiles from built-in set
+	knownProfiles := map[string]bool{
+		"omr-explore": true, "omr-research": true, "omr-debug": true,
+		"omr-planner": true, "omr-frontend": true,
+	}
+	// Also check agent configs
+	for profile := range cfg.Agents {
+		knownProfiles[profile] = true
+	}
+	for cat, profile := range cfg.Categories {
+		if !knownProfiles[profile] {
+			categoryDiags = append(categoryDiags, fmt.Sprintf("category %q routes to unknown profile %q", cat, profile))
+		}
+	}
 	if promptErrors := validatePromptFiles(cfg, *projectDir); len(promptErrors) > 0 {
 		err = errors.New(strings.Join(promptErrors, "; "))
 		if *jsonOutput {
@@ -244,7 +260,7 @@ func runConfig(args []string) error {
 		return err
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(struct {
+		output := struct {
 			Path             string                           `json:"path"`
 			Valid            bool                             `json:"valid"`
 			Agents           map[string]omrconfig.AgentConfig `json:"agents"`
@@ -252,9 +268,15 @@ func runConfig(args []string) error {
 			Concurrency      int                              `json:"concurrency"`
 			MaxCost          float64                          `json:"max_cost"`
 			DisabledProfiles []string                         `json:"disabled_profiles"`
-		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles})
+			Warnings         []string                         `json:"warnings,omitempty"`
+		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, Warnings: categoryDiags}
+		_ = json.NewEncoder(os.Stdout).Encode(output)
+		return nil
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
+	for _, diag := range categoryDiags {
+		fmt.Printf("  WARNING: %s\n", diag)
+	}
 	if cfg.Concurrency > 0 {
 		fmt.Printf("  concurrency: %d\n", cfg.Concurrency)
 	}
