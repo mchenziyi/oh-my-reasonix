@@ -51,7 +51,7 @@ func main() {
 	case "claude":
 		err = runClaude(os.Args[2:])
 	case "version":
-		fmt.Printf("omr %s\n", version)
+		err = runVersion(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
@@ -1028,6 +1028,51 @@ func loadAssetsFromInvocation() (install.Assets, error) {
 		return install.Assets{}, err
 	}
 	return install.LoadAssets(cwd)
+}
+
+func runVersion(args []string) error {
+	flags := flag.NewFlagSet("version", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	jsonOutput := flags.Bool("json", false, "output version info as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if *jsonOutput {
+		type versionInfo struct {
+			OMR       string `json:"omr_version"`
+			Manifest  string `json:"manifest_schema"`
+			Assets    string `json:"assets_version"`
+			Reasonix  string `json:"reasonix_detected"`
+			Compatible bool  `json:"compatible"`
+		}
+		info := versionInfo{
+			OMR:       version,
+			Manifest:  "1",
+			Assets:    "builtin",
+			Reasonix:  "",
+			Compatible: true,
+		}
+		// Try to detect Reasonix binary
+		if path, lookErr := exec.LookPath("reasonix"); lookErr == nil {
+			if data, execErr := exec.Command(path, "version").Output(); execErr == nil {
+				info.Reasonix = strings.TrimSpace(string(data))
+			} else {
+				info.Reasonix = "detected but version check failed"
+			}
+		} else {
+			info.Reasonix = "not found in PATH"
+			info.Compatible = false
+		}
+		return json.NewEncoder(os.Stdout).Encode(info)
+	}
+	fmt.Printf("omr %s\n", version)
+	// Check Reasonix presence
+	if path, lookErr := exec.LookPath("reasonix"); lookErr == nil {
+		fmt.Printf("reasonix: %s\n", path)
+	} else {
+		fmt.Println("reasonix: not found in PATH")
+	}
+	return nil
 }
 
 func usage() {
