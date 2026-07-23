@@ -163,3 +163,32 @@ func (r Runner) TaskShow(ctx context.Context, taskID string) (TaskDetail, error)
 	}
 	return detail, nil
 }
+
+// RecoveryInfo corresponds to reasonix session recovery --json output.
+type RecoveryInfo struct {
+	BranchID    string `json:"branch_id"`
+	Status      string `json:"status"`
+	TasksTotal  int    `json:"tasks_total,omitempty"`
+	TasksFailed int    `json:"tasks_failed,omitempty"`
+	SchemaVersion int `json:"schema_version"`
+	ExitCode    int    `json:"exit_code"`
+	Stderr      string `json:"stderr,omitempty"`
+}
+
+// SessionRecovery calls reasonix session recovery [<branch-id>] --json.
+func (r Runner) SessionRecovery(ctx context.Context, branchID string) (RecoveryInfo, error) {
+	args := []string{"session", "recovery"}
+	if branchID != "" {
+		args = append(args, branchID)
+	}
+	args = append(args, "--json")
+	result := r.Run(ctx, args...)
+	info := RecoveryInfo{ExitCode: result.ExitCode, Stderr: result.Stderr}
+	if result.Err != nil {
+		return info, fmt.Errorf("reasonix session recovery failed (exit %d): %w", result.ExitCode, result.Err)
+	}
+	if err := json.Unmarshal([]byte(result.Stdout), &info); err != nil {
+		return info, fmt.Errorf("parse session recovery JSON: %w", err)
+	}
+	return info, nil
+}

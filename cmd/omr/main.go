@@ -596,6 +596,8 @@ func runSession(args []string) error {
 		return runSessionStatus(args[1:])
 	case "show":
 		return runSessionShow(args[1:])
+	case "recovery":
+		return runSessionRecovery(args[1:])
 	case "export":
 		return runSessionExport(args[1:])
 	case "resume":
@@ -693,6 +695,35 @@ func runSessionShow(args []string) error {
 	fmt.Printf("Turn:       %d\n", detail.Turn)
 	fmt.Printf("Lifecycle:  %s\n", detail.Lifecycle)
 	fmt.Printf("Schema:     %d\n", detail.SchemaVersion)
+	return nil
+}
+
+func runSessionRecovery(args []string) error {
+	flags := flag.NewFlagSet("session recovery", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	branchID := ""
+	if flags.NArg() > 0 {
+		branchID = flags.Arg(0)
+	}
+	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	ctx := context.Background()
+	info, err := runner.SessionRecovery(ctx, branchID)
+	if err != nil {
+		return fmt.Errorf("session recovery: %w", err)
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(info)
+	}
+	fmt.Printf("Branch ID:    %s\n", info.BranchID)
+	fmt.Printf("Status:       %s\n", info.Status)
+	fmt.Printf("Tasks Total:  %d\n", info.TasksTotal)
+	fmt.Printf("Tasks Failed: %d\n", info.TasksFailed)
 	return nil
 }
 
