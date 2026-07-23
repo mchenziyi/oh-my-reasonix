@@ -101,6 +101,7 @@ func runClaude(args []string) error {
 	projectDir := flags.String("project-dir", ".", "project directory")
 	dryRun := flags.Bool("dry-run", false, "show what would be imported")
 	force := flags.Bool("force", false, "overwrite existing files")
+	jsonOut := flags.Bool("json", false, "output report as JSON")
 	if err := flags.Parse(args[1:]); err != nil {
 		return err
 	}
@@ -129,7 +130,12 @@ func runClaude(args []string) error {
 	default:
 		return fmt.Errorf("unknown claude subcommand %q (use: import, rules, skills, agents, commands, mcp, hooks)", sub)
 	}
-	report.Render(os.Stdout)
+
+	if *jsonOut {
+		report.RenderJSON(os.Stdout)
+	} else {
+		report.Render(os.Stdout)
+	}
 	if len(report.Errors) > 0 {
 		return fmt.Errorf("claude %s failed", sub)
 	}

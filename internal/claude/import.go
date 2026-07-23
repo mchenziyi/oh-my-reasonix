@@ -31,6 +31,7 @@ func importFiles(opts Options, files []importFile) Report {
 
 	if len(files) == 0 {
 		report.NoOp = true
+		report.inferStatus()
 		return report
 	}
 
@@ -68,6 +69,7 @@ func importFiles(opts Options, files []importFile) Report {
 
 	if hasConflict {
 		report.Changes = changes
+		report.inferStatus()
 		return report
 	}
 
@@ -82,10 +84,12 @@ func importFiles(opts Options, files []importFile) Report {
 	}
 	if !needsWrite {
 		report.NoOp = true
+		report.inferStatus()
 		return report
 	}
 
 	if opts.DryRun {
+		report.inferStatus()
 		return report
 	}
 
@@ -125,16 +129,19 @@ func importFiles(opts Options, files []importFile) Report {
 		if err := os.MkdirAll(targetDir, 0o755); err != nil {
 			rollback()
 			report.Errors = append(report.Errors, fmt.Sprintf("create dir for %s: %v", f.TargetRel, err))
+			report.inferStatus()
 			return report
 		}
 		if err := fileutil.AtomicWrite(targetPath, f.Content, 0o644); err != nil {
 			rollback()
 			report.Errors = append(report.Errors, fmt.Sprintf("write %s: %v", f.TargetRel, err))
+			report.inferStatus()
 			return report
 		}
 	}
 
 	report.Written = true
+	report.inferStatus()
 	return report
 }
 

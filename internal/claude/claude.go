@@ -2,6 +2,7 @@ package claude
 
 import (
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -38,6 +39,24 @@ type Report struct {
 	Errors    []string
 	NoOp      bool
 	Written   bool
+	Status    string // "planned" | "written" | "skipped" | "conflict" | "error"
+}
+
+// inferStatus 根据报告字段自动推断 Status。
+func (r *Report) inferStatus() {
+	if len(r.Errors) > 0 {
+		r.Status = "error"
+	} else if len(r.Conflicts) > 0 && !r.Written {
+		r.Status = "conflict"
+	} else if r.Written {
+		r.Status = "written"
+	} else if r.NoOp {
+		r.Status = "skipped"
+	} else if len(r.Changes) > 0 {
+		r.Status = "planned"
+	} else {
+		r.Status = "skipped"
+	}
 }
 
 // Change 描述单个文件的操作。
@@ -49,6 +68,7 @@ type Change struct {
 
 // Render 输出人类可读的报告。
 func (r Report) Render(w io.Writer) {
+	r.inferStatus()
 	if len(r.Errors) > 0 {
 		for _, e := range r.Errors {
 			fmt.Fprintf(w, "ERROR: %s\n", e)
@@ -88,6 +108,34 @@ func (r Report) Render(w io.Writer) {
 	for _, warn := range r.Warnings {
 		fmt.Fprintf(w, "WARNING: %s\n", warn)
 	}
+}
+
+// RenderJSON 输出机器可读的 JSON 报告。
+func (r Report) RenderJSON(w io.Writer) {
+	r.inferStatus()
+	type jsonReport struct {
+		Status    string   `json:"status"`
+		Root      string   `json:"root"`
+		Changes   []Change `json:"changes,omitempty"`
+		Warnings  []string `json:"warnings,omitempty"`
+		Conflicts []string `json:"conflicts,omitempty"`
+		Errors    []string `json:"errors,omitempty"`
+		NoOp      bool     `json:"noop"`
+		Written   bool     `json:"written"`
+	}
+	jr := jsonReport{
+		Status:    r.Status,
+		Root:      r.Root,
+		Changes:   r.Changes,
+		Warnings:  r.Warnings,
+		Conflicts: r.Conflicts,
+		Errors:    r.Errors,
+		NoOp:      r.NoOp,
+		Written:   r.Written,
+	}
+	enc := json.NewEncoder(w)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(jr)
 }
 
 // ProjectRoot 从项目目录向上查找 .git 或 reasonix.toml。
