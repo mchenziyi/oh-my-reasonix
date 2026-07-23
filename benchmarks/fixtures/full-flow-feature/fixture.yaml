@@ -1,0 +1,25 @@
+{
+  "id": "full-flow-feature",
+  "description": "全流程新功能：Explore→Plan→Implement(3 files)→Test→Review→Complete",
+  "task": "实现新功能：internal/api/users.go 新增 GET /api/users 端点，internal/api/router.go 注册路由，tests/api_test.go 添加测试。",
+  "allowed_paths": ["internal/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f internal/api/users.go", "test -f internal/api/router.go", "test -f tests/api_test.go"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "task", "output": "实现 GET /api/users"},
+    {"role": "assistant", "kind": "explore", "output": "检查现有 API 结构"},
+    {"role": "assistant", "kind": "implement", "output": "创建 users.go，更新 router.go"},
+    {"role": "assistant", "kind": "implement", "output": "添加测试文件"},
+    {"role": "assistant", "kind": "review", "output": "所有文件已实现"}
+  ],
+  "replay": {
+    "changed_paths": ["internal/api/users.go", "internal/api/router.go", "tests/api_test.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
+}

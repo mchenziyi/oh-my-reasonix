@@ -760,6 +760,10 @@ func runQualityBenchmark(args []string) error {
 				result, replayErr = qualitybench.Replay(fixture)
 			}
 			if replayErr != nil {
+				results[fixture.ID] = qualitybench.RunResult{
+					Failed: true,
+					Error:  replayErr.Error(),
+				}
 				continue
 			}
 			results[fixture.ID] = result

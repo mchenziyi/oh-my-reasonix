@@ -24,6 +24,8 @@ type Fixture struct {
 	ExpectedEvents  []string       `json:"expected_events"`
 	ReplayOutputs   []ReplayOutput `json:"replay_outputs,omitempty"`
 	Replay          *ReplaySpec    `json:"replay,omitempty"`
+	NativeReplay    *ReplaySpec    `json:"native_replay,omitempty"`
+	OMRReplay       *ReplaySpec    `json:"omr_replay,omitempty"`
 }
 
 // ReplaySpec describes the deterministic outcome expected from a local replay.
@@ -53,6 +55,7 @@ type RunResult struct {
 	TestsSkipped       bool     `json:"tests_skipped"`
 	Metrics            Metrics  `json:"metrics,omitempty"`
 	Error              string   `json:"error,omitempty"`
+	Failed             bool     `json:"failed,omitempty"`
 }
 
 type Metrics struct {
@@ -72,7 +75,32 @@ type Metrics struct {
 type Evaluation struct {
 	FixtureID           string   `json:"fixture_id"`
 	QualifiedCompletion bool     `json:"qualified_completion"`
+	Category            string   `json:"category,omitempty"` // pass|infra|task|judgment|model
 	Failures            []string `json:"failures,omitempty"`
+}
+
+// classifyFailure determines the failure category for an evaluation.
+func classifyFailure(fixtureID string, result RunResult, eval Evaluation) string {
+	if result.Failed || strings.Contains(result.Error, "timeout") || strings.Contains(result.Error, "connection") {
+		return "infra"
+	}
+	if eval.QualifiedCompletion {
+		return "pass"
+	}
+	for _, f := range eval.Failures {
+		if f == "required effects not met" || f == "tests were skipped" {
+			return "task"
+		}
+		if f == "hidden tests failed" || f == "regression tests failed" {
+			return "judgment"
+		}
+	}
+	for _, f := range eval.Failures {
+		if strings.HasPrefix(f, "missing expected event") {
+			return "model"
+		}
+	}
+	return "task"
 }
 
 type Report struct {
@@ -153,6 +181,7 @@ func Evaluate(fixture Fixture, result RunResult) Evaluation {
 		}
 	}
 	evaluation.QualifiedCompletion = len(evaluation.Failures) == 0
+	evaluation.Category = classifyFailure(fixture.ID, result, evaluation)
 	return evaluation
 }
 
@@ -165,6 +194,10 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult) Report {
 		}
 		report.EvaluatedCount++
 		evaluation := Evaluate(fixture, result)
+		// Include failed runs in evaluated count
+		if result.Failed {
+			evaluation.QualifiedCompletion = false
+		}
 		report.Evaluations = append(report.Evaluations, evaluation)
 		if evaluation.QualifiedCompletion {
 			report.QualifiedCount++
@@ -233,6 +266,36 @@ func Replay(fixture Fixture) (RunResult, error) {
 		Metrics:            fixture.Replay.Metrics,
 	}
 	return result, nil
+}
+
+// ReplayPaired returns both native and OMR replay results for a fixture that
+// has paired replay data. Falls back to fixture.Replay for OMR when OMRReplay
+// is nil, and returns an error when NativeReplay is nil.
+func ReplayPaired(fixture Fixture) (native, omr RunResult, err error) {
+	if fixture.NativeReplay == nil {
+		return RunResult{}, RunResult{}, fmt.Errorf("fixture %s has no native_replay", fixture.ID)
+	}
+	native = replayFromSpec(fixture.NativeReplay)
+	if fixture.OMRReplay != nil {
+		omr = replayFromSpec(fixture.OMRReplay)
+	} else if fixture.Replay != nil {
+		omr = replayFromSpec(fixture.Replay)
+	} else {
+		return RunResult{}, RunResult{}, fmt.Errorf("fixture %s has no omr_replay or replay", fixture.ID)
+	}
+	return native, omr, nil
+}
+
+func replayFromSpec(spec *ReplaySpec) RunResult {
+	return RunResult{
+		ChangedPaths:       append([]string(nil), spec.ChangedPaths...),
+		HiddenTestsPassed:  spec.HiddenTestsPassed,
+		RegressionPassed:   spec.RegressionPassed,
+		RequiredEffectsMet: spec.RequiredEffectsMet,
+		Events:             append([]string(nil), spec.Events...),
+		TestsSkipped:       spec.TestsSkipped,
+		Metrics:            spec.Metrics,
+	}
 }
 
 func Matches(path, pattern string) bool {

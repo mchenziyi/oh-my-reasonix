@@ -1,0 +1,24 @@
+{
+  "id": "full-flow-bug-fix",
+  "description": "全流程 bug 修复：Explore→Plan→Implement(2 files)→Test→Review→Complete",
+  "task": "修复跨文件 bug：internal/config/loader.go 中的 ValidatePort 函数错误地允许端口 0，而 internal/server/handler.go 依赖此检查。修复两个文件并添加测试。",
+  "allowed_paths": ["internal/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f internal/config/loader.go", "test -f internal/server/handler.go"],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "task", "output": "修复 ValidatePort 允许端口 0 的 bug。"},
+    {"role": "assistant", "kind": "explore", "output": "检查 loader.go 和 handler.go"},
+    {"role": "assistant", "kind": "fix", "output": "修复 ValidatePort，更新 handler.go"},
+    {"role": "assistant", "kind": "review", "output": "Review 通过"}
+  ],
+  "replay": {
+    "changed_paths": ["internal/config/loader.go", "internal/server/handler.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
+}

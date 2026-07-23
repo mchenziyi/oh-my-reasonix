@@ -1,6 +1,9 @@
 package qualitybench
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestEvaluateQualifiedCompletion(t *testing.T) {
 	fixture := Fixture{ID: "x", Task: "task", AllowedPaths: []string{"src/*"}, ForbiddenPaths: []string{"secret/*"}, ExpectedEvents: []string{"complete_step"}}
@@ -106,5 +109,137 @@ func TestMatchesSupportsGlobstarPaths(t *testing.T) {
 	}
 	if !Matches("internal/cacheguard/trace.go", "**/*.go") {
 		t.Fatal("globstar should match files at any depth")
+	}
+}
+
+// ─── OMR-T01: failure categorization tests ───
+
+func TestEvaluateCategorizesPass(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
+		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true,
+	})
+	if eval.Category != "pass" {
+		t.Fatalf("expected pass category, got %q", eval.Category)
+	}
+}
+
+func TestEvaluateCategorizesInfra(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
+		Failed: true, Error: "timeout",
+	})
+	if eval.Category != "infra" {
+		t.Fatalf("expected infra category, got %q", eval.Category)
+	}
+}
+
+func TestEvaluateCategorizesTask(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
+		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: false,
+	})
+	if eval.Category != "task" {
+		t.Fatalf("expected task category, got %q", eval.Category)
+	}
+}
+
+func TestEvaluateCategorizesJudgment(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
+		HiddenTestsPassed: false, RegressionPassed: true, RequiredEffectsMet: true,
+	})
+	if eval.Category != "judgment" {
+		t.Fatalf("expected judgment category, got %q", eval.Category)
+	}
+}
+
+func TestEvaluateCategorizesModel(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t", ExpectedEvents: []string{"complete_step"}},
+		RunResult{HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: nil})
+	if eval.Category != "model" {
+		t.Fatalf("expected model category, got %q", eval.Category)
+	}
+}
+
+func TestEvaluateAllIncludesFailedResults(t *testing.T) {
+	fixtures := []Fixture{
+		{ID: "ok", Task: "t", ExpectedEvents: []string{"e"}},
+		{ID: "fail", Task: "t", ExpectedEvents: []string{"e"}},
+	}
+	results := map[string]RunResult{
+		"ok":   {HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}},
+		"fail": {Failed: true, Error: "boom"},
+	}
+	report := EvaluateAll(fixtures, results)
+	if report.EvaluatedCount != 2 {
+		t.Fatalf("expected 2 evaluated, got %d", report.EvaluatedCount)
+	}
+	if report.QualifiedCount != 1 {
+		t.Fatalf("expected 1 qualified, got %d", report.QualifiedCount)
+	}
+	// Failed fixture should have infra category
+	for _, e := range report.Evaluations {
+		if e.FixtureID == "fail" && e.Category != "infra" {
+			t.Fatalf("expected infra for failed fixture, got %q", e.Category)
+		}
+	}
+}
+
+func TestReplayPairedNativeOMR(t *testing.T) {
+	f := Fixture{
+		ID: "paired", Task: "t",
+		NativeReplay: &ReplaySpec{ChangedPaths: []string{"a.go"}, HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}},
+		OMRReplay:    &ReplaySpec{ChangedPaths: []string{"a.go"}, HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}, Metrics: Metrics{Cost: 0.1}},
+	}
+	native, omr, err := ReplayPaired(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(native.ChangedPaths) != 1 {
+		t.Fatal("native replay failed")
+	}
+	if omr.Metrics.Cost != 0.1 {
+		t.Fatal("omr replay metrics not loaded")
+	}
+}
+
+func TestReplayPairedFallsBackToReplay(t *testing.T) {
+	f := Fixture{
+		ID: "fallback", Task: "t",
+		NativeReplay: &ReplaySpec{ChangedPaths: []string{"a.go"}, HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}},
+		Replay:       &ReplaySpec{ChangedPaths: []string{"a.go"}, HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}},
+	}
+	_, omr, err := ReplayPaired(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(omr.ChangedPaths) != 1 {
+		t.Fatal("omr replay fallback failed")
+	}
+}
+
+func TestReplayPairedRequiresNative(t *testing.T) {
+	_, _, err := ReplayPaired(Fixture{ID: "no-native", Task: "t"})
+	if err == nil {
+		t.Fatal("expected error when native_replay missing")
+	}
+}
+
+func TestFullFlowFixtureReplayable(t *testing.T) {
+	ids := []string{"full-flow-bug-fix", "full-flow-feature", "full-flow-refactor"}
+	for _, id := range ids {
+		path := filepath.Join("..", "..", "benchmarks", "fixtures", id, "fixture.yaml")
+		f, err := LoadFixture(path)
+		if err != nil {
+			t.Fatalf("load %s: %v", id, err)
+		}
+		result, err := Replay(f)
+		if err != nil {
+			t.Fatalf("replay %s: %v", id, err)
+		}
+		eval := Evaluate(f, result)
+		if !eval.QualifiedCompletion {
+			t.Fatalf("%s: not qualified: %v", id, eval.Failures)
+		}
+		if len(result.ChangedPaths) < 2 {
+			t.Fatalf("%s: expected >=2 changed files, got %d", id, len(result.ChangedPaths))
+		}
 	}
 }

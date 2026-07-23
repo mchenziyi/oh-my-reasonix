@@ -1,0 +1,25 @@
+{
+  "id": "full-flow-refactor",
+  "description": "全流程重构：Explore→Plan→Implement→RegressionTest→Review→Complete",
+  "task": "重构 internal/validation/validator.go：提取公共验证逻辑到 internal/validation/common.go，确保所有已有测试通过。",
+  "allowed_paths": ["internal/**", "tests/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f internal/validation/validator.go", "test -f internal/validation/common.go"],
+  "regression_tests": ["go test ./internal/validation/..."],
+  "expected_events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+  "replay_outputs": [
+    {"role": "user", "kind": "task", "output": "重构 validator.go，提取公共逻辑"},
+    {"role": "assistant", "kind": "explore", "output": "分析现有验证函数"},
+    {"role": "assistant", "kind": "refactor", "output": "创建 common.go，更新 validator.go"},
+    {"role": "assistant", "kind": "test", "output": "运行回归测试"},
+    {"role": "assistant", "kind": "review", "output": "重构完成，测试通过"}
+  ],
+  "replay": {
+    "changed_paths": ["internal/validation/validator.go", "internal/validation/common.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "omr-explore", "review", "review_report", "complete_step"],
+    "tests_skipped": false
+  }
+}
