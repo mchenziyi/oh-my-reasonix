@@ -123,6 +123,9 @@ func TestProfileListJSON(t *testing.T) {
 		AllowedTools     []string `json:"allowed_tools"`
 		InputTypes       []string `json:"input_types"`
 		OutputSections   []string `json:"output_sections"`
+		Source           string   `json:"source"`
+		Status           string   `json:"status"`
+		PromptShortHash  string   `json:"prompt_short_hash"`
 	}
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
@@ -144,6 +147,18 @@ func TestProfileListJSON(t *testing.T) {
 	}
 	if !profiles[2].Disabled {
 		t.Fatalf("expected disabled profile marker: %#v", profiles[2])
+	}
+	if profiles[0].Source != "builtin" {
+		t.Fatalf("expected source=builtin, got: %v", profiles[0].Source)
+	}
+	if profiles[0].Status != "enabled" {
+		t.Fatalf("expected status=enabled for omr-explore, got: %v", profiles[0].Status)
+	}
+	if profiles[2].Status != "disabled" {
+		t.Fatalf("expected status=disabled for omr-debug, got: %v", profiles[2].Status)
+	}
+	if len(profiles[0].PromptShortHash) != 8 {
+		t.Fatalf("expected 8-char short hash, got: %q", profiles[0].PromptShortHash)
 	}
 }
 
@@ -179,7 +194,7 @@ func TestProfileListHumanShowsRoutingState(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := string(data)
-	if !strings.Contains(output, "omr-frontend") || !strings.Contains(output, "categories=frontend") || !strings.Contains(output, "omr-debug") || !strings.Contains(output, "disabled") {
+	if !strings.Contains(output, "omr-frontend") || !strings.Contains(output, "frontend") || !strings.Contains(output, "omr-debug") || !strings.Contains(output, "disabled") {
 		t.Fatalf("profile list missing routing state: %q", output)
 	}
 }

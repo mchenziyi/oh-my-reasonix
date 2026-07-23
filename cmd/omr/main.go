@@ -420,6 +420,11 @@ func runProfile(args []string) error {
 			AllowedTools     []string `json:"allowed_tools,omitempty"`
 			InputTypes       []string `json:"input_types,omitempty"`
 			OutputSections   []string `json:"output_sections,omitempty"`
+			Source           string   `json:"source"`
+			Status           string   `json:"status"`
+			EffectiveModel   string   `json:"effective_model,omitempty"`
+			ModelSource      string   `json:"model_source,omitempty"`
+			PromptShortHash  string   `json:"prompt_short_hash,omitempty"`
 		}
 		configured := map[string]omrconfig.AgentConfig{}
 		categoryByProfile := map[string][]string{}
@@ -441,6 +446,16 @@ func runProfile(args []string) error {
 		output := make([]profileJSON, 0, len(profiles))
 		for _, profile := range profiles {
 			item := profileJSON{ID: profile.ID, Path: profile.Path, ContentSHA256: profile.ContentSHA256}
+			// Source and status
+			item.Source = "builtin"
+			item.Status = "enabled"
+			if disabled[profile.ID] {
+				item.Status = "disabled"
+			}
+			if len(profile.ContentSHA256) >= 8 {
+				item.PromptShortHash = profile.ContentSHA256[:8]
+			}
+			// Model info
 			// Read and parse SKILL.md for metadata
 			skillPath := install.ProfilePath(root, profile.Path)
 			if data, readErr := os.ReadFile(skillPath); readErr == nil {
@@ -454,6 +469,10 @@ func runProfile(args []string) error {
 			}
 			if agent, ok := configured[profile.ID]; ok {
 				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
+				if agent.Model != "" {
+					item.EffectiveModel = agent.Model
+					item.ModelSource = "project"
+				}
 				if agent.PromptFile != "" {
 					promptPath := agent.PromptFile
 					if !filepath.IsAbs(promptPath) {
@@ -475,12 +494,14 @@ func runProfile(args []string) error {
 	}
 	categoryByProfile := map[string][]string{}
 	disabled := map[string]bool{}
+	configured := map[string]omrconfig.AgentConfig{}
 	configPath := omrconfig.FindConfig(root)
 	if _, statErr := os.Stat(configPath); statErr == nil {
 		cfg, configErr := omrconfig.Load(configPath)
 		if configErr != nil {
 			return configErr
 		}
+		configured = cfg.Agents
 		for category, profile := range cfg.Categories {
 			categoryByProfile[profile] = append(categoryByProfile[profile], category)
 		}
@@ -491,32 +512,28 @@ func runProfile(args []string) error {
 			disabled[profile] = true
 		}
 	}
+	fmt.Printf("%-16s %-8s %-10s %-18s %s\n", "PROFILE", "SOURCE", "STATUS", "MODEL", "CATEGORIES")
 	for _, profile := range profiles {
-		desc := ""
-		ro := ""
-		skillPath := install.ProfilePath(root, profile.Path)
-		if data, readErr := os.ReadFile(skillPath); readErr == nil {
-			if meta, parseErr := manifest.ParseProfileMeta(data); parseErr == nil {
-				desc = meta.Description
-				if meta.ReadOnly {
-					ro = "RO"
-				}
-			}
-		}
-		suffix := ""
-		if ro != "" {
-			suffix += "\t" + ro
-		}
-		if desc != "" {
-			suffix += "\t" + desc
-		}
-		if categories := categoryByProfile[profile.ID]; len(categories) > 0 {
-			suffix += "\tcategories=" + strings.Join(categories, ",")
-		}
+		source := "builtin"
+		status := "enabled"
 		if disabled[profile.ID] {
-			suffix += "\tdisabled"
+			status = "disabled"
 		}
-		fmt.Printf("%s\t%s\t%s%s\n", profile.ID, profile.Path, profile.ContentSHA256, suffix)
+		model := "(default)"
+		modelSource := ""
+		if agent, ok := configured[profile.ID]; ok && agent.Model != "" {
+			model = agent.Model
+			modelSource = "(proj)"
+		}
+		cats := ""
+		if categories := categoryByProfile[profile.ID]; len(categories) > 0 {
+			cats = strings.Join(categories, ",")
+		}
+		modelDisplay := model
+		if modelSource != "" {
+			modelDisplay = model + " " + modelSource
+		}
+		fmt.Printf("%-16s %-8s %-10s %-18s %s\n", profile.ID, source, status, modelDisplay, cats)
 	}
 	return nil
 }
