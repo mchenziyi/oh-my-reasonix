@@ -118,12 +118,20 @@ func TestProfileListJSON(t *testing.T) {
 		PromptFileExists *bool    `json:"prompt_file_exists"`
 		Categories       []string `json:"categories"`
 		Disabled         bool     `json:"disabled"`
+		Description      string   `json:"description"`
+		ReadOnlyBool     bool     `json:"read_only_bool"`
+		AllowedTools     []string `json:"allowed_tools"`
+		InputTypes       []string `json:"input_types"`
+		OutputSections   []string `json:"output_sections"`
 	}
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
 	if len(profiles) != 5 || profiles[0].ID != "omr-explore" {
 		t.Fatalf("unexpected profiles: %#v", profiles)
+	}
+	if profiles[0].ReadOnlyBool != true {
+		t.Fatal("expected omr-explore to be read-only")
 	}
 	if profiles[1].Model != "deepseek-v4-flash" {
 		t.Fatalf("expected configured model: %#v", profiles[1])

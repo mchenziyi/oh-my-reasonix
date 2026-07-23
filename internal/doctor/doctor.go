@@ -216,6 +216,21 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		} else {
 			result.Checks = append(result.Checks, Check{Name: "profile." + profile.ID, Status: "PASS", Detail: profile.Path})
 		}
+		// Profile metadata check
+		skillPath := install.ProfilePath(root, profile.Path)
+		if data, readErr := os.ReadFile(skillPath); readErr == nil {
+			meta, parseErr := manifest.ParseProfileMeta(data)
+			if parseErr != nil {
+				result.Warnings = append(result.Warnings, fmt.Sprintf("profile.%s metadata: %v", profile.ID, parseErr))
+			} else {
+				if meta.Description == "" {
+					result.Warnings = append(result.Warnings, fmt.Sprintf("profile.%s metadata: missing description", profile.ID))
+				}
+				if len(meta.AllowedTools) == 0 {
+					result.Warnings = append(result.Warnings, fmt.Sprintf("profile.%s metadata: no allowed-tools declared", profile.ID))
+				}
+			}
+		}
 	}
 	for _, drift := range install.PromptSourceDrift(root, m, assets) {
 		result.Errors = append(result.Errors, sourceDriftMessage(drift))

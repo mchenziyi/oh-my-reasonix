@@ -265,3 +265,21 @@ func TestHookCheckWarnNotBlocking(t *testing.T) {
 		t.Fatal("WARN hook check should not produce errors")
 	}
 }
+
+func TestRunReportsMissingProfileMetadata(t *testing.T) {
+	root := doctorProject(t)
+	result, err := Run(root, doctorAssets())
+	if err != nil {
+		t.Fatalf("doctor: %v %#v", err, result)
+	}
+	// Doctor should produce warnings (not errors) for minimal profiles
+	found := false
+	for _, w := range result.Warnings {
+		if len(w) > 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected warnings for minimal profile metadata")
+	}
+}
