@@ -93,7 +93,7 @@ func TestProfileListJSON(t *testing.T) {
 	if err := os.WriteFile(promptPath, []byte("research"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\nprompt_file = \"prompts/research.md\"\n[routing]\nresearch = \"omr-research\"\n[profiles]\ndisabled = \"omr-debug\"\n"), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, ".reasonix", "omr", "config.toml"), []byte("[agent.omr-research]\nmodel = \"deepseek-v4-flash\"\nprompt_file = \"prompts/research.md\"\n[agent.omr-project]\nmodel = \"test-model\"\n[routing]\nresearch = \"omr-research\"\n[profiles]\ndisabled = \"omr-debug\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	reader, writer, err := os.Pipe()
@@ -130,8 +130,21 @@ func TestProfileListJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if len(profiles) != 5 || profiles[0].ID != "omr-explore" {
+	if len(profiles) != 6 || profiles[0].ID != "omr-explore" {
 		t.Fatalf("unexpected profiles: %#v", profiles)
+	}
+	// Find project-only profile
+	foundProject := false
+	for _, p := range profiles {
+		if p.Source == "project" {
+			foundProject = true
+			if p.Status != "missing" {
+				t.Fatalf("expected project profile to have status 'missing', got %q", p.Status)
+			}
+		}
+	}
+	if !foundProject {
+		t.Fatal("expected project-only profile in JSON output")
 	}
 	if profiles[0].ReadOnlyBool != true {
 		t.Fatal("expected omr-explore to be read-only")
