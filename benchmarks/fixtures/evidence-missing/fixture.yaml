@@ -1,6 +1,7 @@
 {
   "id": "evidence-missing",
   "description": "证据缺失：required_effects_met=false 的场景，验证评估正确标记失败。",
+  "expected_failure": true,
   "task": "更新 internal/api/handler.go 中的错误处理。修改不完整即 required_effects_met=false。",
   "allowed_paths": ["internal/api/**"],
   "forbidden_paths": [".reasonix/**"],

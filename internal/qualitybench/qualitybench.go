@@ -16,6 +16,7 @@ import (
 type Fixture struct {
 	ID                   string         `json:"id"`
 	Description          string         `json:"description"`
+	ExpectedFailure      bool           `json:"expected_failure,omitempty"`
 	Task                 string         `json:"task"`
 	AllowedPaths         []string       `json:"allowed_paths"`
 	ForbiddenPaths       []string       `json:"forbidden_paths"`
@@ -142,15 +143,16 @@ func isInfraError(errMsg string) bool {
 }
 
 type Report struct {
-	SchemaVersion  int          `json:"schema_version"`
-	RunID          string       `json:"run_id"`
-	ExecutionMode  string       `json:"execution_mode"`
-	FixtureCount   int          `json:"fixture_count"`
-	EvaluatedCount int          `json:"evaluated_count"`
-	QualifiedCount int          `json:"qualified_count"`
-	QualifiedRate  float64      `json:"qualified_rate"`
-	Metrics        Metrics      `json:"metrics"`
-	Evaluations    []Evaluation `json:"evaluations"`
+	SchemaVersion       int          `json:"schema_version"`
+	RunID               string       `json:"run_id"`
+	ExecutionMode       string       `json:"execution_mode"`
+	FixtureCount        int          `json:"fixture_count"`
+	EvaluatedCount      int          `json:"evaluated_count"`
+	ExpectedFailureCount int         `json:"expected_failure_count"`
+	QualifiedCount      int          `json:"qualified_count"`
+	QualifiedRate       float64      `json:"qualified_rate"`
+	Metrics             Metrics      `json:"metrics"`
+	Evaluations         []Evaluation `json:"evaluations"`
 }
 
 const (
@@ -278,7 +280,11 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult, runID, execut
 			evaluation.QualifiedCompletion = false
 		}
 		report.Evaluations = append(report.Evaluations, evaluation)
-		if evaluation.QualifiedCompletion {
+		if fixture.ExpectedFailure {
+			if !evaluation.QualifiedCompletion {
+				report.ExpectedFailureCount++
+			}
+		} else if evaluation.QualifiedCompletion {
 			report.QualifiedCount++
 		}
 		report.Metrics.PromptTokens += result.Metrics.PromptTokens
@@ -295,19 +301,24 @@ func EvaluateAll(fixtures []Fixture, results map[string]RunResult, runID, execut
 			report.Metrics.Currency = result.Metrics.Currency
 		}
 	}
-	if report.EvaluatedCount > 0 {
-		report.QualifiedRate = float64(report.QualifiedCount) / float64(report.EvaluatedCount)
+	effectiveEvaluated := report.EvaluatedCount - report.ExpectedFailureCount
+	if effectiveEvaluated > 0 {
+		report.QualifiedRate = float64(report.QualifiedCount) / float64(effectiveEvaluated)
+	} else {
+		report.QualifiedRate = 1
 	}
 	return report
 }
 
 // CheckGate validates a benchmark report against the requested qualified rate.
-// A perfect-rate gate also requires every discovered fixture to be evaluated.
+// A perfect-rate gate also requires every non-expected-failure fixture to be evaluated.
 func CheckGate(report Report, minimumRate float64) error {
 	if minimumRate < 0 || minimumRate > 1 {
 		return fmt.Errorf("minimum qualified rate must be between 0 and 1")
 	}
-	if minimumRate >= 1 && report.EvaluatedCount != report.FixtureCount {
+	effectiveFixtures := report.FixtureCount - report.ExpectedFailureCount
+	effectiveEvaluated := report.EvaluatedCount - report.ExpectedFailureCount
+	if minimumRate >= 1 && effectiveEvaluated != effectiveFixtures {
 		return fmt.Errorf("missing results for one or more fixtures")
 	}
 	if report.QualifiedRate < minimumRate {
