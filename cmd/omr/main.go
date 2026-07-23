@@ -760,6 +760,7 @@ func runQualityBenchmark(args []string) error {
 		for _, fixture := range fixtures {
 			native, omr, err := qualitybench.ReplayPaired(fixture)
 			if err != nil {
+				fmt.Fprintf(os.Stderr, "warning: paired replay skipped %q: %v\n", fixture.ID, err)
 				continue
 			}
 			nativeResults[fixture.ID] = native
@@ -767,6 +768,9 @@ func runQualityBenchmark(args []string) error {
 		}
 		nativeReport := qualitybench.EvaluateAll(fixtures, nativeResults)
 		omrReport := qualitybench.EvaluateAll(fixtures, omrResults)
+		if nativeReport.EvaluatedCount == 0 {
+			return errors.New("no fixtures contain native_replay data; use --paired only on fixtures with native_replay/omr_replay")
+		}
 		comparison := qualitybench.CompareReports(nativeReport, omrReport)
 		if err := writeJSONValue(*outputPath, comparison); err != nil {
 			return err

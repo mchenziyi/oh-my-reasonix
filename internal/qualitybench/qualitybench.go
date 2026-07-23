@@ -113,7 +113,7 @@ func isInfraError(errMsg string) bool {
 	lower := strings.ToLower(errMsg)
 	infraPrefixes := []string{
 		"context deadline exceeded",
-		"signal: killed",
+		"signal: ",
 		"exec: ",
 		"fork/exec ",
 	}
