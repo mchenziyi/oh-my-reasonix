@@ -1,10 +1,13 @@
 package claude
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 )
 
 // importFile represents a single file to be imported.
@@ -86,21 +89,36 @@ func importFiles(opts Options, files []importFile) Report {
 	}
 
 	// Execute writes with rollback
-	written := map[string][]byte{}
+	type fileState struct {
+		content     []byte
+		mode        os.FileMode
+		contentRead bool // false = file didn't exist
+	}
+	written := map[string]fileState{}
 	rollback := func() {
-		for path, oldContent := range written {
-			if len(oldContent) == 0 {
+		for path, state := range written {
+			if !state.contentRead {
 				os.Remove(path)
 			} else {
-				os.WriteFile(path, oldContent, 0o644)
+				os.WriteFile(path, state.content, state.mode)
 			}
 		}
 	}
 
 	for _, f := range files {
 		targetPath := filepath.Join(root, filepath.FromSlash(f.TargetRel))
-		oldContent, _ := os.ReadFile(targetPath)
-		written[targetPath] = oldContent
+		state := fileState{}
+		oldContent, err := os.ReadFile(targetPath)
+		if err == nil {
+			state.content = oldContent
+			state.contentRead = true
+			if info, statErr := os.Stat(targetPath); statErr == nil {
+				state.mode = info.Mode().Perm()
+			} else {
+				state.mode = 0o644
+			}
+		}
+		written[targetPath] = state
 
 		targetDir := filepath.Dir(targetPath)
 		if err := os.MkdirAll(targetDir, 0o755); err != nil {
@@ -108,7 +126,7 @@ func importFiles(opts Options, files []importFile) Report {
 			report.Errors = append(report.Errors, fmt.Sprintf("create dir for %s: %v", f.TargetRel, err))
 			return report
 		}
-		if err := os.WriteFile(targetPath, f.Content, 0o644); err != nil {
+		if err := fileutil.AtomicWrite(targetPath, f.Content, 0o644); err != nil {
 			rollback()
 			report.Errors = append(report.Errors, fmt.Sprintf("write %s: %v", f.TargetRel, err))
 			return report
@@ -273,6 +291,13 @@ func ImportMCP(opts Options) Report {
 		return Report{Root: root, Errors: []string{err.Error()}}
 	}
 
+	// Validate JSON before import
+	if !json.Valid(data) {
+		return Report{Root: root, Errors: []string{
+			fmt.Sprintf("%s: invalid JSON — import rejected", MCPFile),
+		}}
+	}
+
 	targetRel := ".reasonix/mcp.json"
 	files := []importFile{{
 		SourceRel:  "mcp.json",
@@ -309,7 +334,8 @@ func ImportHooks(opts Options) Report {
 			return Report{Root: root, Errors: []string{fmt.Sprintf("read hook %q: %v", entry.Name(), err)}}
 		}
 		// Convert hook into a strategy prompt rule
-		promptContent := append([]byte("# Imported Claude Hook: "+entry.Name()+"\n\n"), data...)
+		disclaimer := "# [策略提示转换] 此文件由 Claude Hook 转换而来，不保证等价于运行时 Hook 执行\n# 原始来源: .claude/hooks/" + entry.Name() + "\n\n"
+		promptContent := append([]byte(disclaimer), data...)
 		ruleName := "hook-" + entry.Name()
 		if ext := filepath.Ext(ruleName); ext != "" {
 			ruleName = ruleName[:len(ruleName)-len(ext)] + ".md"

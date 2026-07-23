@@ -184,10 +184,9 @@ func TestImportRulesRollbackOnWriteFailure(t *testing.T) {
 	writeClaudeRule(t, root, "a.md", "# A v2\n")
 	writeClaudeRule(t, root, "b.md", "# B v2\n")
 
-	// Make target files read-only so os.WriteFile fails
+	// Make target directory read-only so AtomicWrite temp file creation fails
 	targetDir := filepath.Join(root, filepath.FromSlash(OMRRulesDir))
-	os.Chmod(filepath.Join(targetDir, "a.md"), 0o444)
-	os.Chmod(filepath.Join(targetDir, "b.md"), 0o444)
+	os.Chmod(targetDir, 0o555)
 
 	report2 := ImportRules(Options{ProjectDir: root, Force: true})
 	if len(report2.Errors) == 0 {
@@ -195,8 +194,7 @@ func TestImportRulesRollbackOnWriteFailure(t *testing.T) {
 	}
 
 	// Restore permissions for assertions
-	os.Chmod(filepath.Join(targetDir, "a.md"), 0o644)
-	os.Chmod(filepath.Join(targetDir, "b.md"), 0o644)
+	os.Chmod(targetDir, 0o755)
 
 	// Verify rollback: files should still be original content
 	dataA, _ := os.ReadFile(filepath.Join(targetDir, "a.md"))
@@ -459,6 +457,141 @@ func TestImportAllWrite(t *testing.T) {
 	report := ImportAll(Options{ProjectDir: root})
 	if !report.Written {
 		t.Fatal("expected write for ImportAll")
+	}
+}
+
+// ─── FIX-05+06: Claude import security and compatibility tests ───
+
+func TestImportMCPRejectsInvalidJSON(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeMCP(t, root, `{"invalid json`)
+
+	report := ImportMCP(Options{ProjectDir: root})
+	if len(report.Errors) == 0 {
+		t.Fatal("expected error for invalid MCP JSON")
+	}
+	if !strings.Contains(report.Errors[0], "invalid JSON") {
+		t.Fatalf("expected 'invalid JSON' error, got: %v", report.Errors)
+	}
+}
+
+func TestImportRulesAtomicWrite(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "style.md", "# Style")
+
+	report := ImportRules(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+
+	targetFile := filepath.Join(root, filepath.FromSlash(OMRRulesDir), "style.md")
+	data, err := os.ReadFile(targetFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(data) != "# Style" {
+		t.Fatalf("unexpected content: %q", data)
+	}
+}
+
+func TestImportRulesFilePermissionsRestoredOnRollback(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "a.md", "# A\n")
+	writeClaudeRule(t, root, "b.md", "# B\n")
+
+	// First import succeeds
+	report1 := ImportRules(Options{ProjectDir: root})
+	if !report1.Written {
+		t.Fatal("expected first import to succeed")
+	}
+
+	targetDir := filepath.Join(root, filepath.FromSlash(OMRRulesDir))
+	targetFile := filepath.Join(targetDir, "a.md")
+	// Store original permissions
+	origInfo, _ := os.Stat(targetFile)
+	origMode := origInfo.Mode().Perm()
+
+	// Change source files
+	writeClaudeRule(t, root, "a.md", "# A v2\n")
+	writeClaudeRule(t, root, "b.md", "# B v2\n")
+
+	// Make the directory read-only so AtomicWrite fails (can't create temp file)
+	os.Chmod(targetDir, 0o555)
+
+	// Import with force should fail
+	report2 := ImportRules(Options{ProjectDir: root, Force: true})
+	if len(report2.Errors) == 0 {
+		t.Fatal("expected write error")
+	}
+
+	// Restore permissions so we can read
+	os.Chmod(targetDir, 0o755)
+
+	// After rollback, file content should be original
+	data, _ := os.ReadFile(targetFile)
+	if string(data) != "# A\n" {
+		t.Fatalf("content not rolled back: got %q", string(data))
+	}
+
+	// File permissions should be unchanged
+	afterInfo, _ := os.Stat(targetFile)
+	if afterInfo.Mode().Perm() != origMode {
+		t.Fatalf("file permission changed after rollback: was %o, got %o", origMode, afterInfo.Mode().Perm())
+	}
+}
+
+func TestImportRulesZeroByteFile(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "empty.md", "")
+
+	report := ImportRules(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write for zero-byte rule")
+	}
+
+	targetFile := filepath.Join(root, filepath.FromSlash(OMRRulesDir), "empty.md")
+	data, err := os.ReadFile(targetFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(data) != 0 {
+		t.Fatalf("expected zero-byte file, got %d bytes", len(data))
+	}
+}
+
+func TestImportMCPEmptyFile(t *testing.T) {
+	root := newClaudeProject(t)
+	// Empty file is invalid JSON
+	writeClaudeMCP(t, root, "")
+
+	report := ImportMCP(Options{ProjectDir: root})
+	if len(report.Errors) == 0 {
+		t.Fatal("expected error for empty MCP file")
+	}
+}
+
+func TestImportHooksPrefixDisclaimer(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeHook(t, root, "pre-tool.js", "console.log('test')")
+
+	report := ImportHooks(Options{ProjectDir: root})
+	if !report.Written {
+		t.Fatal("expected write")
+	}
+
+	// Verify disclaimer is present
+	rulesDir := filepath.Join(root, filepath.FromSlash(OMRRulesDir))
+	entries, _ := os.ReadDir(rulesDir)
+	if len(entries) == 0 {
+		t.Fatal("no rule files created")
+	}
+	data, _ := os.ReadFile(filepath.Join(rulesDir, entries[0].Name()))
+	content := string(data)
+	if !strings.Contains(content, "策略提示转换") {
+		t.Fatalf("expected conversion disclaimer in hook output, got: %s", content)
+	}
+	if !strings.Contains(content, "不保证等价于运行时 Hook") {
+		t.Fatalf("expected runtime disclaimer in hook output, got: %s", content)
 	}
 }
 
