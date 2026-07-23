@@ -134,10 +134,38 @@ reasonix.toml
 
 ```bash
 "$OMR_BIN" doctor --project-dir .
+"$OMR_BIN" config validate --project-dir .
 ```
 
 Report the result, including any warnings. Do not claim success when doctor
 reports an error.
+
+## Optional Web/Docs MCP
+
+OMR does not install, start, or authorize MCP servers. An optional server can
+be declared in `.reasonix/omr/config.toml` for redacted compatibility
+diagnostics and Profile guidance:
+
+```toml
+[mcp.docs]
+transport = "stdio"
+command = "mcp-docs"
+capabilities = ["docs"]
+enabled = false
+env = ["DOCS_API_KEY"]
+```
+
+Keep it disabled until the user has installed and reviewed the server. To make
+the tools available in a Reasonix session, register the same server through
+Reasonix itself and review its exact command or endpoint:
+
+```bash
+reasonix mcp add docs mcp-docs
+reasonix mcp list
+```
+
+Do not place tokens or `KEY=value` strings in the OMR `env` list. OMR stores
+environment variable names only and never prints their values.
 
 ## Upgrade or uninstall
 

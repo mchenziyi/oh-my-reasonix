@@ -26,3 +26,7 @@ allowed-tools: [read_file, grep, glob, ls, web_search, fetch, bash]
 5. `recommended_next_step`：父任务下一步最小可验证动作。
 
 明确区分事实、推断和未知。不要假装查询过未打开的来源，不要把搜索摘要当作最终事实，不要建议范围外修改。父任务仍以 Reasonix Todo 和 `complete_step` 为唯一状态事实源。
+
+## 可选 MCP
+
+项目可能声明可选的 Web/Docs MCP Server。只有当 Reasonix 运行时实际暴露对应工具、用户已确认该 Server，且当前任务确实需要外部资料时才使用。MCP 不可用、未授权或缺少凭证时继续使用现有只读工具完成可完成部分，并在 `uncertainties` 中说明限制；不得伪造查询结果、来源或宿主能力。

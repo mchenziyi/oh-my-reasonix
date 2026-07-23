@@ -164,19 +164,11 @@ func loadTOML(path string) (Config, error) {
 	}
 	// MCP server validation
 	for name, srv := range cfg.MCPServers {
-		if srv.Transport == "" {
-			srv.Transport = "stdio" // default transport
-			cfg.MCPServers[name] = srv
+		normalized, err := normalizeMCPServer(name, srv)
+		if err != nil {
+			return Config{}, err
 		}
-		if srv.Transport != "stdio" && srv.Transport != "http" {
-			return Config{}, fmt.Errorf("invalid mcp %q: transport must be 'stdio' or 'http', got %q", name, srv.Transport)
-		}
-		if srv.Transport == "stdio" && srv.Command == "" {
-			return Config{}, fmt.Errorf("invalid mcp %q: transport stdio requires command", name)
-		}
-		if srv.Transport == "http" && srv.URL == "" {
-			return Config{}, fmt.Errorf("invalid mcp %q: transport http requires url", name)
-		}
+		cfg.MCPServers[name] = normalized
 	}
 	return cfg, nil
 }
@@ -310,7 +302,7 @@ func assign(cfg *Config, section, key, raw string) error {
 	}
 	if strings.HasPrefix(section, "mcp.") {
 		name := strings.TrimSpace(strings.TrimPrefix(section, "mcp."))
-		if name == "" || strings.ContainsAny(name, " \t/\\") {
+		if !validMCPName(name) {
 			return fmt.Errorf("invalid mcp server name %q", name)
 		}
 		if cfg.MCPServers == nil {
@@ -320,8 +312,8 @@ func assign(cfg *Config, section, key, raw string) error {
 		switch key {
 		case "transport":
 			v := stringValue(raw)
-			if v != "stdio" && v != "http" {
-				return fmt.Errorf("mcp.%s.transport must be 'stdio' or 'http', got %q", name, v)
+			if v != "stdio" && v != "http" && v != "sse" {
+				return fmt.Errorf("mcp.%s.transport must be 'stdio', 'http', or 'sse', got %q", name, v)
 			}
 			srv.Transport = v
 		case "command":

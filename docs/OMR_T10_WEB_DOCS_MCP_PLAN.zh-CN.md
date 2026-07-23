@@ -1,5 +1,9 @@
 # OMR-T10：可选 Web/Docs MCP 兼容层开发计划
 
+> 状态：已完成（2026-07-23）。OMR 提供默认禁用的 TOML/JSONC 配置、Schema、脱敏兼容性诊断、配置迁移、Doctor、Research Profile 降级指引和自动化测试；Server 的安装、启动、授权与连接继续由 Reasonix 原生 MCP 运行时负责。
+>
+> 实现边界：OMR 只读发现 `.reasonix/omr/config.*` 并把已启用 Server 的安全元数据注入项目 Prompt，不写入或解析 Reasonix 私有运行时状态。用户通过 `reasonix mcp add/list` 注册并确认相同 Server；运行时未暴露工具时 Profile 必须降级。
+
 ## 目标
 
 为 OMR 增加可选的 Web/Docs MCP 配置与兼容性报告，让研究类 Profile 可以使用用户明确配置的文档搜索服务，同时保持默认离线、安全和可回滚。

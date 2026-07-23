@@ -203,6 +203,27 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			result.Checks = append(result.Checks, Check{Name: "omr.config.disabled", Status: "PASS", Detail: fmt.Sprintf("%d Profiles disabled", len(omrConfig.DisabledProfiles))})
 		}
 	}
+	if hasOMRConfig {
+		for _, diagnostic := range omrconfig.DiagnoseMCP(omrConfig) {
+			status := "PASS"
+			switch diagnostic.Availability {
+			case "disabled":
+				status = "DISABLED"
+			case "unavailable":
+				status = "WARN"
+				result.Warnings = append(result.Warnings, fmt.Sprintf("MCP server %q: %s", diagnostic.Server, diagnostic.Summary()))
+			}
+			if diagnostic.Enabled && diagnostic.Compatibility != "compatible" {
+				status = "WARN"
+				result.Warnings = append(result.Warnings, fmt.Sprintf("MCP server %q has unknown capabilities; %s", diagnostic.Server, diagnostic.Summary()))
+			}
+			result.Checks = append(result.Checks, Check{
+				Name:   "omr.config.mcp." + diagnostic.Server,
+				Status: status,
+				Detail: diagnostic.Summary(),
+			})
+		}
+	}
 	generated := install.GeneratedPromptPathForDoctor(root)
 	if actual, err := fileutil.SHA256File(generated); err != nil || actual != m.Prompt.FinalSHA256 {
 		result.Errors = append(result.Errors, "generated Prompt hash drift detected")

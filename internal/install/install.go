@@ -128,7 +128,7 @@ func Init(opts Options) (Report, error) {
 	orchestratorText := string(opts.Assets.Orchestrator)
 	omrConfigPath := omrconfig.FindConfig(root)
 	if omrCfg, configErr := omrconfig.Load(omrConfigPath); configErr == nil {
-		orchestratorText += omrCfg.CategoryPrompt() + omrCfg.DisabledProfilePrompt()
+		orchestratorText += omrCfg.CategoryPrompt() + omrCfg.DisabledProfilePrompt() + omrCfg.MCPPrompt()
 	} else if !os.IsNotExist(configErr) {
 		return Report{Root: root, Errors: []string{fmt.Sprintf("load OMR config: %v", configErr)}}, configErr
 	}
@@ -177,7 +177,8 @@ func Init(opts Options) (Report, error) {
 		// three-way merge baseline recorded by the first installation.
 		baseValue = existing.Config[0].BaseValue
 	}
-	newManifest := buildManifest(composition, profiles, userSource, userPresent, baseValue, backupRel)
+	orchestratorSourceHash := promptcompose.SHA256String(promptcompose.Canonicalize(string(opts.Assets.Orchestrator)))
+	newManifest := buildManifest(composition, orchestratorSourceHash, profiles, userSource, userPresent, baseValue, backupRel)
 	manifestChanged := !hasManifest || !manifestsEqual(existing, newManifest)
 	if !configChanged && !generatedChanged && !profilesChanged && !manifestChanged {
 		report.NoOp = true
@@ -308,7 +309,7 @@ func checkAssetPathConflict(root, generatedPath string, profiles []profileAsset,
 	return ""
 }
 
-func buildManifest(composition promptcompose.Composition, profiles []profileAsset, userSource string, userPresent bool, baseValue *string, backupRel string) manifest.Manifest {
+func buildManifest(composition promptcompose.Composition, orchestratorSourceHash string, profiles []profileAsset, userSource string, userPresent bool, baseValue *string, backupRel string) manifest.Manifest {
 	m := manifest.New()
 	m.Prompt = manifest.Prompt{
 		GeneratedPath:      GeneratedPromptRel,
@@ -317,7 +318,7 @@ func buildManifest(composition promptcompose.Composition, profiles []profileAsse
 		UserPresent:        userPresent,
 		UserSource:         userSource,
 		OrchestratorSource: "assets/prompts/orchestrator.zh.md",
-		OrchestratorSHA256: composition.Segments[len(composition.Segments)-1].Hash,
+		OrchestratorSHA256: orchestratorSourceHash,
 		FinalSHA256:        composition.Hash,
 	}
 	if userPresent {
@@ -330,7 +331,7 @@ func buildManifest(composition promptcompose.Composition, profiles []profileAsse
 	}
 	m.Assets = []manifest.Asset{
 		{ID: "reasonix-base-464d494", Role: "system_prompt_segment", SourceProject: "reasonix", SourceVersion: "desktop-v1.17.16", SourceCommit: "464d494", SourcePath: "assets/prompts/reasonix-base-464d494.md", LicenseStatus: "upstream-public-source", ContentSHA256: composition.Segments[0].Hash, InstallTarget: GeneratedPromptRel, CompositionOrder: 1},
-		{ID: "orchestrator.zh", Role: "system_prompt_segment", SourceProject: "clean-room", SourceVersion: manifest.Version, SourcePath: "assets/prompts/orchestrator.zh.md", LicenseStatus: "project-owned", ContentSHA256: composition.Segments[len(composition.Segments)-1].Hash, InstallTarget: GeneratedPromptRel, CompositionOrder: len(composition.Segments)},
+		{ID: "orchestrator.zh", Role: "system_prompt_segment", SourceProject: "clean-room", SourceVersion: manifest.Version, SourcePath: "assets/prompts/orchestrator.zh.md", LicenseStatus: "project-owned", ContentSHA256: orchestratorSourceHash, InstallTarget: GeneratedPromptRel, CompositionOrder: len(composition.Segments)},
 	}
 	for _, profile := range profiles {
 		m.Profiles = append(m.Profiles, manifest.Profile{ID: profile.ID, Path: profile.Rel, ContentSHA256: profile.Hash})

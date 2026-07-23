@@ -294,6 +294,49 @@ func TestConfigValidateJSON(t *testing.T) {
 	}
 }
 
+func TestConfigValidateJSONIncludesMCPDiagnostics(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.toml")
+	data := "[mcp.docs]\ncommand = \"definitely-missing-omr-mcp\"\nenabled = true\nenv = [\"OMR_MISSING_DOCS_KEY\"]\n"
+	if err := os.WriteFile(path, []byte(data), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	dataOut, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		MCP []struct {
+			Server        string `json:"server"`
+			Availability  string `json:"availability"`
+			Compatibility string `json:"compatibility"`
+		} `json:"mcp"`
+		Warnings []string `json:"warnings"`
+	}
+	if err := json.Unmarshal(dataOut, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", dataOut, err)
+	}
+	if len(result.MCP) != 1 || result.MCP[0].Server != "docs" ||
+		result.MCP[0].Availability != "unavailable" ||
+		result.MCP[0].Compatibility != "compatible" ||
+		len(result.Warnings) != 1 {
+		t.Fatalf("unexpected MCP diagnostics: %#v", result)
+	}
+}
+
 func TestConfigSchema(t *testing.T) {
 	reader, writer, err := os.Pipe()
 	if err != nil {
@@ -334,6 +377,16 @@ func TestConfigSchema(t *testing.T) {
 	}
 	if raw["additionalProperties"] != false {
 		t.Fatalf("root schema should reject unknown sections: %#v", raw)
+	}
+	mcp := raw["properties"].(map[string]any)["mcp"].(map[string]any)
+	server := mcp["additionalProperties"].(map[string]any)
+	if server["additionalProperties"] != false {
+		t.Fatalf("MCP schema should reject unknown keys: %#v", server)
+	}
+	transport := server["properties"].(map[string]any)["transport"].(map[string]any)
+	transports := transport["enum"].([]any)
+	if len(transports) != 3 || transports[2] != "sse" {
+		t.Fatalf("MCP schema missing supported transports: %#v", transport)
 	}
 }
 

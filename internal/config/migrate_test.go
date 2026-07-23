@@ -64,6 +64,34 @@ disabled = "omr-debug, omr-research"
 	}
 }
 
+func TestMigratePreservesMCP(t *testing.T) {
+	root := t.TempDir()
+	tomlPath := filepath.Join(root, "config.toml")
+	tomlData := `[mcp.docs]
+transport = "stdio"
+command = "mcp-docs"
+args = ["--mode", "read-only"]
+capabilities = ["docs", "web"]
+enabled = true
+env = ["DOCS_API_KEY"]
+`
+	if err := os.WriteFile(tomlPath, []byte(tomlData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	jsoncPath := filepath.Join(root, "config.jsonc")
+	if err := ExecuteMigration(tomlPath, jsoncPath, false); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(jsoncPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := cfg.MCPServers["docs"]
+	if !server.Enabled || len(server.Args) != 2 || len(server.Capabilities) != 2 || len(server.Env) != 1 {
+		t.Fatalf("MCP migration lost fields: %#v", server)
+	}
+}
+
 func TestMigratePreservesEnvVars(t *testing.T) {
 	t.Setenv("MODEL_VAR", "deepseek-v4-flash")
 	t.Setenv("PROMPT_VAR", "prompts/research.md")

@@ -347,18 +347,6 @@ func loadJSONC(path string) (Config, error) {
 
 	if rawCfg.MCP != nil {
 		for name, srv := range rawCfg.MCP {
-			if name == "" || strings.ContainsAny(name, " \t/\\") {
-				return Config{}, fmt.Errorf("%s: mcp: invalid server name %q", path, name)
-			}
-			if srv.Transport != "" && srv.Transport != "stdio" && srv.Transport != "http" {
-				return Config{}, fmt.Errorf("%s: mcp.%s.transport must be 'stdio' or 'http'", path, name)
-			}
-			if srv.Transport == "stdio" && srv.Command == "" {
-				return Config{}, fmt.Errorf("%s: mcp.%s: transport stdio requires command", path, name)
-			}
-			if srv.Transport == "http" && srv.URL == "" {
-				return Config{}, fmt.Errorf("%s: mcp.%s: transport http requires url", path, name)
-			}
 			if cfg.MCPServers == nil {
 				cfg.MCPServers = make(map[string]MCPServerConfig)
 			}
@@ -373,7 +361,11 @@ func loadJSONC(path string) (Config, error) {
 			if srv.Enabled != nil {
 				server.Enabled = *srv.Enabled
 			}
-			cfg.MCPServers[name] = server
+			normalized, err := normalizeMCPServer(name, server)
+			if err != nil {
+				return Config{}, fmt.Errorf("%s: %w", path, err)
+			}
+			cfg.MCPServers[name] = normalized
 		}
 	}
 

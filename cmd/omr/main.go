@@ -254,6 +254,13 @@ func runConfig(args []string) error {
 			categoryDiags = append(categoryDiags, fmt.Sprintf("category %q routes to unknown profile %q", cat, profile))
 		}
 	}
+	sort.Strings(categoryDiags)
+	mcpDiags := omrconfig.DiagnoseMCP(cfg)
+	for _, diagnostic := range mcpDiags {
+		if diagnostic.Enabled && (diagnostic.Availability != "ready" || diagnostic.Compatibility != "compatible") {
+			categoryDiags = append(categoryDiags, fmt.Sprintf("MCP server %q is %s", diagnostic.Server, diagnostic.Summary()))
+		}
+	}
 	if promptErrors := validatePromptFiles(cfg, *projectDir); len(promptErrors) > 0 {
 		err = errors.New(strings.Join(promptErrors, "; "))
 		if *jsonOutput {
@@ -275,8 +282,9 @@ func runConfig(args []string) error {
 			Concurrency      int                              `json:"concurrency"`
 			MaxCost          float64                          `json:"max_cost"`
 			DisabledProfiles []string                         `json:"disabled_profiles"`
+			MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
 			Warnings         []string                         `json:"warnings,omitempty"`
-		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, Warnings: categoryDiags}
+		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, MCP: mcpDiags, Warnings: categoryDiags}
 		_ = json.NewEncoder(os.Stdout).Encode(output)
 		return nil
 	}
@@ -292,6 +300,9 @@ func runConfig(args []string) error {
 	}
 	if len(cfg.Categories) > 0 {
 		fmt.Printf("  categories: %d\n", len(cfg.Categories))
+	}
+	for _, diagnostic := range mcpDiags {
+		fmt.Printf("  mcp.%s: %s\n", diagnostic.Server, diagnostic.Summary())
 	}
 	return nil
 }
@@ -381,17 +392,21 @@ func writeOMRConfigSchema() error {
 			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
 			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
 			"profiles": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
-			"mcp":      map[string]any{"type": "object", "additionalProperties": map[string]any{
-				"type": "object", "properties": map[string]any{
-					"transport":    map[string]any{"type": "string", "enum": []string{"stdio", "http"}},
+			"mcp": map[string]any{"type": "object", "additionalProperties": map[string]any{
+				"type": "object", "additionalProperties": false, "properties": map[string]any{
+					"transport":    map[string]any{"type": "string", "enum": []string{"stdio", "http", "sse"}},
 					"command":      map[string]string{"type": "string"},
 					"args":         map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
-					"url":          map[string]string{"type": "string"},
-					"capabilities": map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
+					"url":          map[string]any{"type": "string", "pattern": "^https?://"},
+					"capabilities": map[string]any{"type": "array", "items": map[string]any{"type": "string", "pattern": "^[a-z][a-z0-9-]*$"}},
 					"enabled":      map[string]any{"type": "boolean"},
-					"env":          map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
+					"env":          map[string]any{"type": "array", "items": map[string]any{"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"}},
 				},
-			}},
+				"allOf": []any{
+					map[string]any{"if": map[string]any{"properties": map[string]any{"transport": map[string]any{"const": "stdio"}}}, "then": map[string]any{"required": []string{"command"}}},
+					map[string]any{"if": map[string]any{"required": []string{"transport"}, "properties": map[string]any{"transport": map[string]any{"enum": []string{"http", "sse"}}}}, "then": map[string]any{"required": []string{"url"}}},
+				},
+			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]{0,63}$"}},
 		},
 	}
 	encoder := json.NewEncoder(os.Stdout)

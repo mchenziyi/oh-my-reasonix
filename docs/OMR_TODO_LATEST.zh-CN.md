@@ -6,15 +6,14 @@
 
 ## 当前状态（最新）
 
-OMR-T01～T09 已完成，INT-01～INT-05 已完成自动化联调。当前不再重复开发这些阶段。
+OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。当前不再重复开发这些阶段。
 
 下一阶段优先级：
 
-1. Web/Docs MCP：做成可选、可审计、默认不安装的 MCP 配置和兼容层；
-2. Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
-3. Grill Me：实现可选的方案质询 Skill，先做离线 Profile/Prompt 试验，不接管宿主状态机；
-4. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
-5. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
+1. Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
+2. Grill Me：实现可选的方案质询 Skill，先做离线 Profile/Prompt 试验，不接管宿主状态机；
+3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
+4. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
 
 ## 1. 与 oh-my-opencode 的对比结论
 

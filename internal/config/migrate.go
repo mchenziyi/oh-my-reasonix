@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -17,7 +18,8 @@ type tomlRawConfig struct {
 	Runtime  map[string]string
 	Agents   map[string]map[string]string // profile → key → raw value
 	Routing  map[string]string
-	Disabled []string // comma-separated disabled profiles (already split)
+	Disabled []string                     // comma-separated disabled profiles (already split)
+	MCP      map[string]map[string]string // server → key → raw value
 }
 
 // parseTOMLRaw parses a TOML config file preserving raw values (no env expansion).
@@ -36,7 +38,7 @@ func parseTOMLRaw(path string) (*tomlRawConfig, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") {
+			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") && !strings.HasPrefix(section, "mcp.") {
 				return nil, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
 			}
 			continue
@@ -83,6 +85,18 @@ func parseTOMLRaw(path string) (*tomlRawConfig, error) {
 					}
 				}
 			}
+		case strings.HasPrefix(section, "mcp."):
+			server := strings.TrimSpace(strings.TrimPrefix(section, "mcp."))
+			if !validMCPName(server) {
+				return nil, fmt.Errorf("%s:%d: invalid mcp server name %q", path, lineNo, server)
+			}
+			if raw.MCP == nil {
+				raw.MCP = make(map[string]map[string]string)
+			}
+			if raw.MCP[server] == nil {
+				raw.MCP[server] = make(map[string]string)
+			}
+			raw.MCP[server][key] = rawValue
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -104,6 +118,16 @@ func toJSONValue(raw string) interface{} {
 	}
 	if raw == "false" {
 		return false
+	}
+	if strings.HasPrefix(raw, "[") && strings.HasSuffix(raw, "]") {
+		var values []string
+		for _, item := range strings.Split(strings.TrimSpace(raw[1:len(raw)-1]), ",") {
+			item = strings.Trim(strings.TrimSpace(item), `"'`)
+			if item != "" {
+				values = append(values, item)
+			}
+		}
+		return values
 	}
 	// Integer
 	if i, err := strconv.ParseInt(raw, 10, 64); err == nil {
@@ -224,6 +248,35 @@ func (r *tomlRawConfig) toJSONC() ([]byte, error) {
 		sections = append(sections, section{"Disabled profiles", sb.String()})
 	}
 
+	// mcp
+	if len(r.MCP) > 0 {
+		var sb bytes.Buffer
+		sb.WriteString("\t\"mcp\": {\n")
+		servers := make([]string, 0, len(r.MCP))
+		for server := range r.MCP {
+			servers = append(servers, server)
+		}
+		sort.Strings(servers)
+		for i, server := range servers {
+			fmt.Fprintf(&sb, "\t\t%q: {\n", server)
+			keys := sortedKeys(r.MCP[server])
+			for j, key := range keys {
+				writeJSONCValue(&sb, key, r.MCP[server][key], 3)
+				if j < len(keys)-1 {
+					sb.WriteByte(',')
+				}
+				sb.WriteByte('\n')
+			}
+			sb.WriteString("\t\t}")
+			if i < len(servers)-1 {
+				sb.WriteByte(',')
+			}
+			sb.WriteByte('\n')
+		}
+		sb.WriteString("\t}")
+		sections = append(sections, section{"Optional MCP servers", sb.String()})
+	}
+
 	for i, sec := range sections {
 		fmt.Fprintf(&buf, "\t// %s\n", sec.comment)
 		buf.WriteString(sec.content)
@@ -251,6 +304,15 @@ func writeJSONCValue(buf *bytes.Buffer, key, raw string, indent int) {
 		fmt.Fprintf(buf, "%s%q: %d", prefix, key, val)
 	case float64:
 		fmt.Fprintf(buf, "%s%q: %g", prefix, key, val)
+	case []string:
+		fmt.Fprintf(buf, "%s%q: [", prefix, key)
+		for i, item := range val {
+			if i > 0 {
+				buf.WriteString(", ")
+			}
+			fmt.Fprintf(buf, "%q", item)
+		}
+		buf.WriteByte(']')
 	default:
 		fmt.Fprintf(buf, "%s%q: %q", prefix, key, raw)
 	}
@@ -428,6 +490,9 @@ func configDiff(a, b Config) string {
 	}
 	if a.MaxCost != b.MaxCost {
 		diffs = append(diffs, fmt.Sprintf("MaxCost: %f != %f", a.MaxCost, b.MaxCost))
+	}
+	if !reflect.DeepEqual(a.MCPServers, b.MCPServers) {
+		diffs = append(diffs, "MCP servers differ")
 	}
 
 	// Compare agents map

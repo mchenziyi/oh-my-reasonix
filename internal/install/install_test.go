@@ -113,6 +113,43 @@ func TestUpgradeComposesCategoryRouting(t *testing.T) {
 	}
 }
 
+func TestUpgradeComposesEnabledMCPMetadataWithoutSecrets(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatalf("init: %v", err)
+	}
+	configDir := filepath.Join(root, ".reasonix", "omr")
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	config := "[mcp.docs]\ntransport = \"http\"\nurl = \"https://secret.example/mcp\"\ncapabilities = [\"docs\"]\nenabled = true\nenv = [\"DOCS_API_KEY\"]\n"
+	if err := os.WriteFile(filepath.Join(configDir, "config.toml"), []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Init(Options{ProjectDir: root, Upgrade: true, Assets: assets}); err != nil {
+		t.Fatalf("upgrade: %v", err)
+	}
+	generated, err := os.ReadFile(GeneratedPromptPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	prompt := string(generated)
+	if !strings.Contains(prompt, "Optional Project MCP") || !strings.Contains(prompt, "`docs`") {
+		t.Fatalf("MCP guidance missing: %q", prompt)
+	}
+	if strings.Contains(prompt, "secret.example") || strings.Contains(prompt, "DOCS_API_KEY") {
+		t.Fatalf("MCP prompt leaked endpoint or env name: %q", prompt)
+	}
+	installedManifest, err := manifest.Load(ManifestPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if drift := PromptSourceDrift(root, installedManifest, assets); len(drift) != 0 {
+		t.Fatalf("dynamic MCP guidance changed static source hashes: %v", drift)
+	}
+}
+
 func TestProfileCollisionDoesNotOverwrite(t *testing.T) {
 	root := newProject(t, "[agent]\n")
 	profilePath := ExploreProfilePath(root)

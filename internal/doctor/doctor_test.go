@@ -93,6 +93,31 @@ func TestRunReportsValidOMRConfig(t *testing.T) {
 	}
 }
 
+func TestRunReportsUnavailableMCPWithoutBlocking(t *testing.T) {
+	root := doctorProject(t)
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	data := "[mcp.docs]\ncommand = \"definitely-missing-omr-mcp\"\nenabled = true\nenv = [\"OMR_MISSING_DOCS_KEY\"]\n"
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", t.TempDir())
+	result, err := Run(root, doctorAssets())
+	if err != nil {
+		t.Fatalf("optional MCP should not block doctor: %v %#v", err, result)
+	}
+	found := false
+	for _, check := range result.Checks {
+		if check.Name == "omr.config.mcp.docs" && check.Status == "WARN" &&
+			strings.Contains(check.Detail, "command_not_in_path") &&
+			strings.Contains(check.Detail, "MISSING_DOCS_KEY") {
+			found = true
+		}
+	}
+	if !found || len(result.Warnings) == 0 {
+		t.Fatalf("missing MCP warning: %#v", result)
+	}
+}
+
 func TestRunRejectsCategoryForUninstalledProfile(t *testing.T) {
 	root := doctorProject(t)
 	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
