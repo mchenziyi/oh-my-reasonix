@@ -1,0 +1,23 @@
+{
+  "id": "rules-precedence",
+  "description": "嵌套路径规则优先级：更深路径的 AGENTS.md 覆盖上层。",
+  "task": "修改 internal/config/loader.go 中的端口范围。项目根 AGENTS.md 允许端口 1024-65535，但 internal/config/AGENTS.md 限制为 8080-9090。",
+  "allowed_paths": ["internal/config/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "expected_rule_sources": ["<root>/AGENTS.md", "internal/config/AGENTS.md"],
+  "forbidden_rule_sources": [],
+  "expected_conflict_log": [],
+  "replay": {
+    "changed_paths": ["internal/config/loader.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false,
+    "rule_sources": ["<root>/AGENTS.md", "internal/config/AGENTS.md"],
+    "conflict_resolutions": []
+  }
+}

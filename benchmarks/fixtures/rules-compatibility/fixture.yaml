@@ -1,0 +1,23 @@
+{
+  "id": "rules-compatibility",
+  "description": "兼容源优先级：.reasonix/rules 优先于 .claude/rules。同时存在 style.md 时，.reasonix 版本覆盖 .claude 版本。",
+  "task": "更新 internal/api/handler.go 中的代码风格以匹配项目规则。",
+  "allowed_paths": ["internal/api/**"],
+  "forbidden_paths": [".reasonix/**", ".claude/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": ["todo_write", "complete_step"],
+  "expected_rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/style.md"],
+  "forbidden_rule_sources": [".claude/rules/style.md"],
+  "expected_conflict_log": [],
+  "replay": {
+    "changed_paths": ["internal/api/handler.go"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["todo_write", "complete_step"],
+    "tests_skipped": false,
+    "rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/style.md"],
+    "conflict_resolutions": []
+  }
+}

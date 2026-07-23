@@ -14,30 +14,35 @@ import (
 // Fixture is deliberately JSON-shaped because JSON is a valid YAML document;
 // this keeps the benchmark reader dependency-free and deterministic.
 type Fixture struct {
-	ID              string         `json:"id"`
-	Description     string         `json:"description"`
-	Task            string         `json:"task"`
-	AllowedPaths    []string       `json:"allowed_paths"`
-	ForbiddenPaths  []string       `json:"forbidden_paths"`
-	HiddenTests     []string       `json:"hidden_tests"`
-	RegressionTests []string       `json:"regression_tests"`
-	ExpectedEvents  []string       `json:"expected_events"`
-	ReplayOutputs   []ReplayOutput `json:"replay_outputs,omitempty"`
-	Replay          *ReplaySpec    `json:"replay,omitempty"`
-	NativeReplay    *ReplaySpec    `json:"native_replay,omitempty"`
-	OMRReplay       *ReplaySpec    `json:"omr_replay,omitempty"`
+	ID                   string         `json:"id"`
+	Description          string         `json:"description"`
+	Task                 string         `json:"task"`
+	AllowedPaths         []string       `json:"allowed_paths"`
+	ForbiddenPaths       []string       `json:"forbidden_paths"`
+	HiddenTests          []string       `json:"hidden_tests"`
+	RegressionTests      []string       `json:"regression_tests"`
+	ExpectedEvents       []string       `json:"expected_events"`
+	ExpectedRuleSources  []string       `json:"expected_rule_sources,omitempty"`
+	ForbiddenRuleSources []string       `json:"forbidden_rule_sources,omitempty"`
+	ExpectedConflictLog  []string       `json:"expected_conflict_log,omitempty"`
+	ReplayOutputs        []ReplayOutput `json:"replay_outputs,omitempty"`
+	Replay               *ReplaySpec    `json:"replay,omitempty"`
+	NativeReplay         *ReplaySpec    `json:"native_replay,omitempty"`
+	OMRReplay            *ReplaySpec    `json:"omr_replay,omitempty"`
 }
 
 // ReplaySpec describes the deterministic outcome expected from a local replay.
 // It deliberately contains no provider or filesystem commands.
 type ReplaySpec struct {
-	ChangedPaths       []string `json:"changed_paths"`
-	HiddenTestsPassed  bool     `json:"hidden_tests_passed"`
-	RegressionPassed   bool     `json:"regression_passed"`
-	RequiredEffectsMet bool     `json:"required_effects_met"`
-	Events             []string `json:"events"`
-	TestsSkipped       bool     `json:"tests_skipped"`
-	Metrics            Metrics  `json:"metrics,omitempty"`
+	ChangedPaths        []string `json:"changed_paths"`
+	HiddenTestsPassed   bool     `json:"hidden_tests_passed"`
+	RegressionPassed    bool     `json:"regression_passed"`
+	RequiredEffectsMet  bool     `json:"required_effects_met"`
+	Events              []string `json:"events"`
+	TestsSkipped        bool     `json:"tests_skipped"`
+	Metrics             Metrics  `json:"metrics,omitempty"`
+	RuleSources         []string `json:"rule_sources,omitempty"`
+	ConflictResolutions []string `json:"conflict_resolutions,omitempty"`
 }
 
 type ReplayOutput struct {
@@ -47,15 +52,17 @@ type ReplayOutput struct {
 }
 
 type RunResult struct {
-	ChangedPaths       []string `json:"changed_paths"`
-	HiddenTestsPassed  bool     `json:"hidden_tests_passed"`
-	RegressionPassed   bool     `json:"regression_passed"`
-	RequiredEffectsMet bool     `json:"required_effects_met"`
-	Events             []string `json:"events"`
-	TestsSkipped       bool     `json:"tests_skipped"`
-	Metrics            Metrics  `json:"metrics,omitempty"`
-	Error              string   `json:"error,omitempty"`
-	Failed             bool     `json:"failed,omitempty"`
+	ChangedPaths        []string `json:"changed_paths"`
+	HiddenTestsPassed   bool     `json:"hidden_tests_passed"`
+	RegressionPassed    bool     `json:"regression_passed"`
+	RequiredEffectsMet  bool     `json:"required_effects_met"`
+	Events              []string `json:"events"`
+	TestsSkipped        bool     `json:"tests_skipped"`
+	Metrics             Metrics  `json:"metrics,omitempty"`
+	Error               string   `json:"error,omitempty"`
+	Failed              bool     `json:"failed,omitempty"`
+	RuleSources         []string `json:"rule_sources,omitempty"`
+	ConflictResolutions []string `json:"conflict_resolutions,omitempty"`
 }
 
 type Metrics struct {
@@ -202,6 +209,26 @@ func Evaluate(fixture Fixture, result RunResult) Evaluation {
 			evaluation.Failures = append(evaluation.Failures, "missing expected event: "+expected)
 		}
 	}
+	// Rule source assertions
+	if len(fixture.ExpectedRuleSources) > 0 {
+		for i, expected := range fixture.ExpectedRuleSources {
+			if i >= len(result.RuleSources) {
+				evaluation.Failures = append(evaluation.Failures, "missing expected rule source: "+expected)
+			} else if result.RuleSources[i] != expected {
+				evaluation.Failures = append(evaluation.Failures, fmt.Sprintf("rule source order violation: expected %q at position %d, got %q", expected, i, result.RuleSources[i]))
+			}
+		}
+	}
+	for _, forbidden := range fixture.ForbiddenRuleSources {
+		if contains(result.RuleSources, forbidden) {
+			evaluation.Failures = append(evaluation.Failures, "forbidden rule source accessed: "+forbidden)
+		}
+	}
+	for _, expected := range fixture.ExpectedConflictLog {
+		if !contains(result.ConflictResolutions, expected) {
+			evaluation.Failures = append(evaluation.Failures, "missing conflict resolution: "+expected)
+		}
+	}
 	evaluation.QualifiedCompletion = len(evaluation.Failures) == 0
 	evaluation.Category = classifyFailure(fixture.ID, result, evaluation)
 	return evaluation
@@ -278,16 +305,7 @@ func Replay(fixture Fixture) (RunResult, error) {
 	if fixture.Replay == nil {
 		return RunResult{}, fmt.Errorf("fixture %s has no replay outcome", fixture.ID)
 	}
-	result := RunResult{
-		ChangedPaths:       append([]string(nil), fixture.Replay.ChangedPaths...),
-		HiddenTestsPassed:  fixture.Replay.HiddenTestsPassed,
-		RegressionPassed:   fixture.Replay.RegressionPassed,
-		RequiredEffectsMet: fixture.Replay.RequiredEffectsMet,
-		Events:             append([]string(nil), fixture.Replay.Events...),
-		TestsSkipped:       fixture.Replay.TestsSkipped,
-		Metrics:            fixture.Replay.Metrics,
-	}
-	return result, nil
+	return replayFromSpec(fixture.Replay), nil
 }
 
 // ReplayPaired returns both native and OMR replay results for a fixture that
@@ -310,13 +328,15 @@ func ReplayPaired(fixture Fixture) (native, omr RunResult, err error) {
 
 func replayFromSpec(spec *ReplaySpec) RunResult {
 	return RunResult{
-		ChangedPaths:       append([]string(nil), spec.ChangedPaths...),
-		HiddenTestsPassed:  spec.HiddenTestsPassed,
-		RegressionPassed:   spec.RegressionPassed,
-		RequiredEffectsMet: spec.RequiredEffectsMet,
-		Events:             append([]string(nil), spec.Events...),
-		TestsSkipped:       spec.TestsSkipped,
-		Metrics:            spec.Metrics,
+		ChangedPaths:        append([]string(nil), spec.ChangedPaths...),
+		HiddenTestsPassed:   spec.HiddenTestsPassed,
+		RegressionPassed:    spec.RegressionPassed,
+		RequiredEffectsMet:  spec.RequiredEffectsMet,
+		Events:              append([]string(nil), spec.Events...),
+		TestsSkipped:        spec.TestsSkipped,
+		Metrics:             spec.Metrics,
+		RuleSources:         append([]string(nil), spec.RuleSources...),
+		ConflictResolutions: append([]string(nil), spec.ConflictResolutions...),
 	}
 }
 
