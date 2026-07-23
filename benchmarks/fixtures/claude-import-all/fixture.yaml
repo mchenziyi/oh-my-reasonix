@@ -1,0 +1,18 @@
+{
+  "id": "claude-import-all",
+  "description": "Claude 配置批量导入：rules, skills, agents, commands, mcp, hooks。",
+  "task": "执行 omr claude import —dry-run 应列出 rules/skills/agents/commands/mcp/hooks 的计划。",
+  "allowed_paths": [".reasonix/**"],
+  "forbidden_paths": [],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": [],
+  "replay": {
+    "changed_paths": [".reasonix/rules/style.md", ".reasonix/skills/my-skill/SKILL.md", ".reasonix/skills/omr-test-agent/SKILL.md", ".reasonix/skills/cmd-test/SKILL.md", ".reasonix/mcp.json", ".reasonix/rules/hook-test.md"],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": [],
+    "tests_skipped": false
+  }
+}
