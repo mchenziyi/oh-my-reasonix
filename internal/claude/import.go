@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
@@ -214,13 +215,19 @@ func ImportSkills(opts Options) Report {
 	}
 	var files []importFile
 	report := Report{Root: root}
+	// Pre-check all files before writing any
 	for _, s := range skills {
 		if warns, err := ValidateSkillFrontmatter(s.Content); err != nil {
 			report.Errors = append(report.Errors, fmt.Sprintf("skill %q: %v", s.Name, err))
-			continue
 		} else if len(warns) > 0 {
 			report.Warnings = append(report.Warnings, warns...)
 		}
+	}
+	if len(report.Errors) > 0 {
+		return report
+	}
+	// All valid — build file list and write
+	for _, s := range skills {
 		targetRel := filepath.Join(OMRSkillsDir, s.Name, "SKILL.md")
 		files = append(files, importFile{
 			SourceRel:  s.Name,
@@ -232,12 +239,6 @@ func ImportSkills(opts Options) Report {
 	}
 	imported := importFiles(opts, files)
 	imported.Warnings = append(imported.Warnings, report.Warnings...)
-	if len(report.Errors) > 0 {
-		imported.Errors = append(imported.Errors, report.Errors...)
-	}
-	if len(imported.Errors) > 0 || len(report.Errors) > 0 {
-		imported.inferStatus()
-	}
 	return imported
 }
 
@@ -289,6 +290,7 @@ func ValidateSkillFrontmatter(content []byte) (warnings []string, err error) {
 			unknown = append(unknown, k)
 		}
 	}
+	sort.Strings(unknown)
 	if len(unknown) > 0 {
 		warnings = append(warnings, fmt.Sprintf("unknown frontmatter fields: %s", strings.Join(unknown, ", ")))
 	}
@@ -344,25 +346,22 @@ func ImportAgents(opts Options) Report {
 	}
 	var files []importFile
 	report := Report{Root: root}
+	// Pre-check agents with frontmatter before writing any
+	for _, a := range agents {
+		if strings.HasPrefix(string(a.Content), "---\n") {
+			if warns, err := ValidateSkillFrontmatter(a.Content); err != nil {
+				report.Errors = append(report.Errors, fmt.Sprintf("agent %s source frontmatter: %v", a.Name, err))
+			} else if len(warns) > 0 {
+				report.Warnings = append(report.Warnings, warns...)
+			}
+		}
+	}
+	if len(report.Errors) > 0 {
+		return report
+	}
+	// All valid — build file list and write
 	for _, a := range agents {
 		targetRel := filepath.Join(OMRSkillsDir, "omr-"+a.Name, "SKILL.md")
-		// Only validate if the source agent file has frontmatter delimiters
-		if !strings.HasPrefix(string(a.Content), "---\n") {
-			files = append(files, importFile{
-				SourceRel:  a.Name,
-				TargetRel:  targetRel,
-				Content:    importedAgentSkill(a.Name, a.Content),
-				SourceDesc: ".claude/agents/",
-				TargetDesc: ".reasonix/skills/omr-/",
-			})
-			continue
-		}
-		if warns, err := ValidateSkillFrontmatter(a.Content); err != nil {
-			report.Errors = append(report.Errors, fmt.Sprintf("agent %s source frontmatter: %v", a.Name, err))
-			continue
-		} else if len(warns) > 0 {
-			report.Warnings = append(report.Warnings, warns...)
-		}
 		files = append(files, importFile{
 			SourceRel:  a.Name,
 			TargetRel:  targetRel,
@@ -373,9 +372,6 @@ func ImportAgents(opts Options) Report {
 	}
 	imported := importFiles(opts, files)
 	imported.Warnings = append(imported.Warnings, report.Warnings...)
-	if len(report.Errors) > 0 {
-		imported.Errors = append(imported.Errors, report.Errors...)
-	}
 	return imported
 }
 
