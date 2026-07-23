@@ -194,3 +194,48 @@ func TestInitDryRunDoesNotWriteFiles(t *testing.T) {
 		t.Fatalf("dry-run wrote generated Prompt: %v", err)
 	}
 }
+
+func TestInitDetectsOrphanedEventFile(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+
+	// First init creates the .reasonix/omr/ structure
+	first, err := Init(Options{ProjectDir: root, Assets: assets})
+	if err != nil {
+		t.Fatalf("first init: %v %#v", err, first)
+	}
+
+	// Create orphan event file in the sessions directory
+	sessionDir := filepath.Join(root, ".reasonix", "omr", "sessions")
+	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sessionDir, "orphan.event-index.json"), []byte("[]"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Restore original config (first init set system_prompt_file)
+	if err := os.WriteFile(filepath.Join(root, "reasonix.toml"), []byte("[agent]\nmodel = \"test\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Clean up other state to avoid prompt/profile conflicts
+	os.Remove(GeneratedPromptPath(root))
+	os.Remove(ManifestPath(root))
+	os.RemoveAll(filepath.Join(root, ".reasonix", "skills"))
+
+	// Second init should detect orphan event file
+	report, err := Init(Options{ProjectDir: root, Assets: assets})
+	if err == nil {
+		t.Fatal("expected conflict from orphan event file")
+	}
+	foundOrphan := false
+	for _, c := range report.Conflicts {
+		if strings.Contains(c, "event-index") {
+			foundOrphan = true
+		}
+	}
+	if !foundOrphan {
+		t.Fatalf("expected orphan event-index conflict, got: %v", report.Conflicts)
+	}
+}
