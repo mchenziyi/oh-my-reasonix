@@ -106,6 +106,7 @@ type HookListOutput struct {
 }
 
 // HookStatusOutput wraps the reasonix hook status --json response.
+// Always populated; errors are captured in Error/Unavailable fields.
 type HookStatusOutput struct {
 	Active        []HookInfo `json:"active,omitempty"`
 	Inactive      []HookInfo `json:"inactive,omitempty"`
@@ -113,6 +114,8 @@ type HookStatusOutput struct {
 	SchemaVersion int        `json:"schema_version"`
 	ExitCode      int        `json:"exit_code"`
 	Stderr        string     `json:"stderr,omitempty"`
+	Error         string     `json:"error,omitempty"`
+	Unavailable   bool       `json:"unavailable,omitempty"`
 }
 
 // hookDirArgs returns CLI args for hook commands.
@@ -140,17 +143,21 @@ func (r Runner) HookList(ctx context.Context) (HookListOutput, error) {
 }
 
 // HookStatus calls reasonix hook status --json.
-func (r Runner) HookStatus(ctx context.Context) (HookStatusOutput, error) {
+// Always returns a result; errors are captured in Error/Unavailable fields.
+func (r Runner) HookStatus(ctx context.Context) HookStatusOutput {
 	args := append([]string{"hook", "status", "--json"}, r.hookDirArgs()...)
 	result := r.Run(ctx, args...)
 	out := HookStatusOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
-		return out, fmt.Errorf("reasonix hook status failed (exit %d): %w", result.ExitCode, result.Err)
+		out.Error = fmt.Sprintf("reasonix hook status failed (exit %d): %v", result.ExitCode, result.Err)
+		out.Unavailable = true
+		return out
 	}
 	if err := json.Unmarshal([]byte(result.Stdout), &out); err != nil {
-		return out, fmt.Errorf("parse hook status JSON: %w", err)
+		out.Error = fmt.Sprintf("parse hook status JSON: %v", err)
+		out.Unavailable = true
 	}
-	return out, nil
+	return out
 }
 
 // TaskInfo corresponds to a single entry in reasonix task list --json output.

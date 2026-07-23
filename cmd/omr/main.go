@@ -57,6 +57,8 @@ func main() {
 		err = runTask(os.Args[2:])
 	case "version":
 		err = runVersion(os.Args[2:])
+	case "run":
+		err = runRun(os.Args[2:])
 	default:
 		usage()
 		os.Exit(2)
@@ -1229,33 +1231,27 @@ func runHook(args []string) error {
 	if listErr != nil {
 		return fmt.Errorf("hook doctor: %w", listErr)
 	}
-	statusResult, statusErr := runner.HookStatus(ctx)
-	_ = statusResult // unused until status data is needed
+	statusResult := runner.HookStatus(ctx)
 
 	if *jsonOutput {
 		type hookDoctorOutput struct {
 			List   reasonix.HookListOutput   `json:"list"`
-			Status *reasonix.HookStatusOutput `json:"status,omitempty"`
+			Status reasonix.HookStatusOutput `json:"status"`
 		}
-		out := hookDoctorOutput{List: listResult}
-		if statusErr == nil {
-			out.Status = &statusResult
-		}
-		return json.NewEncoder(os.Stdout).Encode(out)
+		return json.NewEncoder(os.Stdout).Encode(hookDoctorOutput{List: listResult, Status: statusResult})
 	}
 	if len(listResult.Hooks) == 0 {
 		fmt.Println("No hooks found")
-		if statusErr != nil {
-			fmt.Fprintf(os.Stderr, "hook status unavailable: %v\n", statusErr)
-		}
-		return nil
 	}
 	fmt.Printf("%-20s %-10s %-8s %s\n", "HOOK", "STATUS", "EVENT", "SCOPE")
 	for _, h := range listResult.Hooks {
 		fmt.Printf("%-20s %-10s %-8s %s\n", h.Name, h.Status, h.Event, h.Scope)
 	}
-	if statusErr != nil {
-		fmt.Fprintf(os.Stderr, "WARNING: hook status unavailable: %v\n", statusErr)
+	if statusResult.Unavailable {
+		fmt.Printf("STATUS: unavailable — %s\n", statusResult.Error)
+	} else {
+		fmt.Printf("STATUS: active=%d inactive=%d untrusted=%d\n",
+			len(statusResult.Active), len(statusResult.Inactive), len(statusResult.Untrusted))
 	}
 	return nil
 }
@@ -1327,6 +1323,60 @@ func runTaskShow(args []string) error {
 	fmt.Printf("Type:       %s\n", detail.Type)
 	fmt.Printf("Step:       %d\n", detail.Step)
 	fmt.Printf("Session:    %s\n", detail.SessionID)
+	return nil
+}
+
+func runRun(args []string) error {
+	flags := flag.NewFlagSet("run", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	eventsJSONL := flags.String("events-jsonl", "", "path to write structured events JSONL")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() == 0 {
+		return errors.New("run requires a task prompt")
+	}
+	prompt := flags.Arg(0)
+
+	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	ctx := context.Background()
+
+	if *eventsJSONL != "" {
+		result := runner.RunWithEvents(ctx, prompt, *eventsJSONL)
+		if result.Err != nil {
+			return fmt.Errorf("run failed: %w", result.Err)
+		}
+		stream, parseErr := reasonix.ParseEventStream(*eventsJSONL)
+		if parseErr != nil {
+			return fmt.Errorf("parse events: %w", parseErr)
+		}
+		if *jsonOutput {
+			type runOutput struct {
+				Result reasonix.Result    `json:"result"`
+				Events reasonix.EventStream `json:"events"`
+			}
+			return json.NewEncoder(os.Stdout).Encode(runOutput{Result: result, Events: stream})
+		}
+		fmt.Printf("Run completed (exit %d)\n", result.ExitCode)
+		fmt.Printf("Events: %d, run_done=%t\n", len(stream.Events), stream.RunDone)
+		if len(stream.Errors) > 0 {
+			for _, e := range stream.Errors {
+				fmt.Printf("  event error: %s\n", e)
+			}
+		}
+		return nil
+	}
+	result := runner.RunTask(ctx, reasonix.TaskOptions{Prompt: prompt})
+	if result.Err != nil {
+		return fmt.Errorf("run task: %w", result.Err)
+	}
+	fmt.Print(result.Stdout)
+	if result.Stderr != "" {
+		fmt.Fprint(os.Stderr, result.Stderr)
+	}
 	return nil
 }
 
