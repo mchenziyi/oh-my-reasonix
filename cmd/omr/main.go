@@ -349,8 +349,8 @@ func writeOMRConfigSchema() error {
 				"type": "object", "additionalProperties": false, "properties": map[string]any{
 					"model": map[string]string{"type": "string"}, "prompt_file": map[string]string{"type": "string"}, "read_only": map[string]any{"type": "boolean"},
 				},
-			}},
-			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}},
+			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
+			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
 			"profiles": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
 		},
 	}

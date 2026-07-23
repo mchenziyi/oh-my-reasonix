@@ -144,6 +144,9 @@ func loadTOML(path string) (Config, error) {
 		if strings.TrimSpace(profile) != profile || strings.ContainsAny(profile, " \t/\\") {
 			return Config{}, fmt.Errorf("invalid agent profile %q", profile)
 		}
+		if profile != strings.ToLower(profile) {
+			return Config{}, fmt.Errorf("invalid agent profile %q: profile ID must be lowercase", profile)
+		}
 		if strings.ContainsAny(agent.Model, "\r\n\t") {
 			return Config{}, fmt.Errorf("invalid model for agent %q", profile)
 		}
@@ -254,6 +257,9 @@ func assign(cfg *Config, section, key, raw string) error {
 	if section == "routing" {
 		if key == "" || strings.ContainsAny(key, " \t/\\") {
 			return fmt.Errorf("invalid category %q", key)
+		}
+		if key != strings.ToLower(key) {
+			return fmt.Errorf("invalid category %q: category must be lowercase", key)
 		}
 		profile := stringValue(raw)
 		if profile == "" || strings.ContainsAny(profile, "\r\n\t /\\") {

@@ -91,6 +91,26 @@ func TestLoadRejectsInvalidAgentProfile(t *testing.T) {
 	}
 }
 
+func TestLoadRejectsUpperCaseProfileID(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[agent.Omr-Explore]\nmodel = \"deepseek\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected uppercase profile ID to be rejected")
+	}
+}
+
+func TestLoadRejectsInvalidCategoryName(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	if err := os.WriteFile(path, []byte("[routing]\n\"Front End\" = \"omr-explore\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(path); err == nil {
+		t.Fatal("expected invalid category name to be rejected")
+	}
+}
+
 func TestLoadRejectsDuplicateKeys(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")
 	if err := os.WriteFile(path, []byte("[runtime]\nmax_steps = 4\nmax_steps = 8\n"), 0o600); err != nil {
