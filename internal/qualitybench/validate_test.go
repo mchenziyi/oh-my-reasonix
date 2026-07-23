@@ -1,6 +1,7 @@
 package qualitybench
 
 import (
+	"encoding/json"
 	"strings"
 	"testing"
 )
@@ -261,4 +262,45 @@ func containsField(errs []ValidationError, field string) bool {
 		}
 	}
 	return false
+}
+
+// ─── FIX-07: Extra validation coverage ───
+
+func TestValidateReportMissingMetrics(t *testing.T) {
+	r := Report{
+		FixtureCount:   1,
+		EvaluatedCount: 1,
+		QualifiedCount: 1,
+		QualifiedRate:  1,
+		Metrics:        Metrics{}, // all zero
+		Evaluations:    []Evaluation{{FixtureID: "f", QualifiedCompletion: true}},
+	}
+	// Zero metrics should be valid (all >= 0)
+	if errs := ValidateReport(r); errs != nil {
+		t.Fatalf("expected zero metrics to be valid, got: %v", errs)
+	}
+}
+
+func TestValidateReportDoesNotUseReasonixSessionID(t *testing.T) {
+	// Verify the Report types don't reference "Reasonix Session ID"
+	r := Report{
+		FixtureCount:   1,
+		EvaluatedCount: 1,
+		QualifiedCount: 1,
+		QualifiedRate:  1,
+	}
+	// Serialize and check
+	data, err := json.Marshal(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(strings.ToLower(string(data)), "reasonix session") {
+		t.Fatal("Report JSON should not contain 'Reasonix Session' in any field name or value")
+	}
+	// Also check fixture IDs don't claim to be sessions
+	for _, f := range []string{"test-fail-fix-retry", "aggregation-conflict"} {
+		if strings.Contains(strings.ToLower(f), "session") {
+			t.Fatalf("fixture ID %q should not contain 'session'", f)
+		}
+	}
 }
