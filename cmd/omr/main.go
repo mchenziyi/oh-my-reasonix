@@ -51,6 +51,10 @@ func main() {
 		err = runBenchmark(os.Args[2:])
 	case "claude":
 		err = runClaude(os.Args[2:])
+	case "hook":
+		err = runHook(os.Args[2:])
+	case "task":
+		err = runTask(os.Args[2:])
 	case "version":
 		err = runVersion(os.Args[2:])
 	default:
@@ -1174,6 +1178,103 @@ func runVersion(args []string) error {
 	} else {
 		fmt.Println("reasonix: not found in PATH")
 	}
+	return nil
+}
+
+func runHook(args []string) error {
+	flags := flag.NewFlagSet("hook doctor", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	ctx := context.Background()
+	result, err := runner.HookList(ctx)
+	if err != nil {
+		return fmt.Errorf("hook doctor: %w", err)
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
+	if len(result.Hooks) == 0 {
+		fmt.Println("No hooks found")
+		return nil
+	}
+	fmt.Printf("%-20s %-10s %-8s %s\n", "HOOK", "STATUS", "EVENT", "SCOPE")
+	for _, h := range result.Hooks {
+		fmt.Printf("%-20s %-10s %-8s %s\n", h.Name, h.Status, h.Event, h.Scope)
+	}
+	return nil
+}
+
+func runTask(args []string) error {
+	if len(args) == 0 || (args[0] != "list" && args[0] != "show") {
+		return errors.New("task requires list or show")
+	}
+	if args[0] == "show" {
+		return runTaskShow(args[1:])
+	}
+	return runTaskList(args[1:])
+}
+
+func runTaskList(args []string) error {
+	flags := flag.NewFlagSet("task list", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	ctx := context.Background()
+	result, err := runner.TaskList(ctx)
+	if err != nil {
+		return fmt.Errorf("task list: %w", err)
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
+	if len(result.Tasks) == 0 {
+		fmt.Println("No tasks found")
+		return nil
+	}
+	fmt.Printf("%-24s %-10s %-8s %s\n", "TASK ID", "STATUS", "TYPE", "STEP")
+	for _, t := range result.Tasks {
+		fmt.Printf("%-24s %-10s %-8s %d\n", t.ID, t.Status, t.Type, t.Step)
+	}
+	return nil
+}
+
+func runTaskShow(args []string) error {
+	flags := flag.NewFlagSet("task show", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	if flags.NArg() == 0 {
+		return errors.New("task show requires a task-id")
+	}
+	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	ctx := context.Background()
+	detail, err := runner.TaskShow(ctx, flags.Arg(0))
+	if err != nil {
+		return fmt.Errorf("task show: %w", err)
+	}
+	if *jsonOutput {
+		return json.NewEncoder(os.Stdout).Encode(detail)
+	}
+	fmt.Printf("Task ID:    %s\n", detail.ID)
+	fmt.Printf("Status:     %s\n", detail.Status)
+	fmt.Printf("Type:       %s\n", detail.Type)
+	fmt.Printf("Step:       %d\n", detail.Step)
+	fmt.Printf("Session:    %s\n", detail.SessionID)
 	return nil
 }
 
