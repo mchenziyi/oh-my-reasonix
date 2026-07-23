@@ -1,144 +1,257 @@
 # oh-my-reasonix
 
-oh-my-reasonix（OMR）是面向 Reasonix 的项目级 Prompt、Profile 和工作流发行层。当前实现覆盖 M0/MVP 的本地安装链路、Prompt Composer、`omr-explore` / `omr-research` / `omr-debug` Profile、Manifest、字段级卸载、Cache Guard 逻辑流分析和质量 Smoke 夹具。
+oh-my-reasonix（OMR）是 Reasonix 的项目级增强层：负责安装和升级、Prompt 组合、Profile 分发、Claude 配置兼容、质量门禁、成本报告和机器接口适配。
 
-## 开发
+它不替代 Reasonix，也不复制 Reasonix 的 Session、Task、Hook、Todo 或权限状态机。OMR 把可复用的工作流约束和项目配置安全地安装到项目中，再由 Reasonix 负责实际执行。
 
-需要 Go 1.23 或更高版本：
+## OMR 解决什么问题
 
-```bash
-go test ./...
-go vet ./...
-go run ./cmd/omr version
-```
+直接使用 Reasonix 时，团队通常还需要自己维护：
 
-## 项目安装
+- 项目级 Prompt 和规则；
+- Explore、Research、Debug、Planner 等专用 Profile；
+- 安装、升级、备份、回滚和卸载；
+- Claude 配置迁移；
+- 质量 Fixture、重试/停滞/Review 证据；
+- 成本、Token 和运行结果报告；
+- Session、Hook、Task 和结构化事件的只读查询。
 
-在包含 `reasonix.toml` 的项目中运行：
+OMR 将这些能力统一成可审计、可回滚、可自动测试的项目层。
 
-```bash
-go run ./cmd/omr init --dry-run
-go run ./cmd/omr init
-go run ./cmd/omr doctor
-go run ./cmd/omr doctor --json
-go run ./cmd/omr config validate
-go run ./cmd/omr config validate --json
-go run ./cmd/omr config schema
-go run ./cmd/omr profile list
-go run ./cmd/omr profile list --json
-go run ./cmd/omr session resume --project-dir .
-go run ./cmd/omr upgrade --dry-run
-go run ./cmd/omr uninstall --dry-run
-```
+## 核心能力
 
-Doctor 默认从 PATH 查找 `reasonix`；如果不希望修改全局 PATH，可通过 `OMR_REASONIX_BIN=/Applications/Reasonix.app/Contents/MacOS/reasonix` 指定可执行文件。
+### 安装与升级
 
-如果恢复时提示 Session 被其他 Reasonix 进程占用，先关闭原窗口；需要保留原进程时可使用：
+- 项目级 init、upgrade、uninstall；
+- dry-run、冲突检测、备份和回滚；
+- Prompt、Profile、Manifest 和 SHA256 校验；
+- 配置迁移和升级漂移诊断；
+- 不修改全局 PATH、API Key 或 Reasonix 二进制。
 
-```bash
-go run ./cmd/omr session resume --project-dir . --copy
+### Prompt 与 Profile
 
-# 导出指定 Session 的 Reasonix 恢复/冲突诊断包
-go run ./cmd/omr session export --project-dir . --out /tmp/reasonix-session.zip <branch-id-or-session-path>
-```
+内置 Profile：
 
-## 让 Reasonix 自己安装
+- omr-explore：只读探索代码、调用链和测试入口；
+- omr-research：只读研究文档、API 和外部资料；
+- omr-debug：只读定位错误根因；
+- omr-planner：拆解阶段、风险和验收条件；
+- omr-frontend：分析界面结构、交互和 UI 测试入口。
 
-可以把 [安装提示词](docs/INSTALL_PROMPT.md) 交给正在运行的 Reasonix；它会读取
-[INSTALL.md](docs/INSTALL.md)，先执行 dry-run，再在确认后下载、校验并运行 OMR。
-也可以直接使用安装文档的 Raw URL：
+支持：
 
-```text
-https://raw.githubusercontent.com/mchenziyi/oh-my-reasonix/main/docs/INSTALL.md
-```
+- Profile 元数据、只读边界和工具声明；
+- Category → Profile 路由；
+- disabled、missing、project/builtin 状态；
+- 模型和附加 Prompt 覆盖；
+- omr profile list 人类和 JSON 输出。
 
-已有 `agent.system_prompt_file` 或 `agent.system_prompt` 时，必须显式使用 `--compose-prompt`。非空用户 Prompt 会被写入生成文件，因此还需要显式确认：
+### Subagent 一览
 
-```bash
-go run ./cmd/omr init --compose-prompt --allow-persist-user-prompt
-```
+安装 OMR 后，Reasonix 中通常可以看到以下 Subagent：
 
-Release 二进制内嵌 Prompt/Profile 发行资产；本地开发时 CLI 会优先从仓库中的 `assets/` 读取，
-也可通过 `OMR_ASSET_DIR` 显式指定资产目录。
+| Subagent | 来源 | 用途 | 写入边界 |
+|---|---|---|---|
+| `explore` | Reasonix 内置 | 通用代码探索和事实收集 | 由 Reasonix 原生策略决定 |
+| `research` | Reasonix 内置 | 通用资料、API 和外部信息研究 | 由 Reasonix 原生策略决定 |
+| `review` | Reasonix 内置 | 代码 Review 和问题发现 | 只读 |
+| `security-review` | Reasonix 内置 | 安全风险审查 | 只读 |
+| `omr-explore` | OMR 项目级 | 只读探索代码路径、调用链和测试入口 | 只读 |
+| `omr-research` | OMR 项目级 | 只读研究文档、API 和外部上下文 | 只读 |
+| `omr-debug` | OMR 项目级 | 只读定位失败根因和最小修复方向 | 只读 |
+| `omr-planner` | OMR 项目级 | 拆解执行阶段、风险和验收条件 | 只读 |
+| `omr-frontend` | OMR 项目级 | 分析 UI 结构、交互和前端测试入口 | 只读 |
 
-## 基准 Smoke
+实际可用列表以当前 Reasonix 版本和项目配置为准，可使用以下命令查看：
 
-CLI 安装链路 Smoke 测试（使用临时目录，不读取或修改真实项目）：
+~~~bash
+reasonix profile list
+omr profile list --project-dir . --json
+~~~
 
-```bash
-./tests/cli_smoke.sh
-```
+OMR 不会替换 Reasonix 的内置 Subagent；项目可以通过 Category routing、disabled 配置和模型覆盖来调整 OMR Subagent 的使用方式。
 
-```bash
-go run ./cmd/omr benchmark quality
-go run ./cmd/omr benchmark quality --replay
-go run ./cmd/omr benchmark quality --replay --run-tests \
-  --fixtures benchmarks/fixtures/m0-explore-review-complete \
-  --project-dir . --min-qualified-rate 1
-go run ./cmd/omr benchmark cache --trace path/to/trace.jsonl
-go run ./cmd/omr benchmark cache --native-trace native.jsonl --omr-trace omr.jsonl
-```
+### Claude 兼容层
 
-质量基准也支持项目级 `.reasonix/omr/config.toml`；命令行显式参数优先。例如：
+支持只读导入：
 
-```toml
-[quality]
-fixtures = "benchmarks/fixtures"
-min_qualified_rate = 1
+- .claude/rules
+- .claude/skills
+- .claude/agents
+- .claude/commands
+- .claude/mcp.json
+- .claude/hooks
 
+所有导入支持 dry-run、冲突报告、敏感信息保护和失败回滚。Claude Hook 会转换为策略提示，并明确标注运行时语义无法等价保留。
+
+### 质量与成本
+
+- 离线 Fixture 和确定性 replay；
+- Runtime、Native/OMR 配对报告；
+- 失败分类、重试、停滞、Review 阻断和证据缺失；
+- Token、成本、缓存和 readiness 指标；
+- JSON Schema、快照和迁移校验；
+- 预期失败 Fixture 与正常通过率分离统计。
+
+### Reasonix 机器接口
+
+在 Reasonix 提供公开机器接口后，OMR 可只读查询：
+
+- Session list/status/show/recovery；
+- Hook list/status；
+- Task list/show；
+- run --events-jsonl 结构化事件流。
+
+OMR 不读取 Reasonix 私有目录或数据库，不从人类可读 stdout 猜测 Session 状态。
+
+## 快速开始
+
+项目中已有 reasonix.toml 时：
+
+~~~bash
+# 预览，不写文件
+go run ./cmd/omr init --project-dir . --dry-run
+
+# 安装
+go run ./cmd/omr init --project-dir .
+
+# 验证
+go run ./cmd/omr doctor --project-dir .
+go run ./cmd/omr doctor --project-dir . --json
+
+# 查看配置和 Profile
+go run ./cmd/omr config validate --project-dir .
+go run ./cmd/omr profile list --project-dir .
+go run ./cmd/omr profile list --project-dir . --json
+~~~
+
+安装后，Reasonix 会读取生成的 OMR Prompt 和 Profile。OMR 不会自动启动或接管 Reasonix 客户端。
+
+## 让 Reasonix 自己安装 OMR
+
+将 INSTALL_PROMPT.md 交给正在运行的 Reasonix。它会读取安装文档，先执行 dry-run，再在确认后安装。
+
+Raw URL：
+
+~~~text
+https://raw.githubusercontent.com/mchenziyi/oh-my-reasonix/main/docs/INSTALL_PROMPT.md
+~~~
+
+完整安装说明见 docs/INSTALL.md。
+
+## 常用命令
+
+~~~bash
+# 配置
+omr config validate --project-dir .
+omr config validate --project-dir . --json
+omr config schema --project-dir .
+
+# Profile
+omr profile list --project-dir . --json
+
+# Claude 导入
+omr claude import --project-dir . --dry-run
+omr claude import --project-dir .
+omr claude commands --project-dir . --json
+
+# Session / Hook / Task 只读查询
+omr session list --project-dir . --json
+omr session status <branch-id> --project-dir . --json
+omr session recovery <branch-id> --project-dir . --json
+omr hook doctor --project-dir . --json
+omr task list --project-dir . --json
+omr task show <task-id> --project-dir . --json
+
+# 结构化事件流
+omr run --project-dir . --events-jsonl /tmp/reasonix-events.jsonl --json "执行指定任务"
+~~~
+
+如果 Reasonix 不在 PATH，可显式指定：
+
+~~~bash
+omr doctor --project-dir . --binary /Applications/Reasonix.app/Contents/MacOS/reasonix
+~~~
+
+## 配置示例
+
+配置文件位于项目的 .reasonix/omr/config.toml：
+
+~~~toml
 [runtime]
-metrics_dir = ".reasonix/omr/metrics"
+model = "deepseek-v4-flash"
 max_steps = 20
 timeout = "2m"
+concurrency = 1
 
 [agent.omr-research]
 model = "deepseek-v4-flash"
 prompt_file = "prompts/research.md"
 read_only = true
-```
 
-当前内置 Profile 包括 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner` 和 `omr-frontend`。其中 Planner 用于复杂任务的阶段拆分、验收条件和风险识别，Frontend 用于只读分析界面结构、交互和 UI 测试入口。
-
-`[agent.<profile>]` 可为 OMR Profile 声明模型、附加 Prompt 文件和只读约束；`omr config validate` 与 `omr doctor` 会校验 Profile 名称、项目相对 Prompt 路径、文件存在性和字段格式，实际执行仍由 Reasonix 原生 Profile 负责。
-
-使用 `omr profile list` 输出表格含 `PROFILE`、`SOURCE`、`STATUS`、`MODEL`、`CATEGORIES` 列；`--json` 输出额外含 `description`、`read_only_bool`、`allowed_tools`、`source`、`status`、`effective_model`、`model_source`、`prompt_short_hash`。
-
-`source` 指示来源：`builtin`（内置 Profile）或 `project`（配置引用但未安装）。`status` 为 `enabled`、`disabled` 或 `missing`（项目配置引用但未安装）。
-
-复杂项目可以在 `.reasonix/omr/config.toml` 中覆盖任务类别路由：
-
-```toml
 [routing]
-frontend = "omr-frontend"
 explore = "omr-explore"
-```
+research = "omr-research"
+frontend = "omr-frontend"
 
-执行 `omr upgrade` 后，路由会以稳定、可审计的附加段写入生成 Prompt；`omr config validate --json` 会同时输出 `categories`。
+[profiles]
+disabled = "omr-debug"
+~~~
 
-`omr config schema` 输出可供编辑器和 CI 使用的 JSON Schema；Schema 与解析器都会拒绝未知配置段或字段。若类别路由指向 `[profiles] disabled` 中的 Profile，`config validate` 和 `doctor` 都会阻止继续执行。
+配置也支持 JSONC 和 TOML → JSONC 迁移：
 
-使用 `omr config validate --json` 时，`valid` 表示整体结果；失败详情统一放在 `errors` 数组中，`error` 保留首条错误以兼容旧调用方。
+~~~bash
+omr config migrate --project-dir .
+omr config schema --project-dir .
+~~~
 
-OMR 配置中的 `fixtures`、`metrics_dir`、`model` 和 `[agent.<profile>]` 的 `model`/`prompt_file` 支持 `$VAR` 或 `${VAR}` 环境变量展开；变量未设置时配置校验会失败。
+OMR 会拒绝绝对 Prompt 路径、路径越界、未知配置字段、非法 Profile ID 和指向 disabled Profile 的路由。
 
-配置支持 TOML 原生 `#` 注释以及行尾 `//` 注释；引号内的 URL 和路径内容会保留。
+## 质量验证
 
-`fixture.yaml` 使用 JSON（JSON 是 YAML 1.2 的有效子集），以保持 CLI 无外部运行时依赖。固定响应行为由本地 fake provider 或录制回放提供，真实 Provider 不参与固定断言。
-带有 `replay` 结果的夹具可用 `--replay` 在本地确定性重放；没有回放结果的夹具会被跳过，仍可通过 `--results` 接入外部执行结果评分。`--run-tests` 应针对与项目目录匹配的 fixture 使用。
-`--min-qualified-rate` 用于设置质量门槛，取值范围为 `0..1`，默认要求全部已评估夹具通过。
-质量报告可通过 `--output path/to/quality-report.json` 保存，`--results` 外部结果模式同样适用。
-Native/OMR 质量结果可用 `--native-results native.json --omr-results omr.json` 生成配对对照报告。
+~~~bash
+go test ./...
+go vet ./...
+go build ./...
+go run ./cmd/omr benchmark quality --replay --min-qualified-rate 1
+~~~
 
-真实 Runtime 基准默认串行执行；可通过 `--concurrency N` 或 `.reasonix/omr/config.toml` 的 `[runtime] concurrency = N` 并发执行多个夹具。若使用共享 `--events` 事件流，必须保持并发数为 1。
+质量 Fixture 使用 JSON（也是 YAML 1.2 的有效子集），不依赖真实 Provider。Native/OMR 对照没有配对证据时会明确标记 unavailable，不会宣称 OMR 优于 Native。
 
-质量门禁可通过 `--max-cost` 或 `[quality] max_cost = 1.5` 设置总成本上限；默认值 `0` 表示不启用成本门禁。
+## 安全与隐私边界
 
-不希望某个 OMR Profile 被路由时，可配置：`[profiles] disabled = "omr-debug, omr-research"`。OMR 会在生成 Prompt、Doctor 和 Profile JSON 中标记这些 Profile，但不会删除其文件。
+- 默认只写项目目录；
+- dry-run、冲突和升级失败不会静默覆盖用户文件；
+- 不读取 ~/.reasonix/projects、私有事件文件、数据库或内部锁；
+- 不输出 API Key、Prompt 原文、Tool 参数/结果、绝对路径、PID 或 hostname；
+- Claude MCP/Hook 导入会做兼容性和风险提示；
+- 真实客户端验证需要用户明确授权。
 
-质量报告的 `metrics` 还会汇总 `readiness_checks`、`readiness_blocks` 和 `readiness_recoveries`，用于观察停滞检测与自动恢复效果。
-Native/OMR 对照报告还会输出这三项指标的 `_delta`，正值表示 OMR 相对 Native 增加，负值表示减少；对照模式同样应用 `--max-cost` 成本门禁。
-真实 Runtime 如有宿主提供的结构化 JSONL 事件日志，可通过 `--events path/to/events.jsonl` 接入证据评分；OMR 不会从人类可读 stdout 推断事件。
+## 开发
 
-## 范围
+需要 Go 1.23 或更高版本：
 
-当前不包含自定义 Reviewer、用户级安装、并行写入、动态模型路由或 Reasonix 上游修改。Reasonix 基线固定为 `desktop-v1.17.16` / `464d494`。
+~~~bash
+go test ./...
+go vet ./...
+go build ./...
+go run ./cmd/omr version
+~~~
+
+代码改动应同时运行 gofmt 和 git diff --check。测试使用临时目录，不依赖用户真实项目。
+
+## 当前状态与路线
+
+已完成 OMR-T01～T09，以及 INT-01～INT-05 自动化联调。
+
+当前后续事项：
+
+- Web/Docs MCP：优先实现为可选、可审计的 MCP 配置/兼容层；
+- Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
+- Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
+- Grill Me：先评估为可选的方案质询 Skill，暂不默认集成；
+- INT-06：等待 Reasonix 官方接口进入可用版本后进行真实客户端验证。
+
+## 许可证
+
+MIT
