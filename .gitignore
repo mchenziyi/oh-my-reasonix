@@ -1,3 +1,9 @@
 .DS_Store
 bin/
 coverage.out
+
+# Local binary
+omr
+
+# Reasonix project metadata (user-local, not to be committed)
+.reasonix/
