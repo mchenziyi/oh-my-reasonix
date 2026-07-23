@@ -109,8 +109,9 @@ func isInfraError(errMsg string) bool {
 		return false
 	}
 	lower := strings.ToLower(errMsg)
-	infraKeywords := []string{"timeout", "connection refused", "no such host",
-		"permission denied", "executable not found", "exit status"}
+	infraKeywords := []string{"timeout", "context deadline exceeded",
+		"connection refused", "no such host",
+		"permission denied", "executable not found"}
 	for _, kw := range infraKeywords {
 		if strings.Contains(lower, kw) {
 			return true
