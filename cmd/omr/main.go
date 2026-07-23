@@ -1178,17 +1178,17 @@ func runVersion(args []string) error {
 	}
 	if *jsonOutput {
 		type versionInfo struct {
-			OMR       string `json:"omr_version"`
-			Manifest  string `json:"manifest_schema"`
-			Assets    string `json:"assets_version"`
-			Reasonix  string `json:"reasonix_detected"`
-			Compatible bool  `json:"compatible"`
+			OMR        string `json:"omr_version"`
+			Manifest   string `json:"manifest_schema"`
+			Assets     string `json:"assets_version"`
+			Reasonix   string `json:"reasonix_detected"`
+			Compatible bool   `json:"compatible"`
 		}
 		info := versionInfo{
-			OMR:       version,
-			Manifest:  "1",
-			Assets:    "builtin",
-			Reasonix:  "",
+			OMR:        version,
+			Manifest:   "1",
+			Assets:     "builtin",
+			Reasonix:   "",
 			Compatible: true,
 		}
 		// Try to detect Reasonix binary
@@ -1353,9 +1353,12 @@ func runRun(args []string) error {
 		if parseErr != nil {
 			return fmt.Errorf("parse events: %w", parseErr)
 		}
+		if len(stream.Errors) > 0 {
+			return fmt.Errorf("event stream validation failed: %s", strings.Join(stream.Errors, "; "))
+		}
 		if *jsonOutput {
 			type runOutput struct {
-				Result reasonix.Result    `json:"result"`
+				Result reasonix.Result      `json:"result"`
 				Events reasonix.EventStream `json:"events"`
 			}
 			return json.NewEncoder(os.Stdout).Encode(runOutput{Result: result, Events: stream})

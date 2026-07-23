@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -11,14 +12,14 @@ import (
 // EventRecord corresponds to a single line in the events JSONL file.
 // Only includes safe, sanitized fields — no prompt, tool_args, tool_result, reasoning.
 type EventRecord struct {
-	Event             string `json:"event"`
-	Seq               int    `json:"seq,omitempty"`
-	Kind              string `json:"kind,omitempty"`
-	ToolID            string `json:"tool_id,omitempty"`
-	ToolName          string `json:"tool_name,omitempty"`
-	Status            string `json:"status,omitempty"`
-	PromptTokens      int    `json:"prompt_tokens,omitempty"`
-	CompletionTokens  int    `json:"completion_tokens,omitempty"`
+	Event            string `json:"event"`
+	Seq              int    `json:"seq,omitempty"`
+	Kind             string `json:"kind,omitempty"`
+	ToolID           string `json:"tool_id,omitempty"`
+	ToolName         string `json:"tool_name,omitempty"`
+	Status           string `json:"status,omitempty"`
+	PromptTokens     int    `json:"prompt_tokens,omitempty"`
+	CompletionTokens int    `json:"completion_tokens,omitempty"`
 }
 
 // EventStream is the parsed result of an events JSONL file.
@@ -39,21 +40,35 @@ func ParseEventStream(path string) (EventStream, error) {
 	defer f.Close()
 
 	var stream EventStream
-	scanner := bufio.NewScanner(f)
-	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024) // 1MB max line
-
 	maxLineBytes := 1024 * 1024
 	lineNum := 0
 	lastSeq := -1
+	reader := bufio.NewReaderSize(f, 64*1024)
 
-	for scanner.Scan() {
+	for {
+		lineBytes, tooLarge, readErr := readEventLine(reader, maxLineBytes)
+		if len(lineBytes) == 0 && readErr == io.EOF {
+			break
+		}
 		lineNum++
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" {
+		if tooLarge {
+			stream.Errors = append(stream.Errors, fmt.Sprintf("line %d: exceeds max size (%d bytes)", lineNum, maxLineBytes))
+			if readErr == io.EOF {
+				break
+			}
+			if readErr != nil {
+				return stream, fmt.Errorf("read events file: %w", readErr)
+			}
 			continue
 		}
-		if len(line) > maxLineBytes {
-			stream.Errors = append(stream.Errors, fmt.Sprintf("line %d: exceeds max size (%d bytes)", lineNum, maxLineBytes))
+		if readErr != nil && readErr != io.EOF {
+			return stream, fmt.Errorf("read events file: %w", readErr)
+		}
+		line := strings.TrimSpace(string(lineBytes))
+		if line == "" {
+			if readErr == io.EOF {
+				break
+			}
 			continue
 		}
 		var rec EventRecord
@@ -74,12 +89,39 @@ func ParseEventStream(path string) (EventStream, error) {
 		}
 		stream.Events = append(stream.Events, rec)
 		stream.TotalTokens += rec.PromptTokens + rec.CompletionTokens
+		if readErr == io.EOF {
+			break
+		}
 	}
-	if err := scanner.Err(); err != nil {
-		return stream, fmt.Errorf("read events file: %w", err)
+	if len(stream.Events) == 0 || stream.Events[len(stream.Events)-1].Event != "run_done" {
+		stream.RunDone = false
+		stream.Errors = append(stream.Errors, "run_done event must be the final event in the stream")
+	} else {
+		stream.RunDone = true
 	}
-	if !stream.RunDone {
-		stream.Errors = append(stream.Errors, "no run_done event found at end of stream")
+	if len(stream.Events) > 0 {
+		for i, event := range stream.Events[:len(stream.Events)-1] {
+			if event.Event == "run_done" {
+				stream.Errors = append(stream.Errors, fmt.Sprintf("event %d: run_done must be final", i+1))
+			}
+		}
 	}
 	return stream, nil
+}
+
+func readEventLine(reader *bufio.Reader, maxBytes int) ([]byte, bool, error) {
+	var line []byte
+	tooLarge := false
+	for {
+		part, err := reader.ReadSlice('\n')
+		if len(line)+len(part) > maxBytes {
+			tooLarge = true
+		} else if !tooLarge {
+			line = append(line, part...)
+		}
+		if err == bufio.ErrBufferFull {
+			continue
+		}
+		return line, tooLarge, err
+	}
 }

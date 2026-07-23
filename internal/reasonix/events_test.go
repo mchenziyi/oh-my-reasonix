@@ -151,3 +151,51 @@ func TestParseEventStreamLargeLine(t *testing.T) {
 		t.Fatal("expected at least the run_done event")
 	}
 }
+
+func TestParseEventStreamRunDoneMustBeFinal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"event":"run_done","seq":1}`,
+		`{"event":"tool_call","seq":2}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stream.RunDone {
+		t.Fatal("run_done before final event must not mark stream complete")
+	}
+	found := false
+	for _, e := range stream.Errors {
+		if strings.Contains(e, "run_done must be final") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected final run_done error, got %v", stream.Errors)
+	}
+}
+
+func TestParseEventStreamSkipsOversizedLine(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	largeLine := `{"event":"tool_call","data":"` + strings.Repeat("X", 2*1024*1024) + `"}`
+	writeEventsFile(t, path, []string{largeLine, `{"event":"run_done","seq":1}`})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stream.RunDone || len(stream.Events) != 1 || stream.Events[0].Event != "run_done" {
+		t.Fatalf("expected oversized line skipped and run_done retained: %#v", stream)
+	}
+	found := false
+	for _, e := range stream.Errors {
+		if strings.Contains(e, "exceeds max size") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected oversized line error, got %v", stream.Errors)
+	}
+}
