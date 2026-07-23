@@ -101,14 +101,14 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		// Hook doctor: check if Reasonix supports hooks
 		hookCheck := Check{
 			Name:   "reasonix.hooks",
-			Status: "FAIL",
-			Detail: "Reasonix v1.17.17 does not expose a hook command; OMR hook strategy prompts may not be enforced at runtime",
+			Status: "UNSUPPORTED",
+			Detail: "Reasonix 尚无 Hook 查询接口；OMR Hook 策略提示为纯文本建议，不由运行时强制执行",
 		}
 		// Reasonix v1.17.x doesn't have hook CLI; check if config references hooks
 		hookConfigPath := filepath.Join(root, ".reasonix", "hooks.yaml")
 		if _, err := os.Stat(hookConfigPath); err == nil {
 			hookCheck.Status = "WARN"
-			hookCheck.Detail = "hooks config file exists but Reasonix does not expose hook runtime"
+			hookCheck.Detail = "存在 .reasonix/hooks.yaml 配置文件，但宿主尚不提供 Hook 运行时执行"
 		}
 		result.Checks = append(result.Checks, hookCheck)
 	}

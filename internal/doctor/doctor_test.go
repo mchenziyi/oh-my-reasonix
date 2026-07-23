@@ -233,3 +233,35 @@ func TestProfileFrontmatterReadOnly(t *testing.T) {
 		t.Fatal("did not expect read-only false to be recognized")
 	}
 }
+
+// TestHookCheckUnsupportedNotBlocking verifies that the reasonix.hooks
+// UNSUPPORTED check does not produce errors or block the doctor.
+func TestHookCheckUnsupportedNotBlocking(t *testing.T) {
+	result := Result{
+		Checks: []Check{
+			{Name: "reasonix.hooks", Status: "UNSUPPORTED", Detail: "Reasonix 尚无 Hook 查询接口"},
+		},
+	}
+	if result.Blocking() {
+		t.Fatal("UNSUPPORTED hook check should not block the doctor")
+	}
+	if len(result.Errors) > 0 {
+		t.Fatal("UNSUPPORTED hook check should not produce errors")
+	}
+}
+
+// TestHookCheckWarnNotBlocking verifies that the reasonix.hooks WARN
+// check does not produce errors or block the doctor.
+func TestHookCheckWarnNotBlocking(t *testing.T) {
+	result := Result{
+		Checks: []Check{
+			{Name: "reasonix.hooks", Status: "WARN", Detail: "存在 hooks.yaml 但宿主不支持"},
+		},
+	}
+	if result.Blocking() {
+		t.Fatal("WARN hook check should not block the doctor")
+	}
+	if len(result.Errors) > 0 {
+		t.Fatal("WARN hook check should not produce errors")
+	}
+}
