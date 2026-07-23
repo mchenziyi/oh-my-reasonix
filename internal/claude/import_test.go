@@ -275,7 +275,7 @@ func writeClaudeHook(t *testing.T, root, name, content string) {
 
 func TestImportSkillsDryRun(t *testing.T) {
 	root := newClaudeProject(t)
-	writeClaudeSkill(t, root, "my-skill.yaml", "name: my-skill\ndescription: A test skill\n")
+	writeClaudeSkill(t, root, "my-skill.yaml", "---\nname: my-skill\ndescription: A test skill\n---\n")
 
 	report := ImportSkills(Options{ProjectDir: root, DryRun: true})
 	if report.Errors != nil {
@@ -291,7 +291,7 @@ func TestImportSkillsDryRun(t *testing.T) {
 
 func TestImportSkillsWritesFiles(t *testing.T) {
 	root := newClaudeProject(t)
-	writeClaudeSkill(t, root, "my-skill.yaml", "name: my-skill\n")
+	writeClaudeSkill(t, root, "my-skill.yaml", "---\nname: my-skill\ndescription: A test skill\n---\n")
 
 	report := ImportSkills(Options{ProjectDir: root})
 	if !report.Written {
@@ -302,7 +302,7 @@ func TestImportSkillsWritesFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("target not written: %v", err)
 	}
-	if string(data) != "name: my-skill\n" {
+	if string(data) != "---\nname: my-skill\ndescription: A test skill\n---\n" {
 		t.Fatalf("unexpected content: %q", data)
 	}
 }
@@ -441,7 +441,7 @@ func TestImportHooksNoDir(t *testing.T) {
 func TestImportAllCombinesAllTypes(t *testing.T) {
 	root := newClaudeProject(t)
 	writeClaudeRule(t, root, "style.md", "# Style")
-	writeClaudeSkill(t, root, "skill.yaml", "name: skill")
+	writeClaudeSkill(t, root, "skill.yaml", "---\nname: skill\ndescription: A test skill\n---\n")
 	writeClaudeAgent(t, root, "agent.json", `{"name":"agent"}`)
 	writeClaudeMCP(t, root, `{"mcpServers":{"s":{"command":"c"}}}`)
 	writeClaudeHook(t, root, "hook.js", "hook content")

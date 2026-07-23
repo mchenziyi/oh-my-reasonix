@@ -206,6 +206,9 @@ func ImportSkills(opts Options) Report {
 	}
 	var files []importFile
 	for _, s := range skills {
+		if err := ValidateSkillFrontmatter(s.Content); err != nil {
+			return Report{Root: root, Errors: []string{fmt.Sprintf("skill %q: %v", s.Name, err)}}
+		}
 		targetRel := filepath.Join(OMRSkillsDir, s.Name, "SKILL.md")
 		files = append(files, importFile{
 			SourceRel:  s.Name,
@@ -216,6 +219,49 @@ func ImportSkills(opts Options) Report {
 		})
 	}
 	return importFiles(opts, files)
+}
+
+// ValidateSkillFrontmatter checks that content has valid Reasonix Skill frontmatter.
+// Returns an error listing all missing/required fields.
+func ValidateSkillFrontmatter(content []byte) error {
+	text := string(content)
+	if !strings.HasPrefix(text, "---\n") {
+		return fmt.Errorf("missing frontmatter delimiter ---")
+	}
+	endIdx := strings.Index(text[len("---\n"):], "\n---")
+	if endIdx < 0 {
+		return fmt.Errorf("frontmatter delimiter --- not closed")
+	}
+	frontMatter := text[len("---\n") : len("---\n")+endIdx]
+	fields := map[string]string{}
+	for _, line := range strings.Split(frontMatter, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		fields[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
+	}
+	var errs []string
+	if fields["name"] == "" {
+		errs = append(errs, "frontmatter missing required field: name")
+	}
+	if fields["description"] == "" {
+		errs = append(errs, "frontmatter missing required field: description")
+	}
+	if ro, ok := fields["read-only"]; ok && ro != "true" && ro != "false" {
+		errs = append(errs, fmt.Sprintf("frontmatter read-only must be boolean, got: %q", ro))
+	}
+	if ra, ok := fields["runAs"]; ok && ra != "subagent" && ra != "manual" {
+		errs = append(errs, fmt.Sprintf("frontmatter runAs must be 'subagent' or 'manual', got: %q", ra))
+	}
+	if len(errs) > 0 {
+		return fmt.Errorf(strings.Join(errs, "; "))
+	}
+	return nil
 }
 
 // AgentFile represents a Claude agent config file.
