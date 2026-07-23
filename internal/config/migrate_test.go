@@ -448,3 +448,133 @@ func TestMigrateConfigDiff(t *testing.T) {
 		})
 	}
 }
+
+// ─── FIX-04: migration failure recoverability tests ───
+
+func TestMigrateRejectsInvalidTOML(t *testing.T) {
+	root := t.TempDir()
+	tomlPath := filepath.Join(root, "config.toml")
+	// Duplicate key in TOML
+	tomlData := `[runtime]
+model = "a"
+model = "b"
+`
+	if err := os.WriteFile(tomlPath, []byte(tomlData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// loadTOML should reject duplicate keys
+	_, err := loadTOML(tomlPath)
+	if err == nil {
+		t.Fatal("expected duplicate TOML key to be rejected")
+	}
+	// ExecuteMigration should also fail
+	jsoncPath := filepath.Join(root, "config.jsonc")
+	if err := ExecuteMigration(tomlPath, jsoncPath, false); err == nil {
+		t.Fatal("expected migration to reject duplicate TOML key")
+	}
+}
+
+func TestMigrateBackupFailureNoDestWritten(t *testing.T) {
+	root := t.TempDir()
+	tomlPath := filepath.Join(root, "config.toml")
+	tomlData := `[quality]
+fixtures = "test"
+`
+	if err := os.WriteFile(tomlPath, []byte(tomlData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Make the backup path unwritable by making the parent dir read-only
+	// Backup goes to sourcePath + ".bak" in the same directory
+	// Make the directory read-only BEFORE migration so backup fails
+	backupPath := tomlPath + ".bak"
+	_ = backupPath // backup path is in same dir
+	// We can't easily make the single backup fail without also blocking the source read
+	// Instead, verify that if backup can't be created, no dest is written
+	jsoncPath := filepath.Join(root, "config.jsonc")
+
+	// Make the source directory read-only so backup write will fail
+	if err := os.Chmod(root, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chmod(root, 0o755)
+
+	err := ExecuteMigration(tomlPath, jsoncPath, false)
+	if err == nil {
+		t.Fatal("expected migration to fail when backup cannot be written")
+	}
+
+	os.Chmod(root, 0o755)
+
+	// Verify dest file was NOT written
+	if _, err := os.Stat(jsoncPath); err == nil {
+		t.Fatal("dest file should not exist after failed migration")
+	}
+}
+
+func TestMigrateConfigDiffDoesNotMutate(t *testing.T) {
+	a := Config{Fixtures: "original", MaxSteps: 10}
+	b := Config{Fixtures: "original", MaxSteps: 20}
+
+	aCopy := a
+	bCopy := b
+
+	_ = configDiff(a, b)
+
+	// Verify inputs were not modified
+	if a.Fixtures != aCopy.Fixtures || a.MaxSteps != aCopy.MaxSteps {
+		t.Fatal("configDiff modified input config 'a'")
+	}
+	if b.Fixtures != bCopy.Fixtures || b.MaxSteps != bCopy.MaxSteps {
+		t.Fatal("configDiff modified input config 'b'")
+	}
+}
+
+func TestMigrateRollbackRestoresFilePermissions(t *testing.T) {
+	root := t.TempDir()
+	tomlPath := filepath.Join(root, "config.toml")
+	tomlData := `[quality]
+fixtures = "test"
+`
+	if err := os.WriteFile(tomlPath, []byte(tomlData), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	jsoncPath := filepath.Join(root, "config.jsonc")
+	if err := ExecuteMigration(tomlPath, jsoncPath, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read original file permissions
+	origInfo, err := os.Stat(tomlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Make dest file read-only, then force-overwrite — the rollback should restore
+	// the original source (which already has a .bak)
+	os.Chmod(jsoncPath, 0o444)
+	defer os.Chmod(jsoncPath, 0o644)
+
+	// Change source content
+	if err := os.WriteFile(tomlPath, []byte("[quality]\nfixtures = \"changed\"\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Force migration with read-only dest — should fail on write
+	err = ExecuteMigration(tomlPath, jsoncPath, true)
+	if err == nil {
+		t.Fatal("expected migration to fail when dest is read-only")
+	}
+
+	// Verify original file permissions are restored (not tightened by failed migration)
+	afterInfo, err := os.Stat(tomlPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if afterInfo.Mode().Perm() != origInfo.Mode().Perm() {
+		t.Fatalf("file permission changed after rollback: was %o, got %o",
+			origInfo.Mode().Perm(), afterInfo.Mode().Perm())
+	}
+}
