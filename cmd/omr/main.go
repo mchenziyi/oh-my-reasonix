@@ -393,6 +393,11 @@ func runProfile(args []string) error {
 			ReadOnly         *bool    `json:"read_only,omitempty"`
 			Categories       []string `json:"categories,omitempty"`
 			Disabled         bool     `json:"disabled,omitempty"`
+			Description      string   `json:"description,omitempty"`
+			ReadOnlyBool     bool     `json:"read_only_bool"`
+			AllowedTools     []string `json:"allowed_tools,omitempty"`
+			InputTypes       []string `json:"input_types,omitempty"`
+			OutputSections   []string `json:"output_sections,omitempty"`
 		}
 		configured := map[string]omrconfig.AgentConfig{}
 		categoryByProfile := map[string][]string{}
@@ -414,6 +419,17 @@ func runProfile(args []string) error {
 		output := make([]profileJSON, 0, len(profiles))
 		for _, profile := range profiles {
 			item := profileJSON{ID: profile.ID, Path: profile.Path, ContentSHA256: profile.ContentSHA256}
+			// Read and parse SKILL.md for metadata
+			skillPath := install.ProfilePath(root, profile.Path)
+			if data, readErr := os.ReadFile(skillPath); readErr == nil {
+				if meta, parseErr := manifest.ParseProfileMeta(data); parseErr == nil {
+					item.Description = meta.Description
+					item.ReadOnlyBool = meta.ReadOnly
+					item.AllowedTools = meta.AllowedTools
+					item.InputTypes = meta.InputTypes
+					item.OutputSections = meta.OutputSections
+				}
+			}
 			if agent, ok := configured[profile.ID]; ok {
 				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
 				if agent.PromptFile != "" {
@@ -454,7 +470,24 @@ func runProfile(args []string) error {
 		}
 	}
 	for _, profile := range profiles {
+		desc := ""
+		ro := ""
+		skillPath := install.ProfilePath(root, profile.Path)
+		if data, readErr := os.ReadFile(skillPath); readErr == nil {
+			if meta, parseErr := manifest.ParseProfileMeta(data); parseErr == nil {
+				desc = meta.Description
+				if meta.ReadOnly {
+					ro = "RO"
+				}
+			}
+		}
 		suffix := ""
+		if ro != "" {
+			suffix += "\t" + ro
+		}
+		if desc != "" {
+			suffix += "\t" + desc
+		}
 		if categories := categoryByProfile[profile.ID]; len(categories) > 0 {
 			suffix += "\tcategories=" + strings.Join(categories, ",")
 		}
