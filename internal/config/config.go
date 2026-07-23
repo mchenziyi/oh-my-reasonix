@@ -147,7 +147,7 @@ func loadTOML(path string) (Config, error) {
 		if strings.ContainsAny(agent.Model, "\r\n\t") {
 			return Config{}, fmt.Errorf("invalid model for agent %q", profile)
 		}
-		if strings.HasPrefix(agent.PromptFile, "/") || strings.Contains(agent.PromptFile, "\\") {
+		if strings.HasPrefix(agent.PromptFile, "/") || strings.Contains(agent.PromptFile, "\\") || strings.Contains(agent.PromptFile, "..") {
 			return Config{}, fmt.Errorf("prompt_file for agent %q must be a project-relative path", profile)
 		}
 	}
@@ -258,7 +258,7 @@ func assign(cfg *Config, section, key, raw string) error {
 		if key != strings.ToLower(key) {
 			return fmt.Errorf("invalid category %q: category must be lowercase", key)
 		}
-		profile := stringValue(raw)
+		profile := strings.ToLower(stringValue(raw))
 		if profile == "" || strings.ContainsAny(profile, "\r\n\t /\\") {
 			return fmt.Errorf("invalid category profile for %q", key)
 		}
@@ -273,7 +273,7 @@ func assign(cfg *Config, section, key, raw string) error {
 			return fmt.Errorf("unsupported profiles key %q", key)
 		}
 		for _, profile := range strings.Split(stringValue(raw), ",") {
-			profile = strings.TrimSpace(profile)
+			profile = strings.ToLower(strings.TrimSpace(profile))
 			if profile == "" || strings.ContainsAny(profile, " \t/\\") {
 				return fmt.Errorf("invalid disabled Profile %q", profile)
 			}

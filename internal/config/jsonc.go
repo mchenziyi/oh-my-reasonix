@@ -289,7 +289,7 @@ func loadJSONC(path string) (Config, error) {
 				if err != nil {
 					return Config{}, fmt.Errorf("%s: agent.%s.prompt_file: %w", path, profileName, err)
 				}
-				if strings.HasPrefix(expanded, "/") || strings.Contains(expanded, "\\") {
+				if strings.HasPrefix(expanded, "/") || strings.Contains(expanded, "\\") || strings.Contains(expanded, "..") {
 					return Config{}, fmt.Errorf("%s: agent.%s.prompt_file must be a project-relative path", path, profileName)
 				}
 				a.PromptFile = expanded
@@ -306,9 +306,13 @@ func loadJSONC(path string) (Config, error) {
 			if category == "" || strings.ContainsAny(category, " \t/\\") {
 				return Config{}, fmt.Errorf("%s: routing: invalid category %q", path, category)
 			}
+			if category != strings.ToLower(category) {
+				return Config{}, fmt.Errorf("%s: routing: category %q must be lowercase", path, category)
+			}
 			if profile == "" || strings.ContainsAny(profile, "\r\n\t /\\") {
 				return Config{}, fmt.Errorf("%s: routing: invalid profile for category %q", path, category)
 			}
+			profile = strings.ToLower(profile)
 			if cfg.Categories == nil {
 				cfg.Categories = make(map[string]string)
 			}
@@ -319,7 +323,7 @@ func loadJSONC(path string) (Config, error) {
 	if rawCfg.Profiles != nil && rawCfg.Profiles.Disabled != nil {
 		seenProfiles := make(map[string]bool)
 		for _, profile := range rawCfg.Profiles.Disabled {
-			p := strings.TrimSpace(profile)
+			p := strings.ToLower(strings.TrimSpace(profile))
 			if p == "" || strings.ContainsAny(p, " \t/\\") {
 				return Config{}, fmt.Errorf("%s: invalid disabled Profile %q", path, profile)
 			}
