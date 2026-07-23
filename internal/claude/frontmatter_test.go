@@ -96,9 +96,34 @@ func TestImportAgentWarnsOnRawFrontmatter(t *testing.T) {
 
 func TestImportAgentRejectsInvalidFrontmatter(t *testing.T) {
 	root := newClaudeProject(t)
-	writeClaudeAgent(t, root, "bad-agent", "invalid frontmatter without delimiters\n")
+	// Agent content without --- delimiters is accepted as-is (no validation)
+	writeClaudeAgent(t, root, "plain-agent", "plain instructions\n")
 	report := ImportAgents(Options{ProjectDir: root})
-	if len(report.Conflicts) > 0 {
-		// That's OK if conflicts block; check for error
+	if len(report.Errors) > 0 {
+		t.Fatalf("unexpected errors for plain agent: %v", report.Errors)
+	}
+	target := filepath.Join(root, filepath.FromSlash(OMRSkillsDir), "omr-plain-agent", "SKILL.md")
+	if _, err := os.Stat(target); err != nil {
+		t.Fatalf("expected plain agent to be imported: %v", err)
+	}
+}
+
+func TestImportAgentRejectsInvalidFrontmatterDelimiters(t *testing.T) {
+	root := newClaudeProject(t)
+	// Agent content WITH --- but invalid frontmatter should be rejected
+	writeClaudeAgent(t, root, "bad-agent", "---\ninvalid\n---\n\ninstructions\n")
+	report := ImportAgents(Options{ProjectDir: root})
+	found := false
+	for _, e := range report.Errors {
+		if len(e) > 0 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("expected error for agent with invalid frontmatter")
+	}
+	target := filepath.Join(root, filepath.FromSlash(OMRSkillsDir), "omr-bad-agent", "SKILL.md")
+	if _, err := os.Stat(target); !os.IsNotExist(err) {
+		t.Fatal("expected no file written for agent with invalid frontmatter")
 	}
 }
