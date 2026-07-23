@@ -414,6 +414,7 @@ func ImportHooks(opts Options) Report {
 	}
 
 	var files []importFile
+	var warnings []string
 	for _, entry := range entries {
 		if entry.IsDir() {
 			continue
@@ -422,8 +423,43 @@ func ImportHooks(opts Options) Report {
 		if err != nil {
 			return Report{Root: root, Errors: []string{fmt.Sprintf("read hook %q: %v", entry.Name(), err)}}
 		}
-		// Convert hook into a strategy prompt rule
-		disclaimer := "# [策略提示转换] 此文件由 Claude Hook 转换而来，不保证等价于运行时 Hook 执行\n# 原始来源: .claude/hooks/" + entry.Name() + "\n\n"
+		text := string(data)
+
+		// Semantic analysis: detect dangerous patterns
+		var risks []string
+		dangerPatterns := []struct {
+			pattern string
+			desc    string
+		}{
+			{"rm -rf", "recursive delete"},
+			{"curl |", "pipe from curl"},
+			{"sudo ", "escalated privilege"},
+			{"/usr/bin/", "absolute binary path"},
+			{"/bin/", "absolute binary path"},
+			{"chmod 777", "world-writable permission"},
+		}
+		for _, dp := range dangerPatterns {
+			if strings.Contains(text, dp.pattern) {
+				risks = append(risks, dp.desc)
+			}
+		}
+
+		// Sensitive content detection
+		secretPatterns := []string{"API_KEY=", "api_key=", "token=", "password=", "secret=", "SECRET="}
+		for _, sp := range secretPatterns {
+			if strings.Contains(text, sp) {
+				risks = append(risks, "contains "+sp+"*** (value redacted)")
+			}
+		}
+
+		riskNote := "无"
+		if len(risks) > 0 {
+			riskNote = strings.Join(risks, ", ")
+		}
+
+		// Enhanced disclaimer
+		disclaimer := fmt.Sprintf("# [策略提示转换] 此文件由 Claude Hook %q 转换而来\n# 不保证等价于运行时 Hook 执行。Hook 的命令执行、阻断、顺序保证等运行时语义已丢失。\n# 原始来源: .claude/hooks/%s\n# 需要人工复核以下风险: %s\n\n",
+			entry.Name(), entry.Name(), riskNote)
 		promptContent := append([]byte(disclaimer), data...)
 		ruleName := "hook-" + entry.Name()
 		if ext := filepath.Ext(ruleName); ext != "" {
@@ -438,8 +474,11 @@ func ImportHooks(opts Options) Report {
 			SourceDesc: ".claude/hooks/",
 			TargetDesc: ".reasonix/rules/ (converted)",
 		})
+		warnings = append(warnings, fmt.Sprintf("Hook %q — 已转为策略提示 (已保留语义: 触发条件; 无法保留: 命令执行、阻断、环境修改; 风险: %s)", entry.Name(), riskNote))
 	}
-	return importFiles(opts, files)
+	report := importFiles(opts, files)
+	report.Warnings = append(report.Warnings, warnings...)
+	return report
 }
 
 // CommandFile represents a single command file from .claude/commands/.
