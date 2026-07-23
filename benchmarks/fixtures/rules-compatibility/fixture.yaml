@@ -7,7 +7,7 @@
   "hidden_tests": [],
   "regression_tests": [],
   "expected_events": ["todo_write", "complete_step"],
-  "expected_rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/style.md"],
+  "expected_rule_sources": [".reasonix/rules/style.md", "<root>/AGENTS.md"],
   "forbidden_rule_sources": [".claude/rules/style.md"],
   "expected_conflict_log": [],
   "replay": {
@@ -17,7 +17,7 @@
     "required_effects_met": true,
     "events": ["todo_write", "complete_step"],
     "tests_skipped": false,
-    "rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/style.md"],
+    "rule_sources": [".reasonix/rules/style.md", "<root>/AGENTS.md"],
     "conflict_resolutions": []
   }
 }

@@ -7,7 +7,7 @@
   "hidden_tests": [],
   "regression_tests": [],
   "expected_events": ["todo_write", "complete_step"],
-  "expected_rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/security.md"],
+  "expected_rule_sources": [".reasonix/rules/security.md", "<root>/AGENTS.md"],
   "forbidden_rule_sources": [],
   "expected_conflict_log": [
     "conflict between <root>/AGENTS.md (allow config edits) and .reasonix/rules/security.md (deny firewall port changes): resolved by stricter constraint"
@@ -19,7 +19,7 @@
     "required_effects_met": true,
     "events": ["todo_write", "complete_step"],
     "tests_skipped": false,
-    "rule_sources": ["<root>/AGENTS.md", ".reasonix/rules/security.md"],
+    "rule_sources": [".reasonix/rules/security.md", "<root>/AGENTS.md"],
     "conflict_resolutions": [
       "conflict between <root>/AGENTS.md (allow config edits) and .reasonix/rules/security.md (deny firewall port changes): resolved by stricter constraint"
     ]

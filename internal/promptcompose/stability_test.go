@@ -53,25 +53,27 @@ func TestComposeNoDynamicValues(t *testing.T) {
 }
 
 func loadTestPrompts(t *testing.T) (string, string, string) {
-	// Try loading from repository assets
-	basePath := filepath.Join("..", "..", "assets", "prompts", "base.zh.md")
-	userPath := filepath.Join("..", "..", "assets", "prompts", "user.zh.md")
+	basePath := filepath.Join("..", "..", "assets", "prompts", "reasonix-base-464d494.md")
+	userPath := filepath.Join("..", "..", "assets", "prompts", "review-task-protocol.zh.md")
 	omrPath := filepath.Join("..", "..", "assets", "prompts", "orchestrator.zh.md")
 
-	readOrSkip := func(path string) string {
-		data, err := os.ReadFile(path)
-		if err == nil {
-			return string(data)
-		}
-		// Try alternative locations
-		for _, alt := range []string{path, "../" + path} {
-			if data, err := os.ReadFile(alt); err == nil {
-				return string(data)
-			}
-		}
-		// Return minimal content for testing
-		return "# " + filepath.Base(path) + "\n"
+	data, err := os.ReadFile(basePath)
+	if err != nil {
+		t.Fatalf("required prompt file not found: %s", basePath)
 	}
+	base := string(data)
 
-	return readOrSkip(basePath), readOrSkip(userPath), readOrSkip(omrPath)
+	data, err = os.ReadFile(userPath)
+	if err != nil {
+		t.Fatalf("required prompt file not found: %s", userPath)
+	}
+	user := string(data)
+
+	data, err = os.ReadFile(omrPath)
+	if err != nil {
+		t.Fatalf("required prompt file not found: %s", omrPath)
+	}
+	omr := string(data)
+
+	return base, user, omr
 }

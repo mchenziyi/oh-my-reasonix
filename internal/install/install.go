@@ -107,9 +107,9 @@ func Init(opts Options) (Report, error) {
 	generatedPath := GeneratedPromptPath(root)
 	manifestOwnedPrompt := hasManifest && existing.Prompt.GeneratedPath == GeneratedPromptRel && samePath(root, valueOrEmpty(cfg.SystemPromptFile), generatedPath)
 
-	// Check for orphan event files before other conflict checks
+	// Check for session event-index files that may conflict with OMR management
 	if orphans := getOrphanEventPaths(root); len(orphans) > 0 {
-		return conflictReport(root, fmt.Sprintf("orphan event-index file(s) found: %s", strings.Join(orphans, ", ")))
+		return conflictReport(root, fmt.Sprintf("existing session event-index file(s) found (may conflict with OMR): %s", strings.Join(orphans, ", ")))
 	}
 
 	if samePath(root, valueOrEmpty(cfg.SystemPromptFile), generatedPath) && !manifestOwnedPrompt {
@@ -568,7 +568,8 @@ func trimPromptSource(source string) string {
 }
 
 // getOrphanEventPaths scans .reasonix/omr/sessions/ for .event-index.json files
-// that are not managed by OMR's manifest. Returns their names.
+// that are not expected in a fresh install. Their presence indicates leftover
+// session artifacts that may conflict with OMR management.
 func getOrphanEventPaths(root string) []string {
 	dir := filepath.Join(root, filepath.FromSlash(".reasonix/omr/sessions"))
 	entries, err := os.ReadDir(dir)
