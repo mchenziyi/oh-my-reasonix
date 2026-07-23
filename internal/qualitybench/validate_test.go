@@ -8,6 +8,9 @@ import (
 
 func TestValidateReportValid(t *testing.T) {
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   5,
 		EvaluatedCount: 5,
 		QualifiedCount: 5,
@@ -40,6 +43,9 @@ func TestValidateReportValid(t *testing.T) {
 
 func TestValidateReportWithFailures(t *testing.T) {
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   3,
 		EvaluatedCount: 3,
 		QualifiedCount: 2,
@@ -184,6 +190,9 @@ func TestValidateEvaluationsRejectsUnqualifiedWithoutFailures(t *testing.T) {
 func TestValidateReportAllErrorTypes(t *testing.T) {
 	// Report with multiple errors
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   0,
 		EvaluatedCount: -1,
 		QualifiedCount: 10,
@@ -228,6 +237,9 @@ func TestValidateReportAllErrorTypes(t *testing.T) {
 
 func TestValidateReportWithZeroCostAndEmptyCurrency(t *testing.T) {
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   1,
 		EvaluatedCount: 1,
 		QualifiedCount: 1,
@@ -242,6 +254,9 @@ func TestValidateReportWithZeroCostAndEmptyCurrency(t *testing.T) {
 
 func TestValidateReportWithZeroEvaluated(t *testing.T) {
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   1,
 		EvaluatedCount: 0,
 		QualifiedCount: 0,
@@ -268,6 +283,9 @@ func containsField(errs []ValidationError, field string) bool {
 
 func TestValidateReportMissingMetrics(t *testing.T) {
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   1,
 		EvaluatedCount: 1,
 		QualifiedCount: 1,
@@ -284,6 +302,9 @@ func TestValidateReportMissingMetrics(t *testing.T) {
 func TestValidateReportDoesNotUseReasonixSessionID(t *testing.T) {
 	// Verify the Report types don't reference "Reasonix Session ID"
 	r := Report{
+		SchemaVersion:  1,
+		RunID:          "test",
+		ExecutionMode:  ExecutionModeReplay,
 		FixtureCount:   1,
 		EvaluatedCount: 1,
 		QualifiedCount: 1,

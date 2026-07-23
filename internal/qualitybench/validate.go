@@ -1,6 +1,8 @@
 package qualitybench
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -37,6 +39,30 @@ func ValidateReport(r Report) []ValidationError {
 func validateReportFields(r Report) []ValidationError {
 	var errs []ValidationError
 
+	if r.SchemaVersion < 1 {
+		errs = append(errs, ValidationError{
+			Field:   "schema_version",
+			Message: fmt.Sprintf("must be >= 1, got %d", r.SchemaVersion),
+		})
+	}
+	if strings.TrimSpace(r.RunID) == "" {
+		errs = append(errs, ValidationError{
+			Field:   "run_id",
+			Message: "must be non-empty",
+		})
+	}
+	if strings.HasPrefix(r.RunID, "reasonix-session-") {
+		errs = append(errs, ValidationError{
+			Field:   "run_id",
+			Message: "must not use reasonix-session- prefix (must be OMR synthetic ID)",
+		})
+	}
+	if r.ExecutionMode != "" && r.ExecutionMode != ExecutionModeReplay && r.ExecutionMode != ExecutionModeRuntime && r.ExecutionMode != ExecutionModePaired {
+		errs = append(errs, ValidationError{
+			Field:   "execution_mode",
+			Message: fmt.Sprintf("unknown execution mode: %q", r.ExecutionMode),
+		})
+	}
 	if r.FixtureCount < 1 {
 		errs = append(errs, ValidationError{
 			Field:   "fixture_count",
@@ -180,6 +206,18 @@ func validateEvaluations(evaluations []Evaluation, expectedCount int) []Validati
 				Message: fmt.Sprintf("fixture %q is not qualified but has no failure reasons", eval.FixtureID),
 			})
 		}
+		if eval.RetryCount < 0 {
+			errs = append(errs, ValidationError{
+				Field:   prefix + ".retry_count",
+				Message: fmt.Sprintf("must be >= 0, got %d", eval.RetryCount),
+			})
+		}
+		if eval.ReviewBlockCount < 0 {
+			errs = append(errs, ValidationError{
+				Field:   prefix + ".review_block_count",
+				Message: fmt.Sprintf("must be >= 0, got %d", eval.ReviewBlockCount),
+			})
+		}
 	}
 
 	return errs
@@ -190,4 +228,47 @@ func absFloat(f float64) float64 {
 		return -f
 	}
 	return f
+}
+
+// MigrateReport attempts to parse a raw JSON report and migrate v0 format to v1.
+// v0 reports are those created before schema_version was introduced — they have
+// no schema_version, run_id, or execution_mode fields.
+func MigrateReport(raw []byte) (Report, error) {
+	var report Report
+	if err := unmarshalStrict(raw, &report); err != nil {
+		// Try v0 migration: old reports don't have schema_version
+		var v0 struct {
+			FixtureCount   int          `json:"fixture_count"`
+			EvaluatedCount int          `json:"evaluated_count"`
+			QualifiedCount int          `json:"qualified_count"`
+			QualifiedRate  float64      `json:"qualified_rate"`
+			Metrics        Metrics      `json:"metrics"`
+			Evaluations    []Evaluation `json:"evaluations"`
+		}
+		if err2 := unmarshalStrict(raw, &v0); err2 != nil {
+			return Report{}, err
+		}
+		report = Report{
+			SchemaVersion:  0,
+			RunID:          "v0-migrated",
+			ExecutionMode:  ExecutionModeReplay,
+			FixtureCount:   v0.FixtureCount,
+			EvaluatedCount: v0.EvaluatedCount,
+			QualifiedCount: v0.QualifiedCount,
+			QualifiedRate:  v0.QualifiedRate,
+			Metrics:        v0.Metrics,
+			Evaluations:    v0.Evaluations,
+		}
+	}
+	if report.SchemaVersion == 0 {
+		report.SchemaVersion = 0
+	}
+	return report, nil
+}
+
+// unmarshalStrict is a helper for strict JSON unmarshaling.
+func unmarshalStrict(data []byte, v interface{}) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	return dec.Decode(v)
 }
