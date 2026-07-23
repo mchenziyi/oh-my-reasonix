@@ -94,7 +94,7 @@ func TestImportAgentWarnsOnRawFrontmatter(t *testing.T) {
 	}
 }
 
-func TestImportAgentRejectsInvalidFrontmatter(t *testing.T) {
+func TestImportAgentAcceptsPlainContent(t *testing.T) {
 	root := newClaudeProject(t)
 	// Agent content without --- delimiters is accepted as-is (no validation)
 	writeClaudeAgent(t, root, "plain-agent", "plain instructions\n")
