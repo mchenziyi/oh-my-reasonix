@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -353,6 +354,37 @@ func ImportMCP(opts Options) Report {
 		}}
 	}
 
+	// Compatibility analysis
+	var warnings []string
+	var mcpData map[string]json.RawMessage
+	if err := json.Unmarshal(data, &mcpData); err == nil {
+		if serversRaw, ok := mcpData["mcpServers"]; ok {
+			var servers map[string]map[string]interface{}
+			if err := json.Unmarshal(serversRaw, &servers); err == nil {
+				for name, srv := range servers {
+					compat := fmt.Sprintf("MCP: %s — 原样保留", name)
+					// Check command
+					if cmd, hasCmd := srv["command"]; hasCmd {
+						if cmdStr, ok := cmd.(string); ok {
+							if _, lookErr := exec.LookPath(cmdStr); lookErr != nil && !opts.DryRun {
+								compat += fmt.Sprintf(", 命令 %q 可能需要额外安装", cmdStr)
+							}
+						}
+					}
+					// Redact env values
+					if env, hasEnv := srv["env"]; hasEnv {
+						if envMap, ok := env.(map[string]interface{}); ok {
+							for k := range envMap {
+								compat += fmt.Sprintf(", env.%s=***", k)
+							}
+						}
+					}
+					warnings = append(warnings, compat)
+				}
+			}
+		}
+	}
+
 	targetRel := ".reasonix/mcp.json"
 	files := []importFile{{
 		SourceRel:  "mcp.json",
@@ -361,7 +393,9 @@ func ImportMCP(opts Options) Report {
 		SourceDesc: ".claude/",
 		TargetDesc: ".reasonix/",
 	}}
-	return importFiles(opts, files)
+	report := importFiles(opts, files)
+	report.Warnings = append(report.Warnings, warnings...)
+	return report
 }
 
 // ImportHooks converts .claude/hooks/* into strategy prompts in .reasonix/rules/.
