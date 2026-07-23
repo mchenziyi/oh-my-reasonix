@@ -514,11 +514,13 @@ fixtures = "test"
 }
 
 func TestMigrateConfigDiffDoesNotMutate(t *testing.T) {
-	a := Config{Fixtures: "original", MaxSteps: 10}
-	b := Config{Fixtures: "original", MaxSteps: 20}
+	a := Config{Fixtures: "original", MaxSteps: 10, DisabledProfiles: []string{"z", "a"}}
+	b := Config{Fixtures: "original", MaxSteps: 20, DisabledProfiles: []string{"b", "a"}}
 
 	aCopy := a
 	bCopy := b
+	aDisabledCopy := append([]string(nil), a.DisabledProfiles...)
+	bDisabledCopy := append([]string(nil), b.DisabledProfiles...)
 
 	_ = configDiff(a, b)
 
@@ -528,6 +530,27 @@ func TestMigrateConfigDiffDoesNotMutate(t *testing.T) {
 	}
 	if b.Fixtures != bCopy.Fixtures || b.MaxSteps != bCopy.MaxSteps {
 		t.Fatal("configDiff modified input config 'b'")
+	}
+	if strings.Join(a.DisabledProfiles, ",") != strings.Join(aDisabledCopy, ",") || strings.Join(b.DisabledProfiles, ",") != strings.Join(bDisabledCopy, ",") {
+		t.Fatal("configDiff modified disabled profile slices")
+	}
+}
+
+func TestMigrateRejectsUnknownKeyBeforeWriting(t *testing.T) {
+	root := t.TempDir()
+	tomlPath := filepath.Join(root, "config.toml")
+	jsoncPath := filepath.Join(root, "config.jsonc")
+	if err := os.WriteFile(tomlPath, []byte("[runtime]\nunknown = true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := ExecuteMigration(tomlPath, jsoncPath, false); err == nil {
+		t.Fatal("expected unknown TOML key to be rejected")
+	}
+	if _, err := os.Stat(jsoncPath); err == nil {
+		t.Fatal("destination must not be written for an invalid source")
+	}
+	if _, err := os.Stat(tomlPath + ".bak"); err == nil {
+		t.Fatal("backup must not be written for an invalid source")
 	}
 }
 

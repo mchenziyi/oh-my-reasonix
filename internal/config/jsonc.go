@@ -180,8 +180,9 @@ func loadJSONC(path string) (Config, error) {
 	}
 
 	// Check for duplicate keys by re-parsing into raw map
-	if dupErr := detectDuplicateKeys(stripped); dupErr != "" {
-		return Config{}, fmt.Errorf("%s:%s", path, dupErr)
+	if dupKey, dupOffset := detectDuplicateKeys(stripped); dupKey != "" {
+		line, col := offsetToLineCol(dupOffset, strippedLineStarts, stripped)
+		return Config{}, fmt.Errorf("%s:%d:%d: duplicate key %s", path, line, col, dupKey)
 	}
 
 	var cfg Config
@@ -339,7 +340,7 @@ func loadJSONC(path string) (Config, error) {
 
 // detectDuplicateKeys scans stripped JSON text for duplicate keys at all
 // nesting levels. Uses a depth-aware scanner to avoid cross-object false positives.
-func detectDuplicateKeys(stripped []byte) string {
+func detectDuplicateKeys(stripped []byte) (string, int) {
 	text := string(stripped)
 	inString := false
 	var quoteByte byte
@@ -384,7 +385,7 @@ func detectDuplicateKeys(stripped []byte) string {
 				seen := make(map[string]int)
 				for _, kp := range keys {
 					if first, ok := seen[kp.key]; ok {
-						return fmt.Sprintf(" duplicate key %s (first at byte %d)", kp.key, first)
+						return kp.key, first
 					}
 					seen[kp.key] = kp.offset
 				}
@@ -400,7 +401,7 @@ func detectDuplicateKeys(stripped []byte) string {
 			continue
 		}
 	}
-	return ""
+	return "", -1
 }
 
 // offsetToLineCol converts a byte offset (in the original raw bytes with comments)

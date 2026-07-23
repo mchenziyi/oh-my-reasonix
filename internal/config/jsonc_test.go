@@ -514,6 +514,9 @@ func TestLoadJSONCRejectsDuplicateKeys(t *testing.T) {
 	if !strings.Contains(err.Error(), "duplicate key") {
 		t.Fatalf("expected 'duplicate key' error, got: %v", err)
 	}
+	if !strings.Contains(err.Error(), ".jsonc:1:") {
+		t.Fatalf("expected duplicate key error to include line and column, got: %v", err)
+	}
 }
 
 func TestLoadJSONCPreservesEscapeSequences(t *testing.T) {

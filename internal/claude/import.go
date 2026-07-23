@@ -268,12 +268,21 @@ func ImportAgents(opts Options) Report {
 		files = append(files, importFile{
 			SourceRel:  a.Name,
 			TargetRel:  targetRel,
-			Content:    a.Content,
+			Content:    importedAgentSkill(a.Name, a.Content),
 			SourceDesc: ".claude/agents/",
 			TargetDesc: ".reasonix/skills/omr-/",
 		})
 	}
 	return importFiles(opts, files)
+}
+
+// importedAgentSkill wraps Claude agent instructions in the frontmatter required
+// by a Reasonix project Skill. The original agent body is preserved verbatim.
+func importedAgentSkill(name string, content []byte) []byte {
+	var b strings.Builder
+	fmt.Fprintf(&b, "---\nname: %q\ndescription: Imported Claude agent profile\ninvocation: manual\nrunAs: subagent\nread-only: false\n---\n\n", "omr-"+name)
+	b.Write(content)
+	return []byte(b.String())
 }
 
 // ImportMCP imports .claude/mcp.json as-is into .reasonix/.
@@ -361,7 +370,23 @@ func ImportAll(opts Options) Report {
 	}
 	opts.ProjectDir = root
 
-	// Collect all sub-reports
+	// Preflight every source before writing any category. This prevents a later
+	// invalid MCP/Hook source from leaving earlier categories partially imported.
+	planOpts := opts
+	planOpts.DryRun = true
+	planned := []Report{
+		ImportRules(planOpts),
+		ImportSkills(planOpts),
+		ImportAgents(planOpts),
+		ImportMCP(planOpts),
+		ImportHooks(planOpts),
+	}
+	plannedReport := mergeReports(root, planned)
+	if len(plannedReport.Errors) > 0 || len(plannedReport.Conflicts) > 0 || opts.DryRun {
+		return plannedReport
+	}
+
+	snapshots := snapshotImportFiles(root, plannedReport.Changes)
 	reports := []Report{
 		ImportRules(opts),
 		ImportSkills(opts),
@@ -370,20 +395,66 @@ func ImportAll(opts Options) Report {
 		ImportHooks(opts),
 	}
 
-	merged := Report{Root: root}
-	allNoOp := true
+	merged := mergeReports(root, reports)
+	if len(merged.Errors) > 0 || len(merged.Conflicts) > 0 {
+		restoreImportFiles(snapshots)
+	}
+	return merged
+}
+
+type importSnapshot struct {
+	content []byte
+	mode    os.FileMode
+	exists  bool
+}
+
+func mergeReports(root string, reports []Report) Report {
+	merged := Report{Root: root, NoOp: true}
 	for _, r := range reports {
 		merged.Changes = append(merged.Changes, r.Changes...)
 		merged.Warnings = append(merged.Warnings, r.Warnings...)
 		merged.Conflicts = append(merged.Conflicts, r.Conflicts...)
 		merged.Errors = append(merged.Errors, r.Errors...)
-		if r.Written {
-			merged.Written = true
-		}
+		merged.Written = merged.Written || r.Written
 		if !r.NoOp {
-			allNoOp = false
+			merged.NoOp = false
 		}
 	}
-	merged.NoOp = allNoOp
 	return merged
+}
+
+func snapshotImportFiles(root string, changes []Change) map[string]importSnapshot {
+	snapshots := make(map[string]importSnapshot)
+	for _, change := range changes {
+		if change.Action != "IMPORT" {
+			continue
+		}
+		path := filepath.Join(root, filepath.FromSlash(change.Path))
+		state := importSnapshot{}
+		if data, err := os.ReadFile(path); err == nil {
+			state.content = data
+			state.exists = true
+			if info, statErr := os.Stat(path); statErr == nil {
+				state.mode = info.Mode().Perm()
+			}
+		}
+		snapshots[path] = state
+	}
+	return snapshots
+}
+
+func restoreImportFiles(snapshots map[string]importSnapshot) {
+	for path, state := range snapshots {
+		if !state.exists {
+			_ = os.Remove(path)
+			continue
+		}
+		mode := state.mode
+		if mode == 0 {
+			mode = 0o644
+		}
+		if err := fileutil.AtomicWrite(path, state.content, mode); err == nil {
+			_ = os.Chmod(path, mode)
+		}
+	}
 }

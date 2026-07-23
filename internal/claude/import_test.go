@@ -336,8 +336,15 @@ func TestImportAgentsWritesFiles(t *testing.T) {
 		t.Fatal("expected write")
 	}
 	targetPath := filepath.Join(root, filepath.FromSlash(OMRSkillsDir), "omr-helper", "SKILL.md")
-	if _, err := os.Stat(targetPath); err != nil {
+	data, err := os.ReadFile(targetPath)
+	if err != nil {
 		t.Fatalf("target not written: %v", err)
+	}
+	content := string(data)
+	for _, marker := range []string{"---", "name: \"omr-helper\"", "runAs: subagent", "read-only: false", "{\"name\":\"helper\"}"} {
+		if !strings.Contains(content, marker) {
+			t.Fatalf("expected imported Skill frontmatter/body marker %q, got %q", marker, content)
+		}
 	}
 }
 
@@ -457,6 +464,20 @@ func TestImportAllWrite(t *testing.T) {
 	report := ImportAll(Options{ProjectDir: root})
 	if !report.Written {
 		t.Fatal("expected write for ImportAll")
+	}
+}
+
+func TestImportAllRollsBackWhenLaterSourceIsInvalid(t *testing.T) {
+	root := newClaudeProject(t)
+	writeClaudeRule(t, root, "style.md", "# Style")
+	writeClaudeMCP(t, root, `{invalid`)
+
+	report := ImportAll(Options{ProjectDir: root})
+	if len(report.Errors) == 0 {
+		t.Fatal("expected ImportAll to fail on invalid MCP")
+	}
+	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(OMRRulesDir), "style.md")); err == nil {
+		t.Fatal("ImportAll must not leave earlier rule writes after a later validation failure")
 	}
 }
 

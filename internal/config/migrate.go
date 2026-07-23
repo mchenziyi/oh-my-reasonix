@@ -326,6 +326,12 @@ func ExecuteMigration(sourcePath, destPath string, force bool) error {
 			return fmt.Errorf("destination %q already exists with different content (use --force to overwrite)", destPath)
 		}
 	}
+	// Validate with the canonical TOML loader before creating any backup or destination.
+	// The raw parser below preserves environment expressions for output, while this
+	// validation rejects duplicate and unknown keys consistently with normal loading.
+	if _, err := loadTOML(sourcePath); err != nil {
+		return fmt.Errorf("validate source: %w", err)
+	}
 
 	// Parse TOML preserving raw values
 	raw, err := parseTOMLRaw(sourcePath)
@@ -466,15 +472,17 @@ func configDiff(a, b Config) string {
 		}
 	}
 
-	// Compare disabled profiles (sorted)
-	sort.Strings(a.DisabledProfiles)
-	sort.Strings(b.DisabledProfiles)
-	if len(a.DisabledProfiles) != len(b.DisabledProfiles) {
-		diffs = append(diffs, fmt.Sprintf("disabled profiles: %v != %v", a.DisabledProfiles, b.DisabledProfiles))
+	// Compare disabled profiles without mutating either input config.
+	aDisabled := append([]string(nil), a.DisabledProfiles...)
+	bDisabled := append([]string(nil), b.DisabledProfiles...)
+	sort.Strings(aDisabled)
+	sort.Strings(bDisabled)
+	if len(aDisabled) != len(bDisabled) {
+		diffs = append(diffs, fmt.Sprintf("disabled profiles: %v != %v", aDisabled, bDisabled))
 	} else {
-		for i := range a.DisabledProfiles {
-			if a.DisabledProfiles[i] != b.DisabledProfiles[i] {
-				diffs = append(diffs, fmt.Sprintf("disabled profiles: %v != %v", a.DisabledProfiles, b.DisabledProfiles))
+		for i := range aDisabled {
+			if aDisabled[i] != bDisabled[i] {
+				diffs = append(diffs, fmt.Sprintf("disabled profiles: %v != %v", aDisabled, bDisabled))
 				break
 			}
 		}
