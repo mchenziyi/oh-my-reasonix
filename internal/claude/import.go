@@ -213,9 +213,13 @@ func ImportSkills(opts Options) Report {
 		return Report{Root: root, Errors: []string{err.Error()}}
 	}
 	var files []importFile
+	report := Report{Root: root}
 	for _, s := range skills {
-		if err := ValidateSkillFrontmatter(s.Content); err != nil {
-			return Report{Root: root, Errors: []string{fmt.Sprintf("skill %q: %v", s.Name, err)}}
+		if warns, err := ValidateSkillFrontmatter(s.Content); err != nil {
+			report.Errors = append(report.Errors, fmt.Sprintf("skill %q: %v", s.Name, err))
+			continue
+		} else if len(warns) > 0 {
+			report.Warnings = append(report.Warnings, warns...)
 		}
 		targetRel := filepath.Join(OMRSkillsDir, s.Name, "SKILL.md")
 		files = append(files, importFile{
@@ -226,19 +230,27 @@ func ImportSkills(opts Options) Report {
 			TargetDesc: ".reasonix/skills/",
 		})
 	}
-	return importFiles(opts, files)
+	imported := importFiles(opts, files)
+	imported.Warnings = append(imported.Warnings, report.Warnings...)
+	if len(report.Errors) > 0 {
+		imported.Errors = append(imported.Errors, report.Errors...)
+	}
+	if len(imported.Errors) > 0 || len(report.Errors) > 0 {
+		imported.inferStatus()
+	}
+	return imported
 }
 
 // ValidateSkillFrontmatter checks that content has valid Reasonix Skill frontmatter.
-// Returns an error listing all missing/required fields.
-func ValidateSkillFrontmatter(content []byte) error {
+// Returns warnings for unknown fields and an error for missing/required fields.
+func ValidateSkillFrontmatter(content []byte) (warnings []string, err error) {
 	text := string(content)
 	if !strings.HasPrefix(text, "---\n") {
-		return fmt.Errorf("missing frontmatter delimiter ---")
+		return nil, fmt.Errorf("missing frontmatter delimiter ---")
 	}
 	endIdx := strings.Index(text[len("---\n"):], "\n---")
 	if endIdx < 0 {
-		return fmt.Errorf("frontmatter delimiter --- not closed")
+		return nil, fmt.Errorf("frontmatter delimiter --- not closed")
 	}
 	frontMatter := text[len("---\n") : len("---\n")+endIdx]
 	fields := map[string]string{}
@@ -266,10 +278,24 @@ func ValidateSkillFrontmatter(content []byte) error {
 	if ra, ok := fields["runAs"]; ok && ra != "subagent" && ra != "manual" {
 		errs = append(errs, fmt.Sprintf("frontmatter runAs must be 'subagent' or 'manual', got: %q", ra))
 	}
-	if len(errs) > 0 {
-		return fmt.Errorf(strings.Join(errs, "; "))
+	// Unknown field check
+	knownFields := map[string]bool{
+		"name": true, "description": true, "read-only": true,
+		"runAs": true, "invocation": true, "model": true, "allowed-tools": true,
 	}
-	return nil
+	var unknown []string
+	for k := range fields {
+		if !knownFields[k] {
+			unknown = append(unknown, k)
+		}
+	}
+	if len(unknown) > 0 {
+		warnings = append(warnings, fmt.Sprintf("unknown frontmatter fields: %s", strings.Join(unknown, ", ")))
+	}
+	if len(errs) > 0 {
+		return warnings, fmt.Errorf(strings.Join(errs, "; "))
+	}
+	return warnings, nil
 }
 
 // AgentFile represents a Claude agent config file.
@@ -317,8 +343,26 @@ func ImportAgents(opts Options) Report {
 		return Report{Root: root, Errors: []string{err.Error()}}
 	}
 	var files []importFile
+	report := Report{Root: root}
 	for _, a := range agents {
 		targetRel := filepath.Join(OMRSkillsDir, "omr-"+a.Name, "SKILL.md")
+		// Only validate if the source agent file has frontmatter delimiters
+		if !strings.HasPrefix(string(a.Content), "---\n") {
+			files = append(files, importFile{
+				SourceRel:  a.Name,
+				TargetRel:  targetRel,
+				Content:    importedAgentSkill(a.Name, a.Content),
+				SourceDesc: ".claude/agents/",
+				TargetDesc: ".reasonix/skills/omr-/",
+			})
+			continue
+		}
+		if warns, err := ValidateSkillFrontmatter(a.Content); err != nil {
+			report.Errors = append(report.Errors, fmt.Sprintf("agent %s source frontmatter: %v", a.Name, err))
+			continue
+		} else if len(warns) > 0 {
+			report.Warnings = append(report.Warnings, warns...)
+		}
 		files = append(files, importFile{
 			SourceRel:  a.Name,
 			TargetRel:  targetRel,
@@ -327,7 +371,12 @@ func ImportAgents(opts Options) Report {
 			TargetDesc: ".reasonix/skills/omr-/",
 		})
 	}
-	return importFiles(opts, files)
+	imported := importFiles(opts, files)
+	imported.Warnings = append(imported.Warnings, report.Warnings...)
+	if len(report.Errors) > 0 {
+		imported.Errors = append(imported.Errors, report.Errors...)
+	}
+	return imported
 }
 
 // importedAgentSkill wraps Claude agent instructions in the frontmatter required
@@ -373,8 +422,12 @@ func ImportMCP(opts Options) Report {
 					// Check command
 					if cmd, hasCmd := srv["command"]; hasCmd {
 						if cmdStr, ok := cmd.(string); ok {
-							if _, lookErr := exec.LookPath(cmdStr); lookErr != nil && !opts.DryRun {
-								compat += fmt.Sprintf(", 命令 %q 可能需要额外安装", cmdStr)
+							if _, lookErr := exec.LookPath(cmdStr); lookErr != nil {
+								if opts.DryRun {
+									compat += fmt.Sprintf(", 命令 %q 可能需要在运行时安装（未在 PATH 检测到）", cmdStr)
+								} else {
+									compat += fmt.Sprintf(", 命令 %q 可能需要额外安装", cmdStr)
+								}
 							}
 						}
 					}

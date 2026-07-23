@@ -95,6 +95,9 @@ func (r Report) Render(w io.Writer) {
 				fmt.Fprintf(w, "    %s\n", c.Detail)
 			}
 		}
+		for _, warn := range r.Warnings {
+			fmt.Fprintf(w, "WARNING: %s\n", warn)
+		}
 		return
 	}
 	// Dry-run
