@@ -80,9 +80,9 @@ func TestUpgradeCanOverwriteModifiedPromptWithAccept(t *testing.T) {
 	// To proceed, the user would need to re-init (not upgrade) or fix the conflict.
 	// This tests that even with AcceptReasonixBaseUpdate, prompt modification still blocks.
 	report, err := Init(Options{
-		ProjectDir:              root,
-		Assets:                  assets,
-		Upgrade:                 true,
+		ProjectDir:               root,
+		Assets:                   assets,
+		Upgrade:                  true,
 		AcceptReasonixBaseUpdate: true,
 	})
 	if err == nil {
@@ -372,9 +372,9 @@ func TestExternalAssetDirConflictDuringUpgrade(t *testing.T) {
 
 	// With AcceptReasonixBaseUpdate, upgrade should succeed
 	report, err = Init(Options{
-		ProjectDir:              root,
-		Assets:                  differentAssets,
-		Upgrade:                 true,
+		ProjectDir:               root,
+		Assets:                   differentAssets,
+		Upgrade:                  true,
 		AcceptReasonixBaseUpdate: true,
 	})
 	if err != nil {
@@ -428,10 +428,10 @@ func TestUpgradeDryRunDoesNotWrite(t *testing.T) {
 
 	// Dry-run upgrade
 	report, err := Init(Options{
-		ProjectDir:              root,
-		Assets:                  differentAssets,
-		Upgrade:                 true,
-		DryRun:                  true,
+		ProjectDir:               root,
+		Assets:                   differentAssets,
+		Upgrade:                  true,
+		DryRun:                   true,
 		AcceptReasonixBaseUpdate: true,
 	})
 	if err != nil {

@@ -594,4 +594,3 @@ func TestImportHooksPrefixDisclaimer(t *testing.T) {
 		t.Fatalf("expected runtime disclaimer in hook output, got: %s", content)
 	}
 }
-

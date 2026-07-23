@@ -93,25 +93,25 @@ func stripJSONCComments(raw []byte) ([]byte, []int, error) {
 
 // jsoncRawConfig mirrors the JSONC config structure for intermediate unmarshal.
 type jsoncRawConfig struct {
-	Quality  *jsoncQuality           `json:"quality,omitempty"`
-	Runtime  *jsoncRuntime           `json:"runtime,omitempty"`
-	Agent    map[string]jsoncAgent   `json:"agent,omitempty"`
-	Routing  map[string]string       `json:"routing,omitempty"`
-	Profiles *jsoncProfiles          `json:"profiles,omitempty"`
+	Quality  *jsoncQuality         `json:"quality,omitempty"`
+	Runtime  *jsoncRuntime         `json:"runtime,omitempty"`
+	Agent    map[string]jsoncAgent `json:"agent,omitempty"`
+	Routing  map[string]string     `json:"routing,omitempty"`
+	Profiles *jsoncProfiles        `json:"profiles,omitempty"`
 }
 
 type jsoncQuality struct {
-	Fixtures        string   `json:"fixtures,omitempty"`
+	Fixtures         string   `json:"fixtures,omitempty"`
 	MinQualifiedRate *float64 `json:"min_qualified_rate,omitempty"`
-	MaxCost         *float64 `json:"max_cost,omitempty"`
+	MaxCost          *float64 `json:"max_cost,omitempty"`
 }
 
 type jsoncRuntime struct {
-	MetricsDir string `json:"metrics_dir,omitempty"`
-	Model      string `json:"model,omitempty"`
-	MaxSteps   int    `json:"max_steps,omitempty"`
-	Concurrency int   `json:"concurrency,omitempty"`
-	Timeout    string `json:"timeout,omitempty"`
+	MetricsDir  string `json:"metrics_dir,omitempty"`
+	Model       string `json:"model,omitempty"`
+	MaxSteps    int    `json:"max_steps,omitempty"`
+	Concurrency int    `json:"concurrency,omitempty"`
+	Timeout     string `json:"timeout,omitempty"`
 }
 
 type jsoncAgent struct {
