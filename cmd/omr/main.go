@@ -766,6 +766,7 @@ func runQualityBenchmark(args []string) error {
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
+	runID := "omr-" + time.Now().Format("20060102-150405")
 	configFile := *configPath
 	if configFile == "" {
 		configFile = omrconfig.FindConfig(*projectDir)
@@ -817,7 +818,10 @@ func runQualityBenchmark(args []string) error {
 		if err != nil {
 			return err
 		}
-		comparison := qualitybench.CompareReports(qualitybench.EvaluateAll(fixtures, native), qualitybench.EvaluateAll(fixtures, omr))
+		comparison := qualitybench.CompareReports(
+			qualitybench.EvaluateAll(fixtures, native, runID, qualitybench.ExecutionModeReplay),
+			qualitybench.EvaluateAll(fixtures, omr, runID, qualitybench.ExecutionModeReplay),
+		)
 		if err := writeJSONValue(*outputPath, comparison); err != nil {
 			return err
 		}
@@ -867,7 +871,7 @@ func runQualityBenchmark(args []string) error {
 			}()
 		}
 		wg.Wait()
-		report := qualitybench.EvaluateAll(fixtures, results)
+		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeRuntime)
 		if err := writeJSONValue(*outputPath, report); err != nil {
 			return err
 		}
@@ -888,8 +892,8 @@ func runQualityBenchmark(args []string) error {
 			nativeResults[fixture.ID] = native
 			omrResults[fixture.ID] = omr
 		}
-		nativeReport := qualitybench.EvaluateAll(fixtures, nativeResults)
-		omrReport := qualitybench.EvaluateAll(fixtures, omrResults)
+		nativeReport := qualitybench.EvaluateAll(fixtures, nativeResults, runID, qualitybench.ExecutionModePaired)
+		omrReport := qualitybench.EvaluateAll(fixtures, omrResults, runID, qualitybench.ExecutionModePaired)
 		if nativeReport.EvaluatedCount == 0 {
 			return errors.New("no fixtures contain native_replay data; use --paired only on fixtures with native_replay/omr_replay")
 		}
@@ -925,7 +929,7 @@ func runQualityBenchmark(args []string) error {
 			}
 			results[fixture.ID] = result
 		}
-		report := qualitybench.EvaluateAll(fixtures, results)
+		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
 		if err := writeJSONValue(*outputPath, report); err != nil {
 			return err
 		}
@@ -949,7 +953,7 @@ func runQualityBenchmark(args []string) error {
 	if err != nil {
 		return err
 	}
-	report := qualitybench.EvaluateAll(fixtures, results)
+	report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
 	if err := writeJSONValue(*outputPath, report); err != nil {
 		return err
 	}

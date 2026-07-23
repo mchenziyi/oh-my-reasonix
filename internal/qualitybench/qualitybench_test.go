@@ -88,7 +88,7 @@ func TestEvaluateAllAggregatesMetrics(t *testing.T) {
 	report := EvaluateAll(fixtures, map[string]RunResult{"a": {
 		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true,
 		Metrics: Metrics{PromptTokens: 10, CacheHitTokens: 4, Cost: 0.25, Currency: "USD", ReadinessChecks: 3, ReadinessBlocks: 1, ReadinessRecoveries: 1},
-	}})
+	}}, "test-run", ExecutionModeReplay)
 	if report.Metrics.PromptTokens != 10 || report.Metrics.CacheHitTokens != 4 || report.Metrics.Cost != 0.25 || report.Metrics.Currency != "USD" || report.Metrics.ReadinessChecks != 3 || report.Metrics.ReadinessBlocks != 1 || report.Metrics.ReadinessRecoveries != 1 {
 		t.Fatalf("metrics were not aggregated: %#v", report.Metrics)
 	}
@@ -176,7 +176,7 @@ func TestEvaluateAllIncludesFailedResults(t *testing.T) {
 		"ok":   {HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, Events: []string{"e"}},
 		"fail": {Failed: true, Error: "boom"},
 	}
-	report := EvaluateAll(fixtures, results)
+	report := EvaluateAll(fixtures, results, "test-run", ExecutionModeReplay)
 	if report.EvaluatedCount != 2 {
 		t.Fatalf("expected 2 evaluated, got %d", report.EvaluatedCount)
 	}

@@ -43,6 +43,9 @@ type ReplaySpec struct {
 	Metrics             Metrics  `json:"metrics,omitempty"`
 	RuleSources         []string `json:"rule_sources,omitempty"`
 	ConflictResolutions []string `json:"conflict_resolutions,omitempty"`
+	RetryCount          int      `json:"retry_count,omitempty"`
+	StallReason         string   `json:"stall_reason,omitempty"`
+	ReviewBlockCount    int      `json:"review_block_count,omitempty"`
 }
 
 type ReplayOutput struct {
@@ -63,6 +66,9 @@ type RunResult struct {
 	Failed              bool     `json:"failed,omitempty"`
 	RuleSources         []string `json:"rule_sources,omitempty"`
 	ConflictResolutions []string `json:"conflict_resolutions,omitempty"`
+	RetryCount          int      `json:"retry_count,omitempty"`
+	StallReason         string   `json:"stall_reason,omitempty"`
+	ReviewBlockCount    int      `json:"review_block_count,omitempty"`
 }
 
 type Metrics struct {
@@ -84,6 +90,9 @@ type Evaluation struct {
 	QualifiedCompletion bool     `json:"qualified_completion"`
 	Category            string   `json:"category,omitempty"` // pass|infra|task|judgment|model
 	Failures            []string `json:"failures,omitempty"`
+	RetryCount          int      `json:"retry_count"`
+	StallReason         string   `json:"stall_reason,omitempty"`
+	ReviewBlockCount    int      `json:"review_block_count"`
 }
 
 // classifyFailure determines the failure category for an evaluation.
@@ -133,6 +142,9 @@ func isInfraError(errMsg string) bool {
 }
 
 type Report struct {
+	SchemaVersion  int          `json:"schema_version"`
+	RunID          string       `json:"run_id"`
+	ExecutionMode  string       `json:"execution_mode"`
 	FixtureCount   int          `json:"fixture_count"`
 	EvaluatedCount int          `json:"evaluated_count"`
 	QualifiedCount int          `json:"qualified_count"`
@@ -140,6 +152,13 @@ type Report struct {
 	Metrics        Metrics      `json:"metrics"`
 	Evaluations    []Evaluation `json:"evaluations"`
 }
+
+const (
+	SentinelMissing      = -1  // 未收集字段的哨兵值，区别于零值
+	ExecutionModeReplay  = "replay"
+	ExecutionModeRuntime = "runtime"
+	ExecutionModePaired  = "paired"
+)
 
 func LoadFixture(path string) (Fixture, error) {
 	data, err := os.ReadFile(path)
@@ -183,7 +202,13 @@ func Discover(root string) ([]Fixture, error) {
 }
 
 func Evaluate(fixture Fixture, result RunResult) Evaluation {
-	evaluation := Evaluation{FixtureID: fixture.ID, QualifiedCompletion: true}
+	evaluation := Evaluation{
+		FixtureID:        fixture.ID,
+		QualifiedCompletion: true,
+		RetryCount:       result.RetryCount,
+		StallReason:      result.StallReason,
+		ReviewBlockCount: result.ReviewBlockCount,
+	}
 	if !result.HiddenTestsPassed {
 		evaluation.Failures = append(evaluation.Failures, "hidden tests failed")
 	}
@@ -234,8 +259,13 @@ func Evaluate(fixture Fixture, result RunResult) Evaluation {
 	return evaluation
 }
 
-func EvaluateAll(fixtures []Fixture, results map[string]RunResult) Report {
-	report := Report{FixtureCount: len(fixtures)}
+func EvaluateAll(fixtures []Fixture, results map[string]RunResult, runID, executionMode string) Report {
+	report := Report{
+		SchemaVersion:  1,
+		RunID:          runID,
+		ExecutionMode:  executionMode,
+		FixtureCount:   len(fixtures),
+	}
 	for _, fixture := range fixtures {
 		result, ok := results[fixture.ID]
 		if !ok {
@@ -337,6 +367,9 @@ func replayFromSpec(spec *ReplaySpec) RunResult {
 		Metrics:             spec.Metrics,
 		RuleSources:         append([]string(nil), spec.RuleSources...),
 		ConflictResolutions: append([]string(nil), spec.ConflictResolutions...),
+		RetryCount:          spec.RetryCount,
+		StallReason:         spec.StallReason,
+		ReviewBlockCount:    spec.ReviewBlockCount,
 	}
 }
 
