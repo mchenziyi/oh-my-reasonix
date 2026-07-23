@@ -732,6 +732,12 @@ func runQualityBenchmark(args []string) error {
 						result.Events = events
 					}
 				}
+				if runErr != nil {
+					result.Failed = true
+					if result.Error == "" {
+						result.Error = runErr.Error()
+					}
+				}
 				mu.Lock()
 				results[fixture.ID] = result
 				mu.Unlock()

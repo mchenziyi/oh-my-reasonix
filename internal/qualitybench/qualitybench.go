@@ -81,7 +81,7 @@ type Evaluation struct {
 
 // classifyFailure determines the failure category for an evaluation.
 func classifyFailure(fixtureID string, result RunResult, eval Evaluation) string {
-	if result.Failed || strings.Contains(result.Error, "timeout") || strings.Contains(result.Error, "connection") {
+	if result.Failed || isInfraError(result.Error) {
 		return "infra"
 	}
 	if eval.QualifiedCompletion {
@@ -101,6 +101,22 @@ func classifyFailure(fixtureID string, result RunResult, eval Evaluation) string
 		}
 	}
 	return "task"
+}
+
+// isInfraError checks if an error message indicates infrastructure failure.
+func isInfraError(errMsg string) bool {
+	if errMsg == "" {
+		return false
+	}
+	lower := strings.ToLower(errMsg)
+	infraKeywords := []string{"timeout", "connection refused", "no such host",
+		"permission denied", "executable not found", "exit status"}
+	for _, kw := range infraKeywords {
+		if strings.Contains(lower, kw) {
+			return true
+		}
+	}
+	return false
 }
 
 type Report struct {

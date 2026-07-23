@@ -141,6 +141,15 @@ func TestEvaluateCategorizesTask(t *testing.T) {
 	}
 }
 
+func TestEvaluateCategorizesTaskTestsSkipped(t *testing.T) {
+	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
+		HiddenTestsPassed: true, RegressionPassed: true, RequiredEffectsMet: true, TestsSkipped: true,
+	})
+	if eval.Category != "task" {
+		t.Fatalf("expected task category for tests skipped, got %q", eval.Category)
+	}
+}
+
 func TestEvaluateCategorizesJudgment(t *testing.T) {
 	eval := Evaluate(Fixture{ID: "x", Task: "t"}, RunResult{
 		HiddenTestsPassed: false, RegressionPassed: true, RequiredEffectsMet: true,

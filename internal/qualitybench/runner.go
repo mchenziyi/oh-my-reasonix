@@ -89,6 +89,7 @@ func ExecuteRuntime(ctx context.Context, fixture Fixture, projectDir, binary, me
 	result := RunResult{RequiredEffectsMet: run.Err == nil}
 	if run.Err != nil {
 		result.Error = run.Err.Error()
+		result.Failed = true
 	}
 	if metrics, err := reasonix.ReadMetrics(metricsPath); err == nil {
 		result.Metrics = Metrics{
