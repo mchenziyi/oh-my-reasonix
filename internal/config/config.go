@@ -112,7 +112,7 @@ func loadTOML(path string) (Config, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") {
+			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") && !strings.HasPrefix(section, "mcp.") {
 				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
 			}
 			if strings.HasPrefix(section, "agent.") && strings.TrimSpace(strings.TrimPrefix(section, "agent.")) == "" {
@@ -306,6 +306,62 @@ func assign(cfg *Config, section, key, raw string) error {
 			}
 			cfg.DisabledProfiles = append(cfg.DisabledProfiles, profile)
 		}
+		return nil
+	}
+	if strings.HasPrefix(section, "mcp.") {
+		name := strings.TrimSpace(strings.TrimPrefix(section, "mcp."))
+		if name == "" || strings.ContainsAny(name, " \t/\\") {
+			return fmt.Errorf("invalid mcp server name %q", name)
+		}
+		if cfg.MCPServers == nil {
+			cfg.MCPServers = make(map[string]MCPServerConfig)
+		}
+		srv := cfg.MCPServers[name]
+		switch key {
+		case "transport":
+			v := stringValue(raw)
+			if v != "stdio" && v != "http" {
+				return fmt.Errorf("mcp.%s.transport must be 'stdio' or 'http', got %q", name, v)
+			}
+			srv.Transport = v
+		case "command":
+			srv.Command = stringValue(raw)
+		case "args":
+			v := strings.Trim(stringValue(raw), "[]")
+			for _, a := range strings.Split(v, ",") {
+				a = strings.Trim(strings.TrimSpace(a), `"'`)
+				if a != "" {
+					srv.Args = append(srv.Args, a)
+				}
+			}
+		case "url":
+			srv.URL = stringValue(raw)
+		case "capabilities":
+			v := strings.Trim(stringValue(raw), "[]")
+			for _, c := range strings.Split(v, ",") {
+				c = strings.Trim(strings.TrimSpace(c), `"'`)
+				if c != "" {
+					srv.Capabilities = append(srv.Capabilities, c)
+				}
+			}
+		case "enabled":
+			v, err := strconv.ParseBool(raw)
+			if err != nil {
+				return fmt.Errorf("mcp.%s.enabled must be boolean", name)
+			}
+			srv.Enabled = v
+		case "env":
+			v := strings.Trim(stringValue(raw), "[]")
+			for _, e := range strings.Split(v, ",") {
+				e = strings.Trim(strings.TrimSpace(e), `"'`)
+				if e != "" {
+					srv.Env = append(srv.Env, e)
+				}
+			}
+		default:
+			return fmt.Errorf("unsupported mcp.%s key %q", name, key)
+		}
+		cfg.MCPServers[name] = srv
 		return nil
 	}
 	return fmt.Errorf("key %q must be under [quality] or [runtime]", key)
