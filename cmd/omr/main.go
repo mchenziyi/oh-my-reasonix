@@ -381,17 +381,6 @@ func writeOMRConfigSchema() error {
 			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
 			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
 			"profiles": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
-			"mcp":      map[string]any{"type": "object", "additionalProperties": map[string]any{
-				"type": "object", "properties": map[string]any{
-					"transport":    map[string]any{"type": "string", "enum": []string{"stdio", "http"}},
-					"command":      map[string]string{"type": "string"},
-					"args":         map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
-					"url":          map[string]string{"type": "string"},
-					"capabilities": map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
-					"enabled":      map[string]any{"type": "boolean"},
-					"env":          map[string]any{"type": "array", "items": map[string]string{"type": "string"}},
-				},
-			}},
 		},
 	}
 	encoder := json.NewEncoder(os.Stdout)
