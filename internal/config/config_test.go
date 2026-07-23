@@ -96,8 +96,12 @@ func TestLoadRejectsUpperCaseProfileID(t *testing.T) {
 	if err := os.WriteFile(path, []byte("[agent.Omr-Explore]\nmodel = \"deepseek\"\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(path); err == nil {
-		t.Fatal("expected uppercase profile ID to be rejected")
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("expected uppercase profile ID to be accepted and normalized: %v", err)
+	}
+	if _, ok := cfg.Agents["omr-explore"]; !ok {
+		t.Fatalf("expected omr-explore to be in config, got: %v", cfg.Agents)
 	}
 }
 
