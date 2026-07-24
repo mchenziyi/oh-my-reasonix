@@ -107,7 +107,7 @@ func (r Runner) RunTask(ctx context.Context, options TaskOptions) Result {
 	if options.MaxSteps > 0 {
 		args = append(args, "--max-steps", fmt.Sprint(options.MaxSteps))
 	}
-	args = append(args, options.Prompt)
+	args = append(args, "--", options.Prompt)
 	return r.Run(ctx, args...)
 }
 

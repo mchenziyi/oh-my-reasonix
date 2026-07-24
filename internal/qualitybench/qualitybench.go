@@ -143,20 +143,20 @@ func isInfraError(errMsg string) bool {
 }
 
 type Report struct {
-	SchemaVersion       int          `json:"schema_version"`
-	RunID               string       `json:"run_id"`
-	ExecutionMode       string       `json:"execution_mode"`
-	FixtureCount        int          `json:"fixture_count"`
-	EvaluatedCount      int          `json:"evaluated_count"`
-	ExpectedFailureCount int         `json:"expected_failure_count"`
-	QualifiedCount      int          `json:"qualified_count"`
-	QualifiedRate       float64      `json:"qualified_rate"`
-	Metrics             Metrics      `json:"metrics"`
-	Evaluations         []Evaluation `json:"evaluations"`
+	SchemaVersion        int          `json:"schema_version"`
+	RunID                string       `json:"run_id"`
+	ExecutionMode        string       `json:"execution_mode"`
+	FixtureCount         int          `json:"fixture_count"`
+	EvaluatedCount       int          `json:"evaluated_count"`
+	ExpectedFailureCount int          `json:"expected_failure_count"`
+	QualifiedCount       int          `json:"qualified_count"`
+	QualifiedRate        float64      `json:"qualified_rate"`
+	Metrics              Metrics      `json:"metrics"`
+	Evaluations          []Evaluation `json:"evaluations"`
 }
 
 const (
-	SentinelMissing      = -1  // 未收集字段的哨兵值，区别于零值
+	SentinelMissing      = -1 // 未收集字段的哨兵值，区别于零值
 	ExecutionModeReplay  = "replay"
 	ExecutionModeRuntime = "runtime"
 	ExecutionModePaired  = "paired"
@@ -205,11 +205,11 @@ func Discover(root string) ([]Fixture, error) {
 
 func Evaluate(fixture Fixture, result RunResult) Evaluation {
 	evaluation := Evaluation{
-		FixtureID:        fixture.ID,
+		FixtureID:           fixture.ID,
 		QualifiedCompletion: true,
-		RetryCount:       result.RetryCount,
-		StallReason:      result.StallReason,
-		ReviewBlockCount: result.ReviewBlockCount,
+		RetryCount:          result.RetryCount,
+		StallReason:         result.StallReason,
+		ReviewBlockCount:    result.ReviewBlockCount,
 	}
 	if !result.HiddenTestsPassed {
 		evaluation.Failures = append(evaluation.Failures, "hidden tests failed")
@@ -263,10 +263,10 @@ func Evaluate(fixture Fixture, result RunResult) Evaluation {
 
 func EvaluateAll(fixtures []Fixture, results map[string]RunResult, runID, executionMode string) Report {
 	report := Report{
-		SchemaVersion:  1,
-		RunID:          runID,
-		ExecutionMode:  executionMode,
-		FixtureCount:   len(fixtures),
+		SchemaVersion: 1,
+		RunID:         runID,
+		ExecutionMode: executionMode,
+		FixtureCount:  len(fixtures),
 	}
 	for _, fixture := range fixtures {
 		result, ok := results[fixture.ID]

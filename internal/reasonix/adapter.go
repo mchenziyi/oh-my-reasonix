@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 )
 
 // SessionInfo corresponds to a single entry in reasonix session list --json output.
@@ -256,8 +257,16 @@ func (r Runner) SessionRecovery(ctx context.Context, branchID string) (RecoveryI
 }
 
 // RunWithEvents runs a task with structured JSONL events output.
-// The eventsJSONLPath is where Reasonix writes the structured event log.
+// Reasonix v1.17.20 treats --events-jsonl as a boolean flag (no file argument);
+// events are emitted to stdout. This method captures stdout and writes it to
+// the specified file for OMR's post-processing.
+// On non-zero exit, the stdout JSONL (which includes run_done with ok=false)
+// is still saved so callers can inspect the failure events.
 func (r Runner) RunWithEvents(ctx context.Context, prompt string, eventsJSONLPath string) Result {
-	args := []string{"run", "--events-jsonl", eventsJSONLPath, prompt}
-	return r.Run(ctx, args...)
+	args := []string{"run", "--events-jsonl", "--", prompt}
+	result := r.Run(ctx, args...)
+	if err := os.WriteFile(eventsJSONLPath, []byte(result.Stdout), 0o644); err != nil {
+		return Result{ExitCode: -1, Err: fmt.Errorf("write events file %s: %w", eventsJSONLPath, err)}
+	}
+	return result
 }

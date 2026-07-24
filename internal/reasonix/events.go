@@ -9,7 +9,76 @@ import (
 	"strings"
 )
 
-// EventRecord corresponds to a single line in the events JSONL file.
+// rawEventLine is an intermediate representation that can decode both
+// OMR legacy event format and Reasonix v1.17.20 native format.
+type rawEventLine struct {
+	// OMR legacy fields
+	Event string `json:"event"`
+	Seq   int    `json:"seq"`
+	Kind  string `json:"kind"`
+
+	// Reasonix v1.17.20 native fields
+	Sequence int       `json:"sequence"`
+	Usage    *rawUsage `json:"usage"`
+	Ok       *bool     `json:"ok"`
+
+	// Common fields
+	ToolID           string `json:"tool_id"`
+	ToolName         string `json:"tool_name"`
+	Status           string `json:"status"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	SessionID        string `json:"session_id"`
+	DurationMs       int    `json:"duration_ms"`
+	NumTurns         int    `json:"num_turns"`
+}
+
+type rawUsage struct {
+	InputTokens     int `json:"input_tokens"`
+	OutputTokens    int `json:"output_tokens"`
+	CacheHitTokens  int `json:"cache_hit_tokens"`
+	CacheMissTokens int `json:"cache_miss_tokens"`
+}
+
+// normalizeEvent converts a rawEventLine into the stable EventRecord form.
+// It handles both OMR legacy and Reasonix v1.17.20 native formats.
+func normalizeEvent(raw rawEventLine) EventRecord {
+	rec := EventRecord{
+		ToolID:           raw.ToolID,
+		ToolName:         raw.ToolName,
+		Status:           raw.Status,
+		PromptTokens:     raw.PromptTokens,
+		CompletionTokens: raw.CompletionTokens,
+	}
+
+	// Detect format: Reasonix v1.17.20 uses "sequence" instead of "seq"
+	if raw.Sequence > 0 && raw.Seq == 0 {
+		rec.Seq = raw.Sequence
+		// Map kind → event
+		rec.Kind = raw.Kind
+		if raw.Kind == "run_done" {
+			rec.Event = "run_done"
+		} else {
+			rec.Event = raw.Kind
+		}
+		// Map usage → token fields
+		if raw.Usage != nil {
+			rec.PromptTokens = raw.Usage.InputTokens
+			rec.CompletionTokens = raw.Usage.OutputTokens
+		}
+	} else {
+		// OMR legacy format
+		rec.Seq = raw.Seq
+		rec.Event = raw.Event
+		rec.Kind = raw.Kind
+		if rec.Event == "" {
+			rec.Event = raw.Kind
+		}
+	}
+
+	return rec
+}
+
 // Only includes safe, sanitized fields — no prompt, tool_args, tool_result, reasoning.
 type EventRecord struct {
 	Event            string `json:"event"`
@@ -71,11 +140,12 @@ func ParseEventStream(path string) (EventStream, error) {
 			}
 			continue
 		}
-		var rec EventRecord
-		if err := json.Unmarshal([]byte(line), &rec); err != nil {
+		var raw rawEventLine
+		if err := json.Unmarshal([]byte(line), &raw); err != nil {
 			stream.Errors = append(stream.Errors, fmt.Sprintf("line %d: invalid JSON: %v", lineNum, err))
 			continue
 		}
+		rec := normalizeEvent(raw)
 		// Check for run_done
 		if rec.Event == "run_done" {
 			stream.RunDone = true

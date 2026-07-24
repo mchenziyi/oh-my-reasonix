@@ -509,3 +509,175 @@ func TestSessionResumeRejectsMissingBinary(t *testing.T) {
 		t.Fatal("expected missing Reasonix binary error")
 	}
 }
+
+// makeMockReasonixBinary creates a bash script that returns canned JSON
+// responses based on the CLI args it receives. This keeps hook doctor tests
+// independent of the real Reasonix binary and ~/.reasonix permissions.
+func makeMockReasonixBinary(t *testing.T, dir string) string {
+	t.Helper()
+	path := filepath.Join(dir, "reasonix")
+	script := `#!/bin/bash
+set -e
+case "$*" in
+	*"hook list"*)
+		echo '{"hooks":[{"name":"test-hook","status":"active","event":"commit","scope":"local"}],"schema_version":1}'
+		;;
+	*"hook status"*)
+		echo '{"active":[{"name":"test-hook"}],"inactive":[],"untrusted":[],"schema_version":1}'
+		;;
+	*)
+		echo '{"error":"unexpected args: $*"}' >&2
+		exit 1
+		;;
+esac
+exit 0
+`
+	if err := os.WriteFile(path, []byte(script), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
+}
+
+func TestHookDoctorJSON(t *testing.T) {
+	dir := t.TempDir()
+	mockBin := makeMockReasonixBinary(t, dir)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = original
+		writer.Close()
+	}()
+	runErr := runHook([]string{"doctor", "--binary", mockBin, "--project-dir", dir, "--json"})
+	writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		List struct {
+			Hooks         []any `json:"hooks"`
+			SchemaVersion int   `json:"schema_version"`
+		} `json:"list"`
+		Status struct {
+			SchemaVersion int `json:"schema_version"`
+			Active        []struct {
+				Name string `json:"name"`
+			} `json:"active"`
+		} `json:"status"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if result.List.SchemaVersion != 1 {
+		t.Fatalf("expected list schema_version=1, got: %s", data)
+	}
+	if result.Status.SchemaVersion != 1 {
+		t.Fatalf("expected status schema_version=1, got: %s", data)
+	}
+	if len(result.Status.Active) != 1 || result.Status.Active[0].Name != "test-hook" {
+		t.Fatalf("expected test-hook in active hooks, got: %s", data)
+	}
+}
+
+func TestHookDoctorHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	mockBin := makeMockReasonixBinary(t, dir)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = original
+		writer.Close()
+	}()
+	runErr := runHook([]string{"doctor", "--binary", mockBin, "--project-dir", dir})
+	writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(data)
+	if !strings.Contains(output, "HOOK") || !strings.Contains(output, "STATUS") {
+		t.Fatalf("expected human table header HOOK/STATUS, got: %s", output)
+	}
+	if !strings.Contains(output, "active=") {
+		t.Fatalf("expected status with active count, got: %s", output)
+	}
+	if !strings.Contains(output, "test-hook") {
+		t.Fatalf("expected test-hook in table, got: %s", output)
+	}
+}
+
+func TestHookDoctorJSONParsesWithHomeDir(t *testing.T) {
+	dir := t.TempDir()
+	mockBin := makeMockReasonixBinary(t, dir)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = original
+		writer.Close()
+	}()
+	runErr := runHook([]string{"doctor", "--binary", mockBin, "--project-dir", dir, "--home-dir", "/tmp/test-home", "--json"})
+	writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"list"`) || !strings.Contains(string(data), `"status"`) {
+		t.Fatalf("expected JSON with list/status keys, got: %s", data)
+	}
+}
+
+func TestHookDoctorProjectDir(t *testing.T) {
+	dir := t.TempDir()
+	mockBin := makeMockReasonixBinary(t, dir)
+
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() {
+		os.Stdout = original
+		writer.Close()
+	}()
+	runErr := runHook([]string{"doctor", "--binary", mockBin, "--project-dir", dir, "--json"})
+	writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatal(runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"list"`) || !strings.Contains(string(data), `"status"`) {
+		t.Fatalf("expected JSON with list/status keys, got: %s", data)
+	}
+}

@@ -11,10 +11,10 @@ func TestEvaluateRuleSourcesOrder(t *testing.T) {
 		ExpectedRuleSources: []string{"a.md", "b.md"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:   true,
-		RegressionPassed:    true,
-		RequiredEffectsMet:  true,
-		RuleSources:         []string{"a.md", "b.md"},
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
+		RuleSources:        []string{"a.md", "b.md"},
 	}
 	eval := Evaluate(f, result)
 	if !eval.QualifiedCompletion {
@@ -28,10 +28,10 @@ func TestEvaluateRuleSourcesOrderViolation(t *testing.T) {
 		ExpectedRuleSources: []string{"a.md", "b.md"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:   true,
-		RegressionPassed:    true,
-		RequiredEffectsMet:  true,
-		RuleSources:         []string{"b.md", "a.md"},
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
+		RuleSources:        []string{"b.md", "a.md"},
 	}
 	eval := Evaluate(f, result)
 	if eval.QualifiedCompletion {
@@ -54,10 +54,10 @@ func TestEvaluateRuleSourcesMissing(t *testing.T) {
 		ExpectedRuleSources: []string{"a.md", "b.md"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:   true,
-		RegressionPassed:    true,
-		RequiredEffectsMet:  true,
-		RuleSources:         []string{"a.md"},
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
+		RuleSources:        []string{"a.md"},
 	}
 	eval := Evaluate(f, result)
 	if eval.QualifiedCompletion {
@@ -71,10 +71,10 @@ func TestEvaluateForbiddenRuleSources(t *testing.T) {
 		ForbiddenRuleSources: []string{"danger.md"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:   true,
-		RegressionPassed:    true,
-		RequiredEffectsMet:  true,
-		RuleSources:         []string{"safe.md", "danger.md"},
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
+		RuleSources:        []string{"safe.md", "danger.md"},
 	}
 	eval := Evaluate(f, result)
 	if eval.QualifiedCompletion {
@@ -88,10 +88,10 @@ func TestEvaluateExpectedConflictLog(t *testing.T) {
 		ExpectedConflictLog: []string{"resolved: a vs b"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:    true,
-		RegressionPassed:     true,
-		RequiredEffectsMet:   true,
-		ConflictResolutions:  []string{"resolved: a vs b"},
+		HiddenTestsPassed:   true,
+		RegressionPassed:    true,
+		RequiredEffectsMet:  true,
+		ConflictResolutions: []string{"resolved: a vs b"},
 	}
 	eval := Evaluate(f, result)
 	if !eval.QualifiedCompletion {
@@ -105,9 +105,9 @@ func TestEvaluateMissingConflictLog(t *testing.T) {
 		ExpectedConflictLog: []string{"resolved: a vs b"},
 	}
 	result := RunResult{
-		HiddenTestsPassed:   true,
-		RegressionPassed:    true,
-		RequiredEffectsMet:  true,
+		HiddenTestsPassed:  true,
+		RegressionPassed:   true,
+		RequiredEffectsMet: true,
 	}
 	eval := Evaluate(f, result)
 	if eval.QualifiedCompletion {
@@ -119,12 +119,12 @@ func TestReplayCopiesRuleData(t *testing.T) {
 	f := Fixture{
 		ID: "t",
 		Replay: &ReplaySpec{
-			ChangedPaths:       []string{"a.go"},
-			HiddenTestsPassed:  true,
-			RegressionPassed:   true,
-			RequiredEffectsMet: true,
-			Events:             []string{"e"},
-			RuleSources:        []string{"r1.md", "r2.md"},
+			ChangedPaths:        []string{"a.go"},
+			HiddenTestsPassed:   true,
+			RegressionPassed:    true,
+			RequiredEffectsMet:  true,
+			Events:              []string{"e"},
+			RuleSources:         []string{"r1.md", "r2.md"},
 			ConflictResolutions: []string{"c1"},
 		},
 	}

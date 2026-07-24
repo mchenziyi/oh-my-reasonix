@@ -1241,15 +1241,23 @@ func runVersion(args []string) error {
 }
 
 func runHook(args []string) error {
+	// Strip "doctor" subcommand name so flag parsing sees the flags.
+	if len(args) > 0 && args[0] == "doctor" {
+		args = args[1:]
+	}
 	flags := flag.NewFlagSet("hook doctor", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
 	binary := flags.String("binary", "reasonix", "Reasonix executable")
+	homeDir := flags.String("home-dir", "", "Reasonix home directory (sets REASONIX_HOME)")
 	jsonOutput := flags.Bool("json", false, "output as JSON")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
+	if *homeDir != "" {
+		runner.Env = append(runner.Env, "REASONIX_HOME="+*homeDir)
+	}
 	ctx := context.Background()
 
 	// Call both hook list and hook status
@@ -1372,15 +1380,16 @@ func runRun(args []string) error {
 
 	if *eventsJSONL != "" {
 		result := runner.RunWithEvents(ctx, prompt, *eventsJSONL)
-		if result.Err != nil {
-			return fmt.Errorf("run failed: %w", result.Err)
-		}
+		// Always parse events (file is saved even on non-zero exit).
 		stream, parseErr := reasonix.ParseEventStream(*eventsJSONL)
 		if parseErr != nil {
 			return fmt.Errorf("parse events: %w", parseErr)
 		}
 		if len(stream.Errors) > 0 {
 			return fmt.Errorf("event stream validation failed: %s", strings.Join(stream.Errors, "; "))
+		}
+		if result.Err != nil {
+			return fmt.Errorf("run failed (exit %d): %w", result.ExitCode, result.Err)
 		}
 		if *jsonOutput {
 			type runOutput struct {

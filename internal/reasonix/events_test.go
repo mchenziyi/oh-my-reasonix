@@ -1,6 +1,7 @@
 package reasonix
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -117,17 +118,16 @@ func TestParseEventStreamRedactsSensitiveFields(t *testing.T) {
 		`{"event":"run_done"}`,
 	})
 	stream, _ := ParseEventStream(path)
+	// Verify parsed EventRecords do NOT contain sensitive fields.
 	for _, rec := range stream.Events {
-		data, _ := os.ReadFile(path)
-		// The EventRecord struct should NOT have these fields
-		if strings.Contains(string(data), "secret text") {
-			// This is OK - the raw file has it, but we verify no API Key in parsed fields
-		}
-		if rec.Event == "tool_call" {
-			_ = rec.Event // just verify parsing succeeded
+		b, _ := json.Marshal(rec)
+		s := string(b)
+		for _, forbidden := range []string{"secret text", "rm -rf", "sensitive", "private", "granted", "summary"} {
+			if strings.Contains(s, forbidden) {
+				t.Fatalf("EventRecord should not contain %q, got: %s", forbidden, s)
+			}
 		}
 	}
-	// Verify total events
 	if len(stream.Events) != 2 {
 		t.Fatalf("expected 2 events, got %d", len(stream.Events))
 	}
@@ -146,9 +146,10 @@ func TestParseEventStreamLargeLine(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseEventStream: %v", err)
 	}
-	// Even if the large line parses, the stream should still be valid
-	if len(stream.Events) == 0 {
-		t.Fatal("expected at least the run_done event")
+	// The large line should parse correctly (500KB < 1MB limit)
+	// and run_done must also be present.
+	if len(stream.Events) != 2 {
+		t.Fatalf("expected 2 events (large line + run_done), got %d", len(stream.Events))
 	}
 }
 
@@ -197,5 +198,159 @@ func TestParseEventStreamSkipsOversizedLine(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected oversized line error, got %v", stream.Errors)
+	}
+}
+
+func TestParseEventStreamV1_17_20_RealFormat(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	// Reasonix v1.17.20 native format: sequence, kind, usage
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"tool_dispatch","tool_name":"bash","tool_id":"t1"}`,
+		`{"schema_version":1,"sequence":2,"kind":"tool_result","tool_id":"t1","status":"ok"}`,
+		`{"schema_version":1,"sequence":3,"kind":"run_done","ok":true,"duration_ms":120,"num_turns":1,"usage":{"input_tokens":50,"output_tokens":30,"cache_hit_tokens":0,"cache_miss_tokens":50}}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	if !stream.RunDone {
+		t.Fatal("expected run_done=true")
+	}
+	if len(stream.Events) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(stream.Events))
+	}
+	// Verify field mapping
+	runDone := stream.Events[2]
+	if runDone.Event != "run_done" {
+		t.Fatalf("expected event=run_done, got %q", runDone.Event)
+	}
+	if runDone.Seq != 3 {
+		t.Fatalf("expected seq=3, got %d", runDone.Seq)
+	}
+	// Token mapping: usage.input_tokens → prompt_tokens, usage.output_tokens → completion_tokens
+	if runDone.PromptTokens != 50 {
+		t.Fatalf("expected prompt_tokens=50 (from usage.input_tokens), got %d", runDone.PromptTokens)
+	}
+	if runDone.CompletionTokens != 30 {
+		t.Fatalf("expected completion_tokens=30 (from usage.output_tokens), got %d", runDone.CompletionTokens)
+	}
+}
+
+func TestParseEventStreamV1_17_20_TokenSummary(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"tool_dispatch","tool_name":"write","usage":{"input_tokens":10,"output_tokens":0}}`,
+		`{"schema_version":1,"sequence":2,"kind":"tool_result","status":"ok","usage":{"input_tokens":0,"output_tokens":5}}`,
+		`{"schema_version":1,"sequence":3,"kind":"run_done","ok":true,"duration_ms":200,"num_turns":1,"usage":{"input_tokens":100,"output_tokens":80}}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	// TotalTokens should sum across all events: (10+0)+(0+5)+(100+80) = 195
+	if stream.TotalTokens != 195 {
+		t.Fatalf("expected TotalTokens=195, got %d", stream.TotalTokens)
+	}
+}
+
+func TestParseEventStreamV1_17_20_SequenceMonotonic(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"tool_dispatch"}`,
+		`{"schema_version":1,"sequence":3,"kind":"tool_result"}`,
+		`{"schema_version":1,"sequence":2,"kind":"run_done"}`,
+	})
+	stream, _ := ParseEventStream(path)
+	found := false
+	for _, e := range stream.Errors {
+		if strings.Contains(e, "non-monotonic") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected non-monotonic sequence error, got: %v", stream.Errors)
+	}
+}
+
+func TestParseEventStreamV1_17_20_RedactsSensitive(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"tool_dispatch","tool_name":"bash","prompt":"SECRET","tool_args":"rm -rf /","tool_result":"sensitive","reasoning":"private"}`,
+		`{"schema_version":1,"sequence":2,"kind":"run_done","ok":true,"usage":{"input_tokens":1,"output_tokens":1}}`,
+	})
+	stream, _ := ParseEventStream(path)
+	if len(stream.Events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(stream.Events))
+	}
+	// The raw file contains "SECRET" but EventRecord should NOT expose it
+	if stream.Events[0].ToolName != "bash" {
+		t.Fatalf("expected tool_name=bash, got %q", stream.Events[0].ToolName)
+	}
+}
+
+func TestParseEventStreamV1_17_20_InvalidJSON(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`not valid json`,
+		`{"schema_version":1,"sequence":1,"kind":"run_done","ok":true}`,
+	})
+	stream, _ := ParseEventStream(path)
+	found := false
+	for _, e := range stream.Errors {
+		if strings.Contains(e, "invalid JSON") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected invalid JSON error, got: %v", stream.Errors)
+	}
+	// Valid line should still be parsed
+	if len(stream.Events) != 1 {
+		t.Fatalf("expected 1 valid event, got %d", len(stream.Events))
+	}
+}
+
+func TestParseEventStreamV1_17_20_RunDoneNotFinal(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"run_done","ok":true}`,
+		`{"schema_version":1,"sequence":2,"kind":"tool_dispatch"}`,
+	})
+	stream, _ := ParseEventStream(path)
+	found := false
+	for _, e := range stream.Errors {
+		if strings.Contains(e, "run_done must be final") {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected run_done final error, got: %v", stream.Errors)
+	}
+}
+
+func TestParseEventStreamV1_17_20_BackwardCompatible(t *testing.T) {
+	// Mix of OMR legacy and v1.17.20 format should both work
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"event":"tool_call","seq":1,"kind":"bash","tool_name":"echo"}`,
+		`{"schema_version":1,"sequence":2,"kind":"tool_result","status":"ok"}`,
+		`{"event":"run_done","seq":3,"prompt_tokens":10,"completion_tokens":5}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	if !stream.RunDone {
+		t.Fatal("expected run_done=true")
+	}
+	if len(stream.Events) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(stream.Events))
 	}
 }
