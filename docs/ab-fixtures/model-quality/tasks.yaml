@@ -1,0 +1,211 @@
+# OMR 模型执行质量 A/B 测试 — 任务定义（执行前冻结，不可中途修改）
+# 目标项目：QiuQiuPro (Go, ~74 .go 文件, commit 640aeb8)
+# 冻结时间：2026-07-24
+
+tasks:
+  - id: Q1
+    category: 项目探索
+    prompt: |
+      请只读分析 /tmp/omr-quality-<GROUP>/ 项目：
+      1. 列出所有 Go 包及其用途（一行一个）
+      2. 找出程序入口（main 函数位置）和命令行参数
+      3. 列出所有测试入口文件和运行命令
+      4. 列出 go.mod 中的直接依赖
+      5. 识别 3 个最复杂的源文件并说明原因
+      不要修改任何文件。每个结论引用实际文件路径和行号。
+    read_only: true
+    expected_checks:
+      - 包数量 >= 7
+      - 入口文件正确（main.go）
+      - 测试命令可执行（go test ./...）
+      - 依赖列表准确
+    scoring_notes: 正确性看包和入口准确性；完整性看是否覆盖所有包；证据看行号引用
+
+  - id: Q2
+    category: 需求拆解
+    prompt: |
+      请为 /tmp/omr-quality-<GROUP>/ 项目设计一个"会话导出"功能：将当前 Agent 对话导出为 Markdown 文件。
+      1. 列出假设和需要澄清的问题
+      2. 拆解为 4-8 个最小实施任务
+      3. 每个任务注明影响文件、风险和验收条件
+      4. 给出测试命令
+      暂时不要修改代码。
+    read_only: true
+    expected_checks:
+      - 至少 4 个实施任务
+      - 每个任务有验收条件
+      - 识别了 session.go 和 commands.go 等关键文件
+      - 区分假设与事实
+    scoring_notes: 完整性看任务拆解粒度；可执行性看验收条件是否可自动验证
+
+  - id: Q3
+    category: Bug 定位
+    prompt: |
+      请定位 /tmp/omr-quality-<GROUP>/ 项目中的一个 Bug：
+      在 mcp/manager.go 中，loadConfigs 函数读取 JSON 配置文件后调用 json.Unmarshal，
+      但忽略了返回的 error。请分析：
+      1. 这个 Bug 的根因和影响范围
+      2. 在什么条件下会被触发
+      3. 是否有测试覆盖此路径
+      4. 建议的最小修复方案
+      不要修改文件。引用实际代码行号。
+    read_only: true
+    expected_checks:
+      - 正确识别 json.Unmarshal 错误被忽略
+      - 分析了触发条件
+      - 检查了测试覆盖
+      - 修复方案最小且正确
+    scoring_notes: 正确性看根因是否准确；证据看行号引用
+
+  - id: Q4
+    category: 小型实现
+    prompt: |
+      为 /tmp/omr-quality-<GROUP>/ 项目的 tool/all_tools.go 添加一个新工具 `GetCurrentTimeTool`：
+      1. 该工具返回当前系统时间，格式为 RFC3339
+      2. 名称：get_current_time，描述：获取当前系统时间
+      3. 参数：可选的 timezone 参数（如 "Asia/Shanghai"），默认 UTC
+      4. 遵循现有工具的模式（Tool 接口、Execute 方法）
+      5. 在 AllBuiltInTools() 中注册
+      6. 添加单元测试到 tool/all_tools_test.go
+      运行 go test ./tool/ -count=1 -run TestGetCurrentTime 验证。
+    read_only: false
+    expected_checks:
+      - go test ./tool/ -count=1 -run TestGetCurrentTime 通过
+      - 代码遵循现有工具模式
+      - 不会破坏其他测试（go test ./tool/ -count=1 全部通过）
+    scoring_notes: 正确性看测试通过和编译成功；约束遵守看是否修改无关文件
+
+  - id: Q5
+    category: 回归修复
+    prompt: |
+      在 /tmp/omr-quality-<GROUP>/ 中，mcp/manager.go 的 loadConfigs 函数在 json.Unmarshal 
+      失败时静默忽略错误。请修复：
+      1. 在 json.Unmarshal 返回错误时，用 fmt.Errorf 包装并返回
+      2. 确保调用方正确处理此错误
+      3. 更新或添加测试覆盖错误路径
+      4. 运行 go test ./mcp/ -count=1 -v 确认所有测试通过
+      不要修改无关文件。
+    read_only: false
+    expected_checks:
+      - go test ./mcp/ -count=1 全部通过
+      - json.Unmarshal 错误被正确处理
+      - 错误路径有测试覆盖
+      - 无越界修改
+    scoring_notes: 正确性看修复后测试通过；约束遵守看 git diff --stat 只有 mcp/ 相关文件
+
+  - id: Q6
+    category: 重构建议
+    prompt: |
+      请对 /tmp/omr-quality-<GROUP>/ 项目的 agent/agent.go 提出低风险重构建议：
+      1. 识别当前文件的结构问题（长度、职责、耦合）
+      2. 提出拆分方案，说明哪些方法/类型应移到哪个新文件
+      3. 说明重构前后的不变量（行为不变、测试不变、API 不变）
+      4. 估计风险和推荐执行顺序
+      不要修改代码。引用实际行号。
+    read_only: true
+    expected_checks:
+      - 识别了 agent.go 的职责过重问题
+      - 拆分方案合理（如分离 checkpoint/session/compact）
+      - 明确了不变量
+      - 有风险估计
+    scoring_notes: 完整性看是否覆盖主要结构问题；可执行性看拆分步骤是否可直接实施
+
+  - id: Q7
+    category: 安全 Review
+    prompt: |
+      请对 /tmp/omr-quality-<GROUP>/ 项目做只读安全 Review：
+      1. 检查 API Key 处理（main.go getAPIKey）是否有泄露风险
+      2. 检查路径处理是否有越界风险
+      3. 检查 bash 命令执行是否有注入风险
+      4. 检查错误处理是否泄露敏感信息
+      每个发现给出：严重级别（CRITICAL/HIGH/MEDIUM/LOW）、文件路径、行号、证据和修复建议。
+      没有证据不要猜测。
+    read_only: true
+    expected_checks:
+      - 至少覆盖 API Key、路径、命令注入三个方面
+      - 每个发现引用具体行号
+      - 严重级别合理
+      - 区分事实与推测
+    scoring_notes: 证据质量看行号是否精确；正确性看发现是否有实际代码支撑
+
+  - id: Q8
+    category: 测试设计
+    prompt: |
+      请为 /tmp/omr-quality-<GROUP>/ 项目的 cleanup/cleanup.go 补充测试：
+      1. 阅读 cleanup.go 的全部代码
+      2. 设计至少 3 个测试用例覆盖主要逻辑
+      3. 将测试添加到 cleanup/cleanup_test.go（如果不存在则创建）
+      4. 运行 go test ./cleanup/ -count=1 -v 验证
+      不要修改 cleanup.go 本身。
+    read_only: false
+    expected_checks:
+      - go test ./cleanup/ -count=1 通过
+      - 至少 3 个测试用例
+      - 覆盖正常和边界路径
+      - cleanup.go 未被修改
+    scoring_notes: 正确性看测试通过；完整性看测试覆盖范围
+
+  - id: Q9
+    category: 文档同步
+    prompt: |
+      请检查 /tmp/omr-quality-<GROUP>/ 项目的 docs/37-quality-cleanup.md 
+      中描述的变更是否已在代码中实施：
+      1. 逐条对比文档中的 5 个变更项与实际代码
+      2. 标记哪些已完成、哪些未完成、哪些有偏差
+      3. 如发现不一致，指出具体文件和行号
+      不要修改任何文件。
+    read_only: true
+    expected_checks:
+      - 逐条对比了 5 个变更项
+      - 正确识别实施状态
+      - 偏差引用实际代码行号
+      - 不作无证据推测
+    scoring_notes: 正确性看对比是否准确；证据看行号引用
+
+  - id: Q10
+    category: 多步骤任务
+    prompt: |
+      请为 /tmp/omr-quality-<GROUP>/ 项目完成以下多步骤任务：
+      1. 在 cleanup/cleanup.go 中添加新函数 EstimateCacheSize(dir string) (int64, error)
+         — 递归遍历目录，累加所有文件大小，跳过符号链接
+      2. 在 cleanup_test.go 中添加测试
+      3. 在 commands.go 中注册新命令 /cachesize，调用 EstimateCacheSize 并输出结果
+      4. 运行 go test ./cleanup/ -count=1 -v 和 go build ./... 验证
+      5. 用一句话总结完成的工作
+    read_only: false
+    expected_checks:
+      - go test ./cleanup/ -count=1 通过
+      - go build ./... 成功
+      - /cachesize 命令已注册
+      - EstimateCacheSize 正确处理符号链接
+    scoring_notes: 正确性看测试和编译通过；可执行性看命令是否可实际使用
+
+  - id: Q11
+    category: 中断恢复
+    prompt: |
+      [此任务分两阶段]
+      第一阶段 — 发送："请开始分析 /tmp/omr-quality-<GROUP>/ 项目：列出前 5 个 Go 包及其用途。"
+      等待代理开始输出后，发送中断信号。
+      第二阶段 — 发送："请从上次中断的位置继续。先说明已完成和未完成的步骤，不要重复已完成的工作；继续前先检查工作区状态。"
+      记录代理是否正确恢复、是否重复工作、是否需要人工干预。
+    read_only: true
+    expected_checks:
+      - 正确识别已完成步骤
+      - 不重复已完成工作
+      - 检查了工作区状态
+      - 完成任务
+    scoring_notes: 恢复质量看是否无重复且上下文保留
+
+  - id: Q12
+    category: 只读约束
+    prompt: |
+      请对 /tmp/omr-quality-<GROUP>/ 做只读分析：列出 agent/ 目录下所有 .go 文件及其导出的函数/方法。
+      严格要求：不要修改任何文件，不要创建文件，不要运行会写入磁盘的命令（如 git add、go build 等）。
+      完成后，用 git status --short 验证工作区干净。
+    read_only: true
+    expected_checks:
+      - 列出所有 agent/*.go 文件
+      - 每个文件列出导出符号
+      - git status --short 输出为空
+      - 未使用写入命令
+    scoring_notes: 约束遵守看 git status 是否干净；完整性看是否覆盖所有 agent/ 文件
