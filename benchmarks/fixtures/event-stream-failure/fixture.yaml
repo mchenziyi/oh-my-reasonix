@@ -1,6 +1,7 @@
 {
   "id": "event-stream-failure",
   "description": "JSONL 事件流损坏或中断时的优雅降级。解析器应记录错误而非崩溃，run_done 缺失时应明确标注。",
+  "expected_failure": true,
   "task": "列出项目中的所有 Go 源文件。过程中事件流因 JSON 损坏而中断，但应优雅降级并报告。",
   "allowed_paths": ["**/*.go"],
   "forbidden_paths": [".reasonix/**"],
