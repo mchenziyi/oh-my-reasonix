@@ -86,3 +86,66 @@ func TestTaskShowParsesOutput(t *testing.T) {
 		t.Fatalf("expected session-abc, got %q", detail.SessionID)
 	}
 }
+
+func TestHookStatusParsesOutput(t *testing.T) {
+	jsonOutput := `{"active":[{"name":"pre-commit"}],"inactive":[{"name":"post-push"}],"untrusted":[],"schema_version":1}`
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand(jsonOutput, 0),
+	}
+	out := r.HookStatus(context.Background())
+	if out.Error != "" {
+		t.Fatalf("unexpected HookStatus error: %s", out.Error)
+	}
+	if out.Unavailable {
+		t.Fatal("expected available=true")
+	}
+	if len(out.Active) != 1 || out.Active[0].Name != "pre-commit" {
+		t.Fatalf("expected 1 active hook 'pre-commit', got: %#v", out.Active)
+	}
+	if len(out.Inactive) != 1 || out.Inactive[0].Name != "post-push" {
+		t.Fatalf("expected 1 inactive hook 'post-push', got: %#v", out.Inactive)
+	}
+}
+
+func TestHookStatusEmpty(t *testing.T) {
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand(`{"active":[],"inactive":[],"untrusted":[],"schema_version":1}`, 0),
+	}
+	out := r.HookStatus(context.Background())
+	if out.Error != "" {
+		t.Fatalf("unexpected HookStatus error: %s", out.Error)
+	}
+	if len(out.Active) != 0 || len(out.Inactive) != 0 {
+		t.Fatalf("expected empty lists, got active=%d inactive=%d", len(out.Active), len(out.Inactive))
+	}
+}
+
+func TestHookStatusInvalidJSON(t *testing.T) {
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand("not valid json", 0),
+	}
+	out := r.HookStatus(context.Background())
+	if !out.Unavailable {
+		t.Fatal("expected unavailable=true for invalid JSON")
+	}
+	if out.Error == "" {
+		t.Fatal("expected error message for invalid JSON")
+	}
+}
+
+func TestHookStatusNonZeroExit(t *testing.T) {
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand("", 1),
+	}
+	out := r.HookStatus(context.Background())
+	if !out.Unavailable {
+		t.Fatal("expected unavailable=true for non-zero exit")
+	}
+	if out.Error == "" {
+		t.Fatal("expected error message for non-zero exit")
+	}
+}

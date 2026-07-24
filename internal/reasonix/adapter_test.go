@@ -244,3 +244,64 @@ func TestRunWithEventsParsesRunDoneAndTokens(t *testing.T) {
 		t.Fatalf("expected no errors, got: %v", stream.Errors)
 	}
 }
+
+func TestSessionRecoveryParsesOutput(t *testing.T) {
+	jsonOutput := `{"branch_id":"recovery-branch","status":"partial","tasks_total":10,"tasks_failed":2,"schema_version":1}`
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand(jsonOutput, 0),
+	}
+	info, err := r.SessionRecovery(context.Background(), "recovery-branch")
+	if err != nil {
+		t.Fatalf("SessionRecovery: %v", err)
+	}
+	if info.BranchID != "recovery-branch" {
+		t.Fatalf("expected branch_id=recovery-branch, got %q", info.BranchID)
+	}
+	if info.Status != "partial" {
+		t.Fatalf("expected status=partial, got %q", info.Status)
+	}
+	if info.TasksTotal != 10 {
+		t.Fatalf("expected tasks_total=10, got %d", info.TasksTotal)
+	}
+	if info.TasksFailed != 2 {
+		t.Fatalf("expected tasks_failed=2, got %d", info.TasksFailed)
+	}
+}
+
+func TestSessionRecoveryEmptyBranch(t *testing.T) {
+	jsonOutput := `{"branch_id":"","status":"unknown","schema_version":1}`
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand(jsonOutput, 0),
+	}
+	info, err := r.SessionRecovery(context.Background(), "")
+	if err != nil {
+		t.Fatalf("SessionRecovery: %v", err)
+	}
+	if info.BranchID != "" {
+		t.Fatalf("expected empty branch_id, got %q", info.BranchID)
+	}
+}
+
+func TestSessionRecoveryInvalidJSON(t *testing.T) {
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand("not valid json", 0),
+	}
+	_, err := r.SessionRecovery(context.Background(), "branch")
+	if err == nil {
+		t.Fatal("expected error for invalid JSON")
+	}
+}
+
+func TestSessionRecoveryNonZeroExit(t *testing.T) {
+	r := Runner{
+		Binary:         "reasonix",
+		commandFactory: mockCommand("", 1),
+	}
+	_, err := r.SessionRecovery(context.Background(), "branch")
+	if err == nil {
+		t.Fatal("expected error for non-zero exit")
+	}
+}

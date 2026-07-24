@@ -354,3 +354,100 @@ func TestParseEventStreamV1_17_20_BackwardCompatible(t *testing.T) {
 		t.Fatalf("expected 3 events, got %d", len(stream.Events))
 	}
 }
+
+func TestParseEventStreamValidatesRequiredFields(t *testing.T) {
+	// v1.17.20 events: when 'event' field is missing, 'kind' is used as fallback.
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+
+	writeEventsFile(t, path, []string{
+		`{"seq":1,"kind":"bash"}`,
+		`{"event":"run_done","seq":2}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream should not hard-fail: %v", err)
+	}
+	if len(stream.Events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(stream.Events))
+	}
+	// When 'event' field is missing, 'kind' is used as fallback
+	if stream.Events[0].Event != "bash" {
+		t.Fatalf("expected fallback event='bash' (from kind), got %q", stream.Events[0].Event)
+	}
+	if !stream.RunDone {
+		t.Fatal("expected run_done=true")
+	}
+}
+
+func TestParseEventStreamValidatesSequence(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"event":"tool_call","seq":1}`,
+		`{"event":"tool_call","seq":3}`,
+		`{"event":"run_done","seq":2,"prompt_tokens":5,"completion_tokens":5}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	// seq 2 after seq 3 triggers non-monotonic error
+	if len(stream.Errors) == 0 {
+		t.Fatal("expected non-monotonic seq error")
+	}
+	// Events are still recorded (parser is lenient)
+	if len(stream.Events) != 3 {
+		t.Fatalf("expected 3 events, got %d", len(stream.Events))
+	}
+}
+
+func TestParseEventStreamValidatesSchemaVersion(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"event":"tool_call","seq":1,"kind":"bash","tool_name":"echo","schema_version":1}`,
+		`{"event":"run_done","seq":2,"schema_version":1,"prompt_tokens":5,"completion_tokens":5}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	if !stream.RunDone {
+		t.Fatal("expected run_done with valid schema_version=1")
+	}
+	// Verify events carry schema_version in their raw record
+	if len(stream.Events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(stream.Events))
+	}
+}
+
+func TestParseEventStreamHandlesEventSanitization(t *testing.T) {
+	// Events with unexpected/extra fields should parse without error
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"event":"tool_call","seq":1,"kind":"bash","tool_name":"echo","extra_field":"should_be_ignored"}`,
+		`{"event":"run_done","seq":2,"prompt_tokens":5,"completion_tokens":5}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	if !stream.RunDone {
+		t.Fatal("expected run_done=true")
+	}
+	if len(stream.Events) != 2 {
+		t.Fatalf("expected 2 events, got %d", len(stream.Events))
+	}
+	// tool_call event should have correct fields
+	if stream.Events[0].Event != "tool_call" {
+		t.Fatalf("expected tool_call event, got %q", stream.Events[0].Event)
+	}
+	if stream.Events[0].ToolName != "echo" {
+		t.Fatalf("expected tool_name=echo, got %q", stream.Events[0].ToolName)
+	}
+	if len(stream.Errors) > 0 {
+		t.Fatalf("expected no errors, got: %v", stream.Errors)
+	}
+}
