@@ -45,7 +45,7 @@ Otherwise download the pinned release. Set `OMR_VERSION` to the version the
 user requested; the example below is the current project version.
 
 ```bash
-OMR_VERSION=v1.1.1
+OMR_VERSION=v1.1.2
 OMR_REPO=mchenziyi/oh-my-reasonix
 mkdir -p .reasonix/omr/bin
 ```
@@ -81,7 +81,7 @@ On Windows PowerShell, use the matching `windows-amd64.exe` asset and verify it
 before executing it:
 
 ```powershell
-$OMR_VERSION = "v1.1.1"
+$OMR_VERSION = "v1.1.2"
 $OMR_REPO = "mchenziyi/oh-my-reasonix"
 $OMR_ASSET = "omr-$OMR_VERSION-windows-amd64.exe"
 $OMR_DIR = ".reasonix/omr/bin"
