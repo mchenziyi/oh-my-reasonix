@@ -863,7 +863,7 @@ func runCacheBenchmark(args []string) error {
 			return err
 		}
 		comparison := cacheguard.CompareReports(native, omr)
-		if err := writeJSONReport(*output, comparison); err != nil {
+		if err := writeJSONValue(*output, "cache", comparison); err != nil {
 			return err
 		}
 		if !comparison.Passed {
@@ -892,29 +892,6 @@ func runCacheBenchmark(args []string) error {
 	fmt.Printf("cache report: %s\n", *output)
 	if !report.Passed {
 		return errors.New("cache benchmark failed hard gates")
-	}
-	return nil
-}
-
-func writeJSONReport(path string, value interface{}) error {
-	writer := os.Stdout
-	var file *os.File
-	if path != "" {
-		var err error
-		file, err = os.Create(path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		writer = file
-	}
-	encoder := json.NewEncoder(writer)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(value); err != nil {
-		return err
-	}
-	if path != "" {
-		fmt.Printf("cache report: %s\n", path)
 	}
 	return nil
 }
@@ -1001,7 +978,7 @@ func runQualityBenchmark(args []string) error {
 			qualitybench.EvaluateAll(fixtures, native, runID, qualitybench.ExecutionModeReplay),
 			qualitybench.EvaluateAll(fixtures, omr, runID, qualitybench.ExecutionModeReplay),
 		)
-		if err := writeJSONValue(*outputPath, comparison); err != nil {
+		if err := writeJSONValue(*outputPath, "quality", comparison); err != nil {
 			return err
 		}
 		if !comparison.Passed {
@@ -1051,7 +1028,7 @@ func runQualityBenchmark(args []string) error {
 		}
 		wg.Wait()
 		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeRuntime)
-		if err := writeJSONValue(*outputPath, report); err != nil {
+		if err := writeJSONValue(*outputPath, "quality", report); err != nil {
 			return err
 		}
 		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
@@ -1077,7 +1054,7 @@ func runQualityBenchmark(args []string) error {
 			return errors.New("no fixtures contain native_replay data; use --paired only on fixtures with native_replay/omr_replay")
 		}
 		comparison := qualitybench.CompareReports(nativeReport, omrReport)
-		if err := writeJSONValue(*outputPath, comparison); err != nil {
+		if err := writeJSONValue(*outputPath, "quality", comparison); err != nil {
 			return err
 		}
 		if !comparison.Passed {
@@ -1109,7 +1086,7 @@ func runQualityBenchmark(args []string) error {
 			results[fixture.ID] = result
 		}
 		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
-		if err := writeJSONValue(*outputPath, report); err != nil {
+		if err := writeJSONValue(*outputPath, "quality", report); err != nil {
 			return err
 		}
 		if report.EvaluatedCount == 0 {
@@ -1133,7 +1110,7 @@ func runQualityBenchmark(args []string) error {
 		return err
 	}
 	report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
-	if err := writeJSONValue(*outputPath, report); err != nil {
+	if err := writeJSONValue(*outputPath, "quality", report); err != nil {
 		return err
 	}
 	if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
@@ -1178,7 +1155,7 @@ func loadQualityResults(path string) (map[string]qualitybench.RunResult, error) 
 	return results, nil
 }
 
-func writeJSONValue(path string, value interface{}) error {
+func writeJSONValue(path string, label string, value interface{}) error {
 	writer := os.Stdout
 	var file *os.File
 	if path != "" {
@@ -1196,7 +1173,7 @@ func writeJSONValue(path string, value interface{}) error {
 		return err
 	}
 	if path != "" {
-		fmt.Printf("quality report: %s\n", path)
+		fmt.Printf("%s report: %s\n", label, path)
 	}
 	return nil
 }
