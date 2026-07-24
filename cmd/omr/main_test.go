@@ -283,13 +283,14 @@ func TestConfigValidateJSON(t *testing.T) {
 	var result struct {
 		Path        string  `json:"path"`
 		Valid       bool    `json:"valid"`
+		Configured  bool    `json:"configured"`
 		Concurrency int     `json:"concurrency"`
 		MaxCost     float64 `json:"max_cost"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if result.Path != path || !result.Valid || result.Concurrency != 2 || result.MaxCost != 1.5 {
+	if result.Path != path || !result.Valid || !result.Configured || result.Concurrency != 2 || result.MaxCost != 1.5 {
 		t.Fatalf("unexpected config result: %#v", result)
 	}
 }
@@ -413,14 +414,15 @@ func TestConfigValidateJSONReportsInvalidConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Valid  bool     `json:"valid"`
-		Error  string   `json:"error"`
-		Errors []string `json:"errors"`
+		Valid      bool     `json:"valid"`
+		Configured bool     `json:"configured"`
+		Error      string   `json:"error"`
+		Errors     []string `json:"errors"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s: %v", data, err)
 	}
-	if result.Valid || result.Error == "" || len(result.Errors) != 1 || result.Errors[0] != result.Error {
+	if result.Valid || !result.Configured || result.Error == "" || len(result.Errors) != 1 || result.Errors[0] != result.Error {
 		t.Fatalf("unexpected invalid config result: %#v", result)
 	}
 }
@@ -457,13 +459,14 @@ func TestConfigValidateJSONReportsAllDisabledRoutingErrors(t *testing.T) {
 		t.Fatal(err)
 	}
 	var result struct {
-		Valid  bool     `json:"valid"`
-		Errors []string `json:"errors"`
+		Valid      bool     `json:"valid"`
+		Configured bool     `json:"configured"`
+		Errors     []string `json:"errors"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
 		t.Fatalf("invalid JSON: %s", data)
 	}
-	if result.Valid || len(result.Errors) != 2 {
+	if result.Valid || !result.Configured || len(result.Errors) != 2 {
 		t.Fatalf("unexpected errors: %#v", result)
 	}
 }
@@ -476,6 +479,82 @@ func TestConfigValidateRejectsMissingPromptFile(t *testing.T) {
 	}
 	if err := runConfig([]string{"validate", "--project-dir", root, "--config", path}); err == nil || !strings.Contains(err.Error(), "omr-research") {
 		t.Fatalf("expected missing Prompt file error, got %v", err)
+	}
+}
+
+func TestConfigValidateMissingConfigSucceeds(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	err := runConfig([]string{"validate", "--config", path})
+	if err != nil {
+		t.Fatalf("expected success for missing config, got: %v", err)
+	}
+}
+
+func TestConfigValidateMissingConfigJSON(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, ".reasonix", "omr", "config.toml")
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatalf("expected success for missing config JSON, got: %v", runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Path       string `json:"path"`
+		Valid      bool   `json:"valid"`
+		Configured bool   `json:"configured"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if result.Path != path || !result.Valid || result.Configured {
+		t.Fatalf("unexpected missing config result: %#v", result)
+	}
+}
+
+func TestConfigValidateEmptyConfigSucceeds(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "config.toml")
+	if err := os.WriteFile(path, []byte(""), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	runErr := runConfig([]string{"validate", "--config", path, "--json"})
+	_ = writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatalf("expected success for empty config, got: %v", runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct {
+		Path       string `json:"path"`
+		Valid      bool   `json:"valid"`
+		Configured bool   `json:"configured"`
+	}
+	if err := json.Unmarshal(data, &result); err != nil {
+		t.Fatalf("invalid JSON: %s: %v", data, err)
+	}
+	if !result.Valid || !result.Configured {
+		t.Fatalf("unexpected empty config result: %#v", result)
 	}
 }
 

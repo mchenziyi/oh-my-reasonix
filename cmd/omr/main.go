@@ -209,16 +209,27 @@ func runConfig(args []string) error {
 	}
 	cfg, err := omrconfig.Load(path)
 	if err != nil {
+		// Missing config is not an error — it means the project is not yet configured.
+		if os.IsNotExist(err) {
+			if *jsonOutput {
+				_ = json.NewEncoder(os.Stdout).Encode(struct {
+					Path       string `json:"path"`
+					Valid      bool   `json:"valid"`
+					Configured bool   `json:"configured"`
+				}{Path: path, Valid: true, Configured: false})
+			} else {
+				fmt.Printf("No OMR config found at %s (project not yet configured)\n", path)
+			}
+			return nil
+		}
 		if *jsonOutput {
 			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path   string   `json:"path"`
-				Valid  bool     `json:"valid"`
-				Error  string   `json:"error"`
-				Errors []string `json:"errors"`
-			}{Path: path, Error: err.Error(), Errors: []string{err.Error()}})
-		}
-		if os.IsNotExist(err) {
-			return fmt.Errorf("OMR config not found: %s", path)
+				Path       string   `json:"path"`
+				Valid      bool     `json:"valid"`
+				Configured bool     `json:"configured"`
+				Error      string   `json:"error"`
+				Errors     []string `json:"errors"`
+			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: []string{err.Error()}})
 		}
 		return err
 	}
@@ -230,11 +241,12 @@ func runConfig(args []string) error {
 		err = errors.New(strings.Join(messages, "; "))
 		if *jsonOutput {
 			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path   string   `json:"path"`
-				Valid  bool     `json:"valid"`
-				Error  string   `json:"error"`
-				Errors []string `json:"errors"`
-			}{Path: path, Error: err.Error(), Errors: messages})
+				Path       string   `json:"path"`
+				Valid      bool     `json:"valid"`
+				Configured bool     `json:"configured"`
+				Error      string   `json:"error"`
+				Errors     []string `json:"errors"`
+			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: messages})
 		}
 		return err
 	}
@@ -265,11 +277,12 @@ func runConfig(args []string) error {
 		err = errors.New(strings.Join(promptErrors, "; "))
 		if *jsonOutput {
 			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path   string   `json:"path"`
-				Valid  bool     `json:"valid"`
-				Error  string   `json:"error"`
-				Errors []string `json:"errors"`
-			}{Path: path, Error: err.Error(), Errors: promptErrors})
+				Path       string   `json:"path"`
+				Valid      bool     `json:"valid"`
+				Configured bool     `json:"configured"`
+				Error      string   `json:"error"`
+				Errors     []string `json:"errors"`
+			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: promptErrors})
 		}
 		return err
 	}
@@ -277,6 +290,7 @@ func runConfig(args []string) error {
 		output := struct {
 			Path             string                           `json:"path"`
 			Valid            bool                             `json:"valid"`
+			Configured       bool                             `json:"configured"`
 			Agents           map[string]omrconfig.AgentConfig `json:"agents"`
 			Categories       map[string]string                `json:"categories"`
 			Concurrency      int                              `json:"concurrency"`
@@ -284,7 +298,7 @@ func runConfig(args []string) error {
 			DisabledProfiles []string                         `json:"disabled_profiles"`
 			MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
 			Warnings         []string                         `json:"warnings,omitempty"`
-		}{Path: path, Valid: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, MCP: mcpDiags, Warnings: categoryDiags}
+		}{Path: path, Valid: true, Configured: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, MCP: mcpDiags, Warnings: categoryDiags}
 		_ = json.NewEncoder(os.Stdout).Encode(output)
 		return nil
 	}
