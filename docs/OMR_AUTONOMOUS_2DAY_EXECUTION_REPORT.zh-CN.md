@@ -9,7 +9,7 @@
 ## 1. 执行摘要
 
 按 `docs/OMR_AUTONOMOUS_2DAY_DEVELOPMENT_PLAN.zh-CN.md` 的 P0 → P1 → P2 优先级顺序执行。
-共 9 个核心任务：8 个自动任务完成（8 completed），INT-06 skipped-by-design（按计划要求保持 pending）。
+共 10 个核心任务：9 个自动任务完成（9 completed），INT-06 skipped-by-design（按计划要求保持 pending）。
 
 | 任务 | 状态 | 提交 |
 |------|------|------|
@@ -31,7 +31,7 @@
 ### AUT-00 环境冻结
 - **结果**：`completed`
 - **基线**：Commit `4adf65e`，Go 1.25.5，Tag v1.1.2，12 个测试包，main 工作区干净
-- **未跟踪文件**：`artifacts/`、`docs/OMR_AUTONOMOUS_2DAY_DEVELOPMENT_PLAN.zh-CN.md`、`omr-ab-b-meta.json`（均未删除，遵守边界规则）
+- **未跟踪文件**：`artifacts/`、`omr-ab-b-meta.json`（均未删除，遵守边界规则）
 
 ### AUT-01 测试稳定性
 - **结果**：`completed`
@@ -129,14 +129,14 @@
 |------|------|
 | `artifacts/` | 计划明确排除 |
 | `omr-ab-b-meta.json` | 计划明确排除 |
-| `docs/OMR_AUTONOMOUS_2DAY_DEVELOPMENT_PLAN.zh-CN.md` | 计划文档，非代码产物 |
-| `docs/OMR_AUTONOMOUS_2DAY_EXECUTION_REPORT.zh-CN.md` | 本报告（需提交） |
+
+> 注：`docs/OMR_AUTONOMOUS_2DAY_DEVELOPMENT_PLAN.zh-CN.md` 和 `docs/OMR_AUTONOMOUS_2DAY_EXECUTION_REPORT.zh-CN.md` 已在 v1.1.3 发布准备中纳入仓库。
 
 ## 5. Tag 状态与发布建议
 
-- **当前 Tag**：`v1.1.2`（位于 `e9a97ce`）
-- **HEAD 位置**：`0c57bd4`（8 个提交之后）
-- **建议**：Tag 未跟随 HEAD，建议在下次发布时创建 `v1.1.3`，包含本次所有变更
+- **当前 Tag**：`v1.1.3`（位于 `5464be3`）
+- **HEAD 位置**：`5464be3`（v1.1.3 发布准备提交）
+- **状态**：v1.1.3 已创建并推送，包含本次全部变更
 - **不自动覆盖已有 Tag**（遵守计划约束）
 
 自 v1.1.2 以来的变更摘要：
