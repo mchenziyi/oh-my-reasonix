@@ -265,3 +265,43 @@ func TestFullFlowFixtureReplayable(t *testing.T) {
 		}
 	}
 }
+
+func TestEventStreamFailureFixtureLoadable(t *testing.T) {
+	path := filepath.Join("..", "..", "benchmarks", "fixtures", "event-stream-failure", "fixture.yaml")
+	f, err := LoadFixture(path)
+	if err != nil {
+		t.Fatalf("load event-stream-failure: %v", err)
+	}
+	if f.ID != "event-stream-failure" {
+		t.Fatalf("expected id event-stream-failure, got %q", f.ID)
+	}
+	if f.Replay == nil {
+		t.Fatal("expected replay spec")
+	}
+	if f.Replay.RequiredEffectsMet {
+		t.Fatal("expected required_effects_met=false for stream failure")
+	}
+	if len(f.Replay.Events) != 0 {
+		t.Fatalf("expected 0 events for stream failure, got %d", len(f.Replay.Events))
+	}
+}
+
+func TestFailedEventPersistenceFixtureLoadable(t *testing.T) {
+	path := filepath.Join("..", "..", "benchmarks", "fixtures", "failed-event-persistence", "fixture.yaml")
+	f, err := LoadFixture(path)
+	if err != nil {
+		t.Fatalf("load failed-event-persistence: %v", err)
+	}
+	if f.ID != "failed-event-persistence" {
+		t.Fatalf("expected id failed-event-persistence, got %q", f.ID)
+	}
+	if f.Replay == nil {
+		t.Fatal("expected replay spec")
+	}
+	if !f.Replay.RequiredEffectsMet {
+		t.Fatal("expected required_effects_met=true for event persistence")
+	}
+	if len(f.Replay.Events) != 1 || f.Replay.Events[0] != "run_done" {
+		t.Fatalf("expected [run_done] events, got %v", f.Replay.Events)
+	}
+}

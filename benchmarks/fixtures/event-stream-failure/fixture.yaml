@@ -1,0 +1,27 @@
+{
+  "id": "event-stream-failure",
+  "description": "JSONL 事件流损坏或中断时的优雅降级。解析器应记录错误而非崩溃，run_done 缺失时应明确标注。",
+  "task": "列出项目中的所有 Go 源文件。过程中事件流因 JSON 损坏而中断，但应优雅降级并报告。",
+  "allowed_paths": ["**/*.go"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": [],
+  "regression_tests": [],
+  "expected_events": [],
+  "replay_outputs": [
+    {"role": "user", "kind": "command", "output": "find . -name '*.go'"},
+    {"role": "assistant", "kind": "tool_call", "output": "listing Go files..."}
+  ],
+  "replay": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": false,
+    "events": [],
+    "tests_skipped": true,
+    "stream_errors": [
+      "line 1: invalid JSON",
+      "run_done event must be the final event in the stream"
+    ],
+    "run_done": false
+  }
+}

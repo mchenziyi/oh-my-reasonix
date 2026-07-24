@@ -1,0 +1,25 @@
+{
+  "id": "failed-event-persistence",
+  "description": "运行失败时事件仍应落盘。Reasonix 非零退出时，stdout 上的 JSONL 事件（包括 run_done with ok=false）应被保存，供事后分析。",
+  "task": "修改 src/main.go 引入编译错误，然后构建。构建预期失败，但事件流中的失败信息应被完整记录。",
+  "allowed_paths": ["src/**"],
+  "forbidden_paths": [".reasonix/**"],
+  "hidden_tests": ["test -f events.jsonl"],
+  "regression_tests": [],
+  "expected_events": ["run_done"],
+  "replay_outputs": [
+    {"role": "user", "kind": "command", "output": "go build ./..."},
+    {"role": "assistant", "kind": "tool_result", "output": "build failed"}
+  ],
+  "replay": {
+    "changed_paths": [],
+    "hidden_tests_passed": true,
+    "regression_passed": true,
+    "required_effects_met": true,
+    "events": ["run_done"],
+    "tests_skipped": false,
+    "exit_code": 1,
+    "run_done": true,
+    "event_file_exists": true
+  }
+}
