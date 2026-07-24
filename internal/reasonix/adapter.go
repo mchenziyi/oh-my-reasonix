@@ -123,9 +123,8 @@ type HookStatusOutput struct {
 func (r Runner) hookDirArgs() []string {
 	var args []string
 	if r.ProjectDir != "" {
-		args = append(args, "--project-root", r.ProjectDir)
+		args = append(args, "--dir", r.ProjectDir)
 	}
-	// --home-dir is not set by default; callers can set Runner.Env or extend
 	return args
 }
 
