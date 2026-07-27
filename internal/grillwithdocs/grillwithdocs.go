@@ -155,6 +155,11 @@ func Apply(projectRoot string, plan DocPlan) error {
 		slug := fmt.Sprintf("%04d-%s.md", number, adr.Slug)
 		target := filepath.Join(root, "docs", "adr", slug)
 
+		// Re-validate path right before write (TOCTOU safety, matching updateContextMD)
+		if err := validatePath(root, target); err != nil {
+			return fmt.Errorf("write-time validation failed for ADR %q: %w", slug, err)
+		}
+
 		content := renderADR(number, adr)
 		if err := fileutil.AtomicWrite(target, []byte(content), 0o644); err != nil {
 			return fmt.Errorf("write ADR %q: %w", slug, err)
@@ -258,7 +263,7 @@ func validatePath(projectRoot, targetPath string) error {
 	}
 
 	// Check for .reasonix
-	if strings.HasPrefix(rel, ".reasonix") || strings.HasPrefix(rel, ".reasonix/") {
+	if rel == ".reasonix" || strings.HasPrefix(rel, ".reasonix/") {
 		return fmt.Errorf("writing to .reasonix is not allowed: %q", rel)
 	}
 
