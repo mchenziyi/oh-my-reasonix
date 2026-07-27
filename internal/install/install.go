@@ -265,6 +265,9 @@ func profileAssets(assets Assets) []profileAsset {
 	if len(assets.LSP) > 0 {
 		profiles = append(profiles, profileAsset{ID: "omr-lsp", Rel: LSPProfileRel, Data: assets.LSP, Hash: fileutil.SHA256(assets.LSP)})
 	}
+	if len(assets.GrillMe) > 0 {
+		profiles = append(profiles, profileAsset{ID: "omr-grill-me", Rel: GrillMeProfileRel, Data: assets.GrillMe, Hash: fileutil.SHA256(assets.GrillMe)})
+	}
 	return profiles
 }
 

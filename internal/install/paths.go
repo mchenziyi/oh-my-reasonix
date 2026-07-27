@@ -16,6 +16,7 @@ const (
 	FrontendProfileRel = ".reasonix/skills/omr-frontend/SKILL.md"
 	GitProfileRel      = ".reasonix/skills/omr-git/SKILL.md"
 	LSPProfileRel      = ".reasonix/skills/omr-lsp/SKILL.md"
+	GrillMeProfileRel  = ".reasonix/skills/omr-grill-me/SKILL.md"
 )
 
 func ProjectRoot(start string) (string, error) {
@@ -57,6 +58,9 @@ func GeneratedPromptPath(root string) string {
 func ExploreProfilePath(root string) string {
 	return filepath.Join(root, filepath.FromSlash(ExploreProfileRel))
 }
+func GrillMeProfilePath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(GrillMeProfileRel))
+}
 func ProfilePath(root, rel string) string {
 	return filepath.Join(root, filepath.FromSlash(rel))
 }
@@ -67,6 +71,8 @@ func ManifestPathForDoctor(root string) string        { return ManifestPath(root
 func GeneratedPromptPathForDoctor(root string) string { return GeneratedPromptPath(root) }
 func ExploreProfilePathForDoctor(root string) string  { return ExploreProfilePath(root) }
 func ExploreProfileRelForDoctor() string              { return ExploreProfileRel }
+func GrillMeProfilePathForDoctor(root string) string  { return GrillMeProfilePath(root) }
+func GrillMeProfileRelForDoctor() string              { return GrillMeProfileRel }
 
 func requireReasonixConfig(root string) (string, error) {
 	path := filepath.Join(root, "reasonix.toml")

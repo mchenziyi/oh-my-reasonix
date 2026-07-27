@@ -60,6 +60,7 @@ omr uninstall --project-dir .
 - omr-frontend：分析界面结构、交互和 UI 测试入口；
 - omr-git：只读分析 Git 历史、差异和影响范围；
 - omr-lsp：只读分析符号、引用和诊断入口。
+- omr-grill-me：只读方案质询，发现目标歧义、隐含假设、边界条件和验收缺口。
 
 支持：
 
@@ -86,6 +87,7 @@ omr uninstall --project-dir .
 | `omr-frontend` | OMR 项目级 | 分析 UI 结构、交互和前端测试入口 | 只读 |
 | `omr-git` | OMR 项目级 | 分析 Git 历史、差异和影响范围 | 只读 |
 | `omr-lsp` | OMR 项目级 | 分析符号、引用和语言服务诊断 | 只读 |
+| `omr-grill-me` | OMR 项目级 | 方案质询，发现目标歧义、隐含假设、边界条件和验收缺口 | 只读 |
 
 实际可用列表以当前 Reasonix 版本和项目配置为准，可使用以下命令查看：
 

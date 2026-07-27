@@ -1,8 +1,10 @@
 # oh-my-reasonix 与 oh-my-opencode 差距矩阵
 
-> 冻结版本：2026-07-21
+> 冻结版本：2026-07-27
 >
 > 本文用于冻结 OMR 后续优化范围与优先级。后续实现按本文排序推进；新增能力必须先更新本文，再进入开发。
+>
+> 状态：T11 (omr-grill-me) 已完成；Comment Checker 和 INT-06 等待中。
 
 ## 1. 对比范围
 
@@ -41,7 +43,8 @@
 
 | 能力 | OMR 当前状态 | OMO 对应能力 | 优先级 |
 |---|---|---|---|
-| 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
+| 专用 OMR Agent | 已有 `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend`、`omr-grill-me` | Sisyphus、Prometheus、Oracle、Librarian、Explore、Frontend 等 | P1 |
+| 方案质询 Agent | 已有只读 `omr-grill-me`，在规划前发现歧义、假设和验收缺口 | Ralph Loop / Challenge Agent | P1 |
 | Agent 独立模型配置 | 已支持 `[agent.<profile>]` 的模型、Prompt 文件和只读声明；实际执行由 Reasonix 原生 Profile 负责 | 每个 Agent 可覆盖模型、Prompt、权限 | P1 |
 | 任务类别路由 | 支持内置路由与项目级 `[routing]` Category → Profile 覆盖 | visual、business-logic 等 Category | P1 |
 | 后台 Agent 编排 | 依赖 Reasonix 原生，OMR 不统一编排 | 多 Agent 并行执行 | P1 |

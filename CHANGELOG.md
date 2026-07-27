@@ -1,5 +1,22 @@
 # Changelog
 
+## [v1.2.0] — 2026-07-27
+
+### Added
+- **omr-grill-me**: read-only challenge profile that discovers goal ambiguity, unconfirmed assumptions, edge cases, failure paths, and acceptance gaps before complex development tasks (#T11)
+- **assets**: embedded SKILL.md, embed.go, assets.go/paths.go/install.go registration, manifest.yaml v1.2.0
+- **tests**: 5 Prompt 契约测试（验证 SKILL.md 声明了停止条件和只读约束）+ 5 离线回放测试（纯 Go 数据结构模拟质询轮次、停止条件、假设隔离和文件快照不变）
+- **docs**: README profile list, gap matrix (challenge agent row), TODO (T11 marked complete), CHANGELOG
+
+### Changed
+- **version**: `assets/manifest.yaml` 1.1.3 → 1.2.0
+- **validate**: `cmd/omr/main.go` `knownProfiles` now includes `omr-git`, `omr-lsp`, `omr-grill-me` — prevents false "routes to unknown profile" warnings
+
+### Known Issues
+- **INT-06**: real-client verification pending — requires Reasonix public machine interface stable release
+
+---
+
 ## [v1.1.3] — 2026-07-24
 
 ### Added

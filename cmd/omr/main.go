@@ -24,7 +24,7 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
-var version = "1.1.3"
+var version = "1.2.0"
 
 func main() {
 	if len(os.Args) < 2 {
@@ -255,7 +255,8 @@ func runConfig(args []string) error {
 	// Known profiles from built-in set
 	knownProfiles := map[string]bool{
 		"omr-explore": true, "omr-research": true, "omr-debug": true,
-		"omr-planner": true, "omr-frontend": true,
+		"omr-planner": true, "omr-frontend": true, "omr-git": true,
+		"omr-lsp": true, "omr-grill-me": true,
 	}
 	// Also check agent configs
 	for profile := range cfg.Agents {

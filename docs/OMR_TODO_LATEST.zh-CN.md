@@ -6,14 +6,13 @@
 
 ## 当前状态（最新）
 
-OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。当前不再重复开发这些阶段。
+OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11 Grill Me 已完成。当前不再重复开发这些阶段。
 
 下一阶段优先级：
 
 1. Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
-2. Grill Me：实现可选的方案质询 Skill，先做离线 Profile/Prompt 试验，不接管宿主状态机；
-3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
-4. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
+2. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
+3. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
 
 ## 1. 与 oh-my-opencode 的对比结论
 
@@ -37,7 +36,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 - 项目级 init/upgrade/uninstall、dry-run、备份、回滚、Manifest 和 Hash；
 - Prompt Composer、Orchestrator Prompt、Reasonix Base Prompt；
-- `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend`；
+- `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend`、`omr-grill-me`；
 - Profile 模型、Prompt 文件、read-only、disabled 和 category routing 配置；
 - TOML、JSONC、TOML → JSONC 迁移；
 - Doctor、Profile list、config validate、config schema；
@@ -110,7 +109,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 每个任务必须先写回归测试或 Fixture，做最小代码修改，运行 `gofmt`、`git diff --check`、`go test ./...`、`go vet ./...`，更新本文件和差距矩阵，并保留未跟踪的 `omr`、`.reasonix/`。只有真实客户端行为无法通过自动化判断时，才请求用户协助。
 
-## 8. T11：Grill Me 可选方案质询 Skill
+## 8. ✅ T11：Grill Me 可选方案质询 Skill（已完成）
 
 ### 目标
 
@@ -123,7 +122,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - 输出为澄清问题、假设、风险、待确认决策和可执行验收条件；
 - 设置最大问题轮数和明确完成条件；
 - 支持 dry-run、禁用和项目级配置；
-- 增加离线 Fixture，验证问题覆盖和停止条件。
+- 增加离线 Fixture：5 项 Prompt 契约测试 + 5 项纯 Go 离线回放测试，覆盖三种停止条件、未确认假设隔离和文件快照不变。
 
 ### 明确不实现
 
@@ -139,4 +138,4 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - 复杂任务能产出结构化澄清结果；
 - 达到最大轮数或信息充分时正常结束；
 - 不修改项目文件、不访问私有 Reasonix 状态；
-- `go test ./...`、`go vet ./...`、Prompt 稳定性和离线 Fixture 通过。
+- `go test ./...`、`go vet ./...`、Prompt 契约测试和离线回放 Fixture 全部通过。

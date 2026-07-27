@@ -20,6 +20,7 @@ type Assets struct {
 	Git          []byte
 	LSP          []byte
 	ReviewBrief  []byte
+	GrillMe      []byte
 }
 
 func LoadAssets(start string) (Assets, error) {
@@ -42,6 +43,7 @@ func LoadAssets(start string) (Assets, error) {
 		Git:          append([]byte(nil), embeddedassets.Git...),
 		LSP:          append([]byte(nil), embeddedassets.LSP...),
 		ReviewBrief:  append([]byte(nil), embeddedassets.ReviewBrief...),
+		GrillMe:      append([]byte(nil), embeddedassets.GrillMe...),
 	}, nil
 }
 
@@ -90,11 +92,15 @@ func readAssetsFromDirectory(root string) (Assets, error) {
 	if err != nil {
 		return Assets{}, err
 	}
+	grillMe, err := read("skills/omr-grill-me/SKILL.md")
+	if err != nil {
+		return Assets{}, err
+	}
 	review, err := read("prompts/review-task-protocol.zh.md")
 	if err != nil {
 		return Assets{}, err
 	}
-	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, Git: git, LSP: lsp, ReviewBrief: review}, nil
+	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, Git: git, LSP: lsp, ReviewBrief: review, GrillMe: grillMe}, nil
 }
 
 func findAssetRoot(start string) (string, error) {

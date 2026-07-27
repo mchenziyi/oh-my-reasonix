@@ -37,3 +37,6 @@ var Git []byte
 
 //go:embed skills/omr-lsp/SKILL.md
 var LSP []byte
+
+//go:embed skills/omr-grill-me/SKILL.md
+var GrillMe []byte
