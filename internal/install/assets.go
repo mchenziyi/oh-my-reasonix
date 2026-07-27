@@ -9,18 +9,19 @@ import (
 )
 
 type Assets struct {
-	Root         string
-	BasePrompt   []byte
-	Orchestrator []byte
-	Explore      []byte
-	Research     []byte
-	Debug        []byte
-	Planner      []byte
-	Frontend     []byte
-	Git          []byte
-	LSP          []byte
-	ReviewBrief  []byte
-	GrillMe      []byte
+	Root          string
+	BasePrompt    []byte
+	Orchestrator  []byte
+	Explore       []byte
+	Research      []byte
+	Debug         []byte
+	Planner       []byte
+	Frontend      []byte
+	Git           []byte
+	LSP           []byte
+	ReviewBrief   []byte
+	GrillMe       []byte
+	GrillWithDocs []byte
 }
 
 func LoadAssets(start string) (Assets, error) {
@@ -32,18 +33,19 @@ func LoadAssets(start string) (Assets, error) {
 		return Assets{}, err
 	}
 	return Assets{
-		Root:         "embedded",
-		BasePrompt:   append([]byte(nil), embeddedassets.BasePrompt...),
-		Orchestrator: append([]byte(nil), embeddedassets.Orchestrator...),
-		Explore:      append([]byte(nil), embeddedassets.Explore...),
-		Research:     append([]byte(nil), embeddedassets.Research...),
-		Debug:        append([]byte(nil), embeddedassets.Debug...),
-		Planner:      append([]byte(nil), embeddedassets.Planner...),
-		Frontend:     append([]byte(nil), embeddedassets.Frontend...),
-		Git:          append([]byte(nil), embeddedassets.Git...),
-		LSP:          append([]byte(nil), embeddedassets.LSP...),
-		ReviewBrief:  append([]byte(nil), embeddedassets.ReviewBrief...),
-		GrillMe:      append([]byte(nil), embeddedassets.GrillMe...),
+		Root:          "embedded",
+		BasePrompt:    append([]byte(nil), embeddedassets.BasePrompt...),
+		Orchestrator:  append([]byte(nil), embeddedassets.Orchestrator...),
+		Explore:       append([]byte(nil), embeddedassets.Explore...),
+		Research:      append([]byte(nil), embeddedassets.Research...),
+		Debug:         append([]byte(nil), embeddedassets.Debug...),
+		Planner:       append([]byte(nil), embeddedassets.Planner...),
+		Frontend:      append([]byte(nil), embeddedassets.Frontend...),
+		Git:           append([]byte(nil), embeddedassets.Git...),
+		LSP:           append([]byte(nil), embeddedassets.LSP...),
+		ReviewBrief:   append([]byte(nil), embeddedassets.ReviewBrief...),
+		GrillMe:       append([]byte(nil), embeddedassets.GrillMe...),
+		GrillWithDocs: append([]byte(nil), embeddedassets.GrillWithDocs...),
 	}, nil
 }
 
@@ -96,11 +98,15 @@ func readAssetsFromDirectory(root string) (Assets, error) {
 	if err != nil {
 		return Assets{}, err
 	}
+	grillWithDocs, err := read("skills/omr-grill-with-docs/SKILL.md")
+	if err != nil {
+		return Assets{}, err
+	}
 	review, err := read("prompts/review-task-protocol.zh.md")
 	if err != nil {
 		return Assets{}, err
 	}
-	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, Git: git, LSP: lsp, ReviewBrief: review, GrillMe: grillMe}, nil
+	return Assets{Root: root, BasePrompt: base, Orchestrator: orchestrator, Explore: explore, Research: research, Debug: debug, Planner: planner, Frontend: frontend, Git: git, LSP: lsp, ReviewBrief: review, GrillMe: grillMe, GrillWithDocs: grillWithDocs}, nil
 }
 
 func findAssetRoot(start string) (string, error) {

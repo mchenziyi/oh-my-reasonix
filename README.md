@@ -61,6 +61,7 @@ omr uninstall --project-dir .
 - omr-git：只读分析 Git 历史、差异和影响范围；
 - omr-lsp：只读分析符号、引用和诊断入口。
 - omr-grill-me：只读方案质询，发现目标歧义、隐含假设、边界条件和验收缺口。
+- omr-grill-with-docs：确认后写入方案质询，将质询结果沉淀到 CONTEXT.md 和 ADR 文档。
 
 支持：
 
@@ -88,6 +89,7 @@ omr uninstall --project-dir .
 | `omr-git` | OMR 项目级 | 分析 Git 历史、差异和影响范围 | 只读 |
 | `omr-lsp` | OMR 项目级 | 分析符号、引用和语言服务诊断 | 只读 |
 | `omr-grill-me` | OMR 项目级 | 方案质询，发现目标歧义、隐含假设、边界条件和验收缺口 | 只读 |
+| `omr-grill-with-docs` | OMR 项目级 | 确认后将已确认事实写入 CONTEXT.md 和 ADR | 确认后写入 |
 
 实际可用列表以当前 Reasonix 版本和项目配置为准，可使用以下命令查看：
 

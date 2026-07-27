@@ -40,3 +40,6 @@ var LSP []byte
 
 //go:embed skills/omr-grill-me/SKILL.md
 var GrillMe []byte
+
+//go:embed skills/omr-grill-with-docs/SKILL.md
+var GrillWithDocs []byte

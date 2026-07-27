@@ -1,6 +1,23 @@
 # Changelog
 
-## [v1.2.0] — 2026-07-27
+## [v1.2.1] — 2026-07-27
+
+### Added
+- **omr-grill-with-docs**: confirmed-facts-to-docs profile — dry-run preview, user confirmation, atomic writes to CONTEXT.md and ADR files (#T12)
+- **assets**: embedded SKILL.md, embed.go/assets.go/paths.go/install.go registration, manifest.yaml v1.2.1
+- **model**: `internal/grillwithdocs/` — Plan/Apply functions with conflict detection, idempotency, ADR numbering, and 6 security checks (abs path, path traversal, symlink escape, .reasonix, outside-project-root, unconfirmed assumptions isolation)
+- **tests**: 11 offline replay tests covering dry-run, confirmed write, ADR numbering, idempotency, conflict detection, unconfirmed isolation, and 5 path-security scenarios
+- **docs**: README profile list, TODO (T12 marked complete), CHANGELOG
+
+### Changed
+- **version**: `assets/manifest.yaml` 1.2.0 → 1.2.1
+
+### Known Issues
+- **INT-06**: real-client verification pending — requires Reasonix public machine interface stable release
+
+---
+
+
 
 ### Added
 - **omr-grill-me**: read-only challenge profile that discovers goal ambiguity, unconfirmed assumptions, edge cases, failure paths, and acceptance gaps before complex development tasks (#T11)

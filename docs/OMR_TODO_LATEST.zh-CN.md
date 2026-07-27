@@ -6,7 +6,7 @@
 
 ## 当前状态（最新）
 
-OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11 Grill Me 已完成。当前不再重复开发这些阶段。
+OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11 Grill Me 已完成，T12 Grill with Docs 已完成。当前不再重复开发这些阶段。
 
 下一阶段优先级：
 
@@ -36,7 +36,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 - 项目级 init/upgrade/uninstall、dry-run、备份、回滚、Manifest 和 Hash；
 - Prompt Composer、Orchestrator Prompt、Reasonix Base Prompt；
-- `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend`、`omr-grill-me`；
+- `omr-explore`、`omr-research`、`omr-debug`、`omr-planner`、`omr-frontend`、`omr-grill-me`、`omr-grill-with-docs`；
 - Profile 模型、Prompt 文件、read-only、disabled 和 category routing 配置；
 - TOML、JSONC、TOML → JSONC 迁移；
 - Doctor、Profile list、config validate、config schema；

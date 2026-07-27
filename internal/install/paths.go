@@ -7,16 +7,17 @@ import (
 )
 
 const (
-	GeneratedPromptRel = ".reasonix/omr/generated/system-prompt.md"
-	ManifestRel        = ".reasonix/omr/manifest.lock.yaml"
-	ExploreProfileRel  = ".reasonix/skills/omr-explore/SKILL.md"
-	ResearchProfileRel = ".reasonix/skills/omr-research/SKILL.md"
-	DebugProfileRel    = ".reasonix/skills/omr-debug/SKILL.md"
-	PlannerProfileRel  = ".reasonix/skills/omr-planner/SKILL.md"
-	FrontendProfileRel = ".reasonix/skills/omr-frontend/SKILL.md"
-	GitProfileRel      = ".reasonix/skills/omr-git/SKILL.md"
-	LSPProfileRel      = ".reasonix/skills/omr-lsp/SKILL.md"
-	GrillMeProfileRel  = ".reasonix/skills/omr-grill-me/SKILL.md"
+	GeneratedPromptRel      = ".reasonix/omr/generated/system-prompt.md"
+	ManifestRel             = ".reasonix/omr/manifest.lock.yaml"
+	ExploreProfileRel       = ".reasonix/skills/omr-explore/SKILL.md"
+	ResearchProfileRel      = ".reasonix/skills/omr-research/SKILL.md"
+	DebugProfileRel         = ".reasonix/skills/omr-debug/SKILL.md"
+	PlannerProfileRel       = ".reasonix/skills/omr-planner/SKILL.md"
+	FrontendProfileRel      = ".reasonix/skills/omr-frontend/SKILL.md"
+	GitProfileRel           = ".reasonix/skills/omr-git/SKILL.md"
+	LSPProfileRel           = ".reasonix/skills/omr-lsp/SKILL.md"
+	GrillMeProfileRel       = ".reasonix/skills/omr-grill-me/SKILL.md"
+	GrillWithDocsProfileRel = ".reasonix/skills/omr-grill-with-docs/SKILL.md"
 )
 
 func ProjectRoot(start string) (string, error) {
@@ -61,18 +62,23 @@ func ExploreProfilePath(root string) string {
 func GrillMeProfilePath(root string) string {
 	return filepath.Join(root, filepath.FromSlash(GrillMeProfileRel))
 }
+func GrillWithDocsProfilePath(root string) string {
+	return filepath.Join(root, filepath.FromSlash(GrillWithDocsProfileRel))
+}
 func ProfilePath(root, rel string) string {
 	return filepath.Join(root, filepath.FromSlash(rel))
 }
 
 // Exported path helpers keep diagnostics and benchmark packages independent
 // of the installer implementation details.
-func ManifestPathForDoctor(root string) string        { return ManifestPath(root) }
-func GeneratedPromptPathForDoctor(root string) string { return GeneratedPromptPath(root) }
-func ExploreProfilePathForDoctor(root string) string  { return ExploreProfilePath(root) }
-func ExploreProfileRelForDoctor() string              { return ExploreProfileRel }
-func GrillMeProfilePathForDoctor(root string) string  { return GrillMeProfilePath(root) }
-func GrillMeProfileRelForDoctor() string              { return GrillMeProfileRel }
+func ManifestPathForDoctor(root string) string             { return ManifestPath(root) }
+func GeneratedPromptPathForDoctor(root string) string      { return GeneratedPromptPath(root) }
+func ExploreProfilePathForDoctor(root string) string       { return ExploreProfilePath(root) }
+func ExploreProfileRelForDoctor() string                   { return ExploreProfileRel }
+func GrillMeProfilePathForDoctor(root string) string       { return GrillMeProfilePath(root) }
+func GrillMeProfileRelForDoctor() string                   { return GrillMeProfileRel }
+func GrillWithDocsProfilePathForDoctor(root string) string { return GrillWithDocsProfilePath(root) }
+func GrillWithDocsProfileRelForDoctor() string             { return GrillWithDocsProfileRel }
 
 func requireReasonixConfig(root string) (string, error) {
 	path := filepath.Join(root, "reasonix.toml")

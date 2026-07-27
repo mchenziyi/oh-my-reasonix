@@ -151,10 +151,10 @@ func TestGrillMeReplay_FileSnapshot(t *testing.T) {
 	// Create a temp directory with some known content.
 	snapshotDir := t.TempDir()
 	files := map[string]string{
-		"src/main.go":     "package main\n",
-		"src/util.go":     "package util\n",
-		"README.md":       "# Test\n",
-		"config.yaml":     "key: value\n",
+		"src/main.go": "package main\n",
+		"src/util.go": "package util\n",
+		"README.md":   "# Test\n",
+		"config.yaml": "key: value\n",
 	}
 	for path, content := range files {
 		fullPath := filepath.Join(snapshotDir, path)

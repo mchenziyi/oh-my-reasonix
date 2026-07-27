@@ -268,6 +268,9 @@ func profileAssets(assets Assets) []profileAsset {
 	if len(assets.GrillMe) > 0 {
 		profiles = append(profiles, profileAsset{ID: "omr-grill-me", Rel: GrillMeProfileRel, Data: assets.GrillMe, Hash: fileutil.SHA256(assets.GrillMe)})
 	}
+	if len(assets.GrillWithDocs) > 0 {
+		profiles = append(profiles, profileAsset{ID: "omr-grill-with-docs", Rel: GrillWithDocsProfileRel, Data: assets.GrillWithDocs, Hash: fileutil.SHA256(assets.GrillWithDocs)})
+	}
 	return profiles
 }
 
