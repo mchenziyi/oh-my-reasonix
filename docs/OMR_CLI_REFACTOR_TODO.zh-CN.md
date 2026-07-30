@@ -45,6 +45,7 @@
 - [x] 将迁移和 Prompt 校验移至 `cmd/omr/config.go`
 - [x] 将内置 Profile 目录移至 `cmd/omr/config.go`
 - [x] 将 Profile JSON 输出类型移至 `cmd/omr/profile.go`
+- [x] 统一 Profile JSON/人类输出的项目配置加载逻辑
 - [ ] 将 `runConfig` 和 Schema 输出移至 `cmd/omr/config.go`
 - [ ] 保持 TOML/JSON/JSONC 分发逻辑不变
 - [ ] 覆盖 validate、migrate、schema 输出
