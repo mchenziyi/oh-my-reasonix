@@ -57,7 +57,7 @@
 - [x] 将 Profile 分类和禁用状态组装移至 `cmd/omr/profile.go`
 - [x] 统一项目专属 Profile 列表计算逻辑
 - [x] 为 Profile 组装辅助逻辑增加回归测试
-- [ ] 将 `runConfigValidate` 主验证流程移至 `cmd/omr/config.go`
+- [x] 将 `runConfigValidate` 主验证流程移至 `cmd/omr/config.go`
 - [ ] 保持 TOML/JSON/JSONC 分发逻辑不变
 - [ ] 覆盖 validate、migrate、schema 输出
 - [ ] 验证迁移失败时零写入和回滚行为

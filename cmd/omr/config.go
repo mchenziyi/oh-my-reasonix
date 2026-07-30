@@ -8,9 +8,124 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 )
+
+func runConfigValidate(args []string) error {
+	flags := flag.NewFlagSet("config validate", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	configPath := flags.String("config", "", "OMR config path (TOML or JSONC)")
+	jsonOutput := flags.Bool("json", false, "write JSON output")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	path := *configPath
+	if path == "" {
+		path = omrconfig.FindConfig(*projectDir)
+	}
+	cfg, err := omrconfig.Load(path)
+	if err != nil {
+		// Missing config is not an error — it means the project is not yet configured.
+		if os.IsNotExist(err) {
+			if *jsonOutput {
+				_ = json.NewEncoder(os.Stdout).Encode(configValidationMissing{Path: path, Valid: true, Configured: false})
+			} else {
+				fmt.Printf("No OMR config found at %s (project not yet configured)\n", path)
+			}
+			return nil
+		}
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(configValidationError{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: []string{err.Error()}})
+		}
+		return err
+	}
+	if conflicts := cfg.DisabledRoutingConflicts(); len(conflicts) > 0 {
+		messages := make([]string, 0, len(conflicts))
+		for _, category := range conflicts {
+			messages = append(messages, fmt.Sprintf("OMR category %q routes to disabled Profile %q", category, cfg.Categories[category]))
+		}
+		err = errors.New(strings.Join(messages, "; "))
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Path       string   `json:"path"`
+				Valid      bool     `json:"valid"`
+				Configured bool     `json:"configured"`
+				Error      string   `json:"error"`
+				Errors     []string `json:"errors"`
+			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: messages})
+		}
+		return err
+	}
+	// Category diagnostic: check each category routes to an existing profile
+	var categoryDiags []string
+	// Known profiles from built-in set
+	knownProfiles := knownOMRProfiles()
+	// Also check agent configs
+	for profile := range cfg.Agents {
+		knownProfiles[profile] = true
+	}
+	for cat, profile := range cfg.Categories {
+		if !knownProfiles[profile] {
+			categoryDiags = append(categoryDiags, fmt.Sprintf("category %q routes to unknown profile %q", cat, profile))
+		}
+	}
+	sort.Strings(categoryDiags)
+	mcpDiags := omrconfig.DiagnoseMCP(cfg)
+	for _, diagnostic := range mcpDiags {
+		if diagnostic.Enabled && (diagnostic.Availability != "ready" || diagnostic.Compatibility != "compatible") {
+			categoryDiags = append(categoryDiags, fmt.Sprintf("MCP server %q is %s", diagnostic.Server, diagnostic.Summary()))
+		}
+	}
+	if promptErrors := validatePromptFiles(cfg, *projectDir); len(promptErrors) > 0 {
+		err = errors.New(strings.Join(promptErrors, "; "))
+		if *jsonOutput {
+			_ = json.NewEncoder(os.Stdout).Encode(struct {
+				Path       string   `json:"path"`
+				Valid      bool     `json:"valid"`
+				Configured bool     `json:"configured"`
+				Error      string   `json:"error"`
+				Errors     []string `json:"errors"`
+			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: promptErrors})
+		}
+		return err
+	}
+	if *jsonOutput {
+		output := struct {
+			Path             string                           `json:"path"`
+			Valid            bool                             `json:"valid"`
+			Configured       bool                             `json:"configured"`
+			Agents           map[string]omrconfig.AgentConfig `json:"agents"`
+			Categories       map[string]string                `json:"categories"`
+			Concurrency      int                              `json:"concurrency"`
+			MaxCost          float64                          `json:"max_cost"`
+			DisabledProfiles []string                         `json:"disabled_profiles"`
+			MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
+			Warnings         []string                         `json:"warnings,omitempty"`
+		}{Path: path, Valid: true, Configured: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, MCP: mcpDiags, Warnings: categoryDiags}
+		_ = json.NewEncoder(os.Stdout).Encode(output)
+		return nil
+	}
+	fmt.Printf("OMR config valid: %s\n", path)
+	for _, diag := range categoryDiags {
+		fmt.Printf("  WARNING: %s\n", diag)
+	}
+	if cfg.Concurrency > 0 {
+		fmt.Printf("  concurrency: %d\n", cfg.Concurrency)
+	}
+	if cfg.MaxCost > 0 {
+		fmt.Printf("  max_cost: %.4f\n", cfg.MaxCost)
+	}
+	if len(cfg.Categories) > 0 {
+		fmt.Printf("  categories: %d\n", len(cfg.Categories))
+	}
+	for _, diagnostic := range mcpDiags {
+		fmt.Printf("  mcp.%s: %s\n", diagnostic.Server, diagnostic.Summary())
+	}
+	return nil
+}
 
 type configValidationMissing struct {
 	Path       string `json:"path"`
