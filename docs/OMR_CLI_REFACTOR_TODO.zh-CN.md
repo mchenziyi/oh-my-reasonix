@@ -15,6 +15,8 @@
 - [x] 提取 Benchmark 评分辅助逻辑至 `cmd/omr/benchmark.go`
 - [x] 提取 Hook Doctor 至 `cmd/omr/hook.go`
 - [x] 提取 `run` 命令至 `cmd/omr/run.go`
+- [x] 提取 JSON 报告写出逻辑至 `cmd/omr/output.go`
+- [x] 提取资产加载入口至 `cmd/omr/install.go`
 - [ ] 完成剩余命令模块拆分
 - [ ] 建立统一 CLI 输出与错误边界
 - [ ] 评估是否迁移到 `internal/cli`
@@ -65,8 +67,8 @@
 
 ### CLI-REF-07：统一输出边界
 
-- [ ] 评估提取 `cmd/omr/output.go`
-- [ ] 集中 JSON 编码、人类输出和错误包装的公共逻辑
+- [x] 提取 `cmd/omr/output.go`
+- [ ] 集中剩余 JSON 编码、人类输出和错误包装的公共逻辑
 - [ ] 不改变现有命令的输出字段和错误码
 - [ ] 为公共输出逻辑增加单元测试
 
