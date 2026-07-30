@@ -64,8 +64,7 @@
 
 ### CLI-REF-04：Profile 命令拆分（进行中）
 
-- [x] 将 Profile 列表路由和组装辅助逻辑移至 `cmd/omr/profile.go`
-- [ ] 将 Profile 列表主输出流程移至 `cmd/omr/profile.go`
+- [x] 将 Profile 列表路由、主输出流程和组装辅助逻辑移至 `cmd/omr/profile.go`
 - [ ] 保持 Profile JSON Schema 和输出字段兼容
 - [ ] 验证内置、项目级和禁用 Profile 的显示结果
 
