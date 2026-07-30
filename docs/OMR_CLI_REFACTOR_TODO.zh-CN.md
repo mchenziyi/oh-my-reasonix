@@ -16,12 +16,12 @@
 
 ## 分阶段任务
 
-### CLI-REF-01：Session 命令拆分
+### CLI-REF-01：Session 命令拆分 ✅
 
-- [ ] 将 `runSession` 及其子命令移至 `cmd/omr/session.go`
-- [ ] 保持 `list/status/show/recovery/resume/export` 行为不变
-- [ ] 保持 JSON 字段、错误文本和退出码不变
-- [ ] 运行 `go test ./cmd/omr`、`go vet ./cmd/omr`、`go build ./cmd/omr`
+- [x] 将 `runSession` 及其子命令移至 `cmd/omr/session.go`
+- [x] 保持 `list/status/show/recovery/resume/export` 行为不变
+- [x] 保持 JSON 字段、错误文本和退出码不变
+- [x] 运行 `go test ./cmd/omr`、`go vet ./cmd/omr`、`go build ./cmd/omr`
 
 ### CLI-REF-02：Benchmark 命令拆分
 
