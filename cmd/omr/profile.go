@@ -110,3 +110,18 @@ func applyProfileRouting(item *profileJSON, categories map[string][]string, disa
 		item.Status = "disabled"
 	}
 }
+
+func projectOnlyProfileIDs(profiles []manifest.Profile, configured map[string]omrconfig.AgentConfig) []string {
+	installed := make(map[string]bool, len(profiles))
+	for _, profile := range profiles {
+		installed[profile.ID] = true
+	}
+	ids := make([]string, 0)
+	for id := range configured {
+		if !installed[id] {
+			ids = append(ids, id)
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}

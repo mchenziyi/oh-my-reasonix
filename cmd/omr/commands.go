@@ -297,17 +297,7 @@ func runProfileList(args []string) error {
 			output = append(output, item)
 		}
 		// Append project-only profiles (configured but not installed)
-		manifestIDs := make(map[string]bool, len(profiles))
-		for _, p := range profiles {
-			manifestIDs[p.ID] = true
-		}
-		var projectIDs []string
-		for id := range configured {
-			if !manifestIDs[id] {
-				projectIDs = append(projectIDs, id)
-			}
-		}
-		sort.Strings(projectIDs)
+		projectIDs := projectOnlyProfileIDs(profiles, configured)
 		for _, id := range projectIDs {
 			item := profileJSON{ID: id, Source: "project", Status: "missing"}
 			if agent, ok := configured[id]; ok {
@@ -352,17 +342,7 @@ func runProfileList(args []string) error {
 		fmt.Printf("%-16s %-8s %-10s %-18s %s\n", profile.ID, source, status, modelDisplay, cats)
 	}
 	// Append project-only profiles (configured but not installed)
-	manifestIDs := make(map[string]bool, len(profiles))
-	for _, p := range profiles {
-		manifestIDs[p.ID] = true
-	}
-	var projectIDs []string
-	for id := range configured {
-		if !manifestIDs[id] {
-			projectIDs = append(projectIDs, id)
-		}
-	}
-	sort.Strings(projectIDs)
+	projectIDs := projectOnlyProfileIDs(profiles, configured)
 	for _, id := range projectIDs {
 		model := "(default)"
 		if agent, ok := configured[id]; ok && agent.Model != "" {
