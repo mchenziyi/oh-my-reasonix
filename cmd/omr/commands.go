@@ -137,22 +137,13 @@ func runDoctor(args []string) error {
 	return runErr
 }
 
-func runConfig(args []string) error {
-	if len(args) == 0 || (args[0] != "validate" && args[0] != "schema" && args[0] != "migrate") {
-		return errors.New("config requires validate, schema, or migrate")
-	}
-	if args[0] == "migrate" {
-		return runConfigMigrate(args[1:])
-	}
-	if args[0] == "schema" {
-		return writeOMRConfigSchema()
-	}
+func runConfigValidate(args []string) error {
 	flags := flag.NewFlagSet("config validate", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
 	configPath := flags.String("config", "", "OMR config path (TOML or JSONC)")
 	jsonOutput := flags.Bool("json", false, "write JSON output")
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	path := *configPath

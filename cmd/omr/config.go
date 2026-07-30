@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -36,6 +37,20 @@ type configValidationOutput struct {
 	DisabledProfiles []string                         `json:"disabled_profiles"`
 	MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
 	Warnings         []string                         `json:"warnings,omitempty"`
+}
+
+func runConfig(args []string) error {
+	if len(args) == 0 || (args[0] != "validate" && args[0] != "schema" && args[0] != "migrate") {
+		return errors.New("config requires validate, schema, or migrate")
+	}
+	switch args[0] {
+	case "migrate":
+		return runConfigMigrate(args[1:])
+	case "schema":
+		return writeOMRConfigSchema()
+	default:
+		return runConfigValidate(args[1:])
+	}
 }
 
 func runConfigMigrate(args []string) error {
