@@ -288,18 +288,8 @@ func runProfileList(args []string) error {
 			if len(profile.ContentSHA256) >= 8 {
 				item.PromptShortHash = profile.ContentSHA256[:8]
 			}
-			// Model info
-			// Read and parse SKILL.md for metadata
-			skillPath := install.ProfilePath(root, profile.Path)
-			if data, readErr := os.ReadFile(skillPath); readErr == nil {
-				if meta, parseErr := manifest.ParseProfileMeta(data); parseErr == nil {
-					item.Description = meta.Description
-					item.ReadOnlyBool = meta.ReadOnly
-					item.AllowedTools = meta.AllowedTools
-					item.InputTypes = meta.InputTypes
-					item.OutputSections = meta.OutputSections
-				}
-			}
+			// Model info and SKILL metadata
+			applyProfileMetadata(&item, root, profile.Path)
 			if agent, ok := configured[profile.ID]; ok {
 				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
 				if agent.Model != "" {

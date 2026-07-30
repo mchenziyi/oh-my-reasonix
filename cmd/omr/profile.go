@@ -5,6 +5,8 @@ import (
 	"os"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
+	"github.com/mchenziyi/oh-my-reasonix/internal/install"
+	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 )
 
 type profileJSON struct {
@@ -59,4 +61,21 @@ func loadProfileConfig(root string) (map[string]omrconfig.AgentConfig, map[strin
 		disabled[profile] = true
 	}
 	return configured, categoryByProfile, disabled, nil
+}
+
+func applyProfileMetadata(item *profileJSON, root, profilePath string) {
+	skillPath := install.ProfilePath(root, profilePath)
+	data, err := os.ReadFile(skillPath)
+	if err != nil {
+		return
+	}
+	meta, err := manifest.ParseProfileMeta(data)
+	if err != nil {
+		return
+	}
+	item.Description = meta.Description
+	item.ReadOnlyBool = meta.ReadOnly
+	item.AllowedTools = meta.AllowedTools
+	item.InputTypes = meta.InputTypes
+	item.OutputSections = meta.OutputSections
 }
