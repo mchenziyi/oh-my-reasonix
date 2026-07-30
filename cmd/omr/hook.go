@@ -44,15 +44,18 @@ func runHook(args []string) error {
 	if len(listResult.Hooks) == 0 {
 		fmt.Println("No hooks found")
 	}
-	fmt.Printf("%-20s %-10s %-8s %s\n", "HOOK", "STATUS", "EVENT", "SCOPE")
+	fmt.Printf("%-20s %-16s %-10s %s\n", "EVENT", "MATCH", "SCOPE", "STATUS")
 	for _, h := range listResult.Hooks {
-		fmt.Printf("%-20s %-10s %-8s %s\n", h.Name, h.Status, h.Event, h.Scope)
+		fmt.Printf("%-20s %-16s %-10s %s\n", h.Event, h.Match, h.Scope, h.Status)
 	}
 	if statusResult.Unavailable {
 		fmt.Printf("STATUS: unavailable — %s\n", statusResult.Error)
 	} else {
-		fmt.Printf("STATUS: active=%d inactive=%d untrusted=%d\n",
-			len(statusResult.Active), len(statusResult.Inactive), len(statusResult.Untrusted))
+		fmt.Printf("STATUS: trusted_project=%t project_defines=%t\n",
+			statusResult.TrustedProject, statusResult.ProjectDefines)
+		for _, source := range statusResult.Sources {
+			fmt.Printf("SOURCE: scope=%s status=%s hooks=%d\n", source.Scope, source.Status, source.HookCount)
+		}
 	}
 	return nil
 }

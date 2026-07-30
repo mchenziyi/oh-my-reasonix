@@ -6,7 +6,7 @@ import (
 )
 
 func TestHookListParsesOutput(t *testing.T) {
-	jsonOutput := `{"hooks":[{"name":"pre-commit","status":"active","event":"commit","scope":"local"}],"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"hook.list","hooks":[{"event":"PreToolUse","match":"Bash","scope":"project","status":"active"}]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -18,8 +18,8 @@ func TestHookListParsesOutput(t *testing.T) {
 	if len(result.Hooks) != 1 {
 		t.Fatalf("expected 1 hook, got %d", len(result.Hooks))
 	}
-	if result.Hooks[0].Name != "pre-commit" {
-		t.Fatalf("expected pre-commit, got %q", result.Hooks[0].Name)
+	if result.Hooks[0].Event != "PreToolUse" || result.Hooks[0].Match != "Bash" {
+		t.Fatalf("unexpected hook: %#v", result.Hooks[0])
 	}
 }
 
@@ -38,7 +38,7 @@ func TestHookListEmpty(t *testing.T) {
 }
 
 func TestTaskListParsesOutput(t *testing.T) {
-	jsonOutput := `{"tasks":[{"id":"task-1","status":"completed","type":"delivery","step":5}],"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"task.list","tasks":[{"id":"task-1","session_id":"session-abc","kind":"subagent","status":"completed","started_at":"2026-07-30T00:00:00Z","finished_at":"2026-07-30T00:01:00Z","artifact_complete":true}]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -50,8 +50,8 @@ func TestTaskListParsesOutput(t *testing.T) {
 	if len(result.Tasks) != 1 {
 		t.Fatalf("expected 1 task, got %d", len(result.Tasks))
 	}
-	if result.Tasks[0].ID != "task-1" {
-		t.Fatalf("expected task-1, got %q", result.Tasks[0].ID)
+	if result.Tasks[0].ID != "task-1" || result.Tasks[0].Kind != "subagent" || !result.Tasks[0].ArtifactComplete {
+		t.Fatalf("unexpected task: %#v", result.Tasks[0])
 	}
 }
 
@@ -70,7 +70,7 @@ func TestTaskListEmpty(t *testing.T) {
 }
 
 func TestTaskShowParsesOutput(t *testing.T) {
-	jsonOutput := `{"id":"task-1","session_id":"session-abc","status":"running","type":"delivery","step":3,"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"task.show","task":{"id":"task-1","session_id":"session-abc","kind":"subagent","status":"running","started_at":"2026-07-30T00:00:00Z","artifact_complete":false}}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -79,16 +79,16 @@ func TestTaskShowParsesOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("TaskShow: %v", err)
 	}
-	if detail.ID != "task-1" {
-		t.Fatalf("expected task-1, got %q", detail.ID)
+	if detail.Task.ID != "task-1" {
+		t.Fatalf("expected task-1, got %q", detail.Task.ID)
 	}
-	if detail.SessionID != "session-abc" {
-		t.Fatalf("expected session-abc, got %q", detail.SessionID)
+	if detail.Task.SessionID != "session-abc" {
+		t.Fatalf("expected session-abc, got %q", detail.Task.SessionID)
 	}
 }
 
 func TestHookStatusParsesOutput(t *testing.T) {
-	jsonOutput := `{"active":[{"name":"pre-commit"}],"inactive":[{"name":"post-push"}],"untrusted":[],"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"hook.status","trusted_project":true,"project_defines":false,"sources":[{"scope":"global","status":"loaded","hook_count":2},{"scope":"project","status":"missing","hook_count":0}]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -100,25 +100,25 @@ func TestHookStatusParsesOutput(t *testing.T) {
 	if out.Unavailable {
 		t.Fatal("expected available=true")
 	}
-	if len(out.Active) != 1 || out.Active[0].Name != "pre-commit" {
-		t.Fatalf("expected 1 active hook 'pre-commit', got: %#v", out.Active)
+	if !out.TrustedProject || out.ProjectDefines {
+		t.Fatalf("unexpected trust status: %#v", out)
 	}
-	if len(out.Inactive) != 1 || out.Inactive[0].Name != "post-push" {
-		t.Fatalf("expected 1 inactive hook 'post-push', got: %#v", out.Inactive)
+	if len(out.Sources) != 2 || out.Sources[0].HookCount != 2 {
+		t.Fatalf("unexpected sources: %#v", out.Sources)
 	}
 }
 
 func TestHookStatusEmpty(t *testing.T) {
 	r := Runner{
 		Binary:         "reasonix",
-		commandFactory: mockCommand(`{"active":[],"inactive":[],"untrusted":[],"schema_version":1}`, 0),
+		commandFactory: mockCommand(`{"schema_version":1,"command":"hook.status","trusted_project":false,"project_defines":false,"sources":[]}`, 0),
 	}
 	out := r.HookStatus(context.Background())
 	if out.Error != "" {
 		t.Fatalf("unexpected HookStatus error: %s", out.Error)
 	}
-	if len(out.Active) != 0 || len(out.Inactive) != 0 {
-		t.Fatalf("expected empty lists, got active=%d inactive=%d", len(out.Active), len(out.Inactive))
+	if len(out.Sources) != 0 {
+		t.Fatalf("expected empty sources, got %d", len(out.Sources))
 	}
 }
 

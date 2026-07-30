@@ -112,6 +112,8 @@ func ParseEventStream(path string) (EventStream, error) {
 	maxLineBytes := 1024 * 1024
 	lineNum := 0
 	lastSeq := -1
+	runDoneTokens := 0
+	runDoneHasUsage := false
 	reader := bufio.NewReaderSize(f, 64*1024)
 
 	for {
@@ -149,6 +151,10 @@ func ParseEventStream(path string) (EventStream, error) {
 		// Check for run_done
 		if rec.Event == "run_done" {
 			stream.RunDone = true
+			if raw.Usage != nil {
+				runDoneTokens = rec.PromptTokens + rec.CompletionTokens
+				runDoneHasUsage = true
+			}
 		}
 		// Validate monotonic seq
 		if rec.Seq > 0 {
@@ -175,6 +181,11 @@ func ParseEventStream(path string) (EventStream, error) {
 				stream.Errors = append(stream.Errors, fmt.Sprintf("event %d: run_done must be final", i+1))
 			}
 		}
+	}
+	// Native Reasonix run_done usage is the cumulative total for the run.
+	// Earlier usage events repeat that total and must not be added again.
+	if stream.RunDone && runDoneHasUsage {
+		stream.TotalTokens = runDoneTokens
 	}
 	return stream, nil
 }

@@ -80,8 +80,9 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
 	} else {
 		result.Checks = append(result.Checks, Check{Name: "reasonix.binary", Status: "PASS", Detail: "found: " + binary})
+		runner := reasonix.Runner{Binary: binary, ProjectDir: root}
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		probe, probeErr := (reasonix.Runner{Binary: binary, ProjectDir: root}).Probe(ctx)
+		probe, probeErr := runner.Probe(ctx)
 		cancel()
 		if probeErr != nil {
 			result.Errors = append(result.Errors, probeErr.Error())
@@ -98,17 +99,23 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 				result.Errors = append(result.Errors, fmt.Sprintf("Reasonix capability %q unavailable: %s", capability.Name, capability.Detail))
 			}
 		}
-		// Hook doctor: check if Reasonix supports hooks
-		hookCheck := Check{
-			Name:   "reasonix.hooks",
-			Status: "UNSUPPORTED",
-			Detail: "Reasonix 尚无 Hook 查询接口；OMR Hook 策略提示为纯文本建议，不由运行时强制执行",
-		}
-		// Reasonix v1.17.x doesn't have hook CLI; check if config references hooks
-		hookConfigPath := filepath.Join(root, ".reasonix", "hooks.yaml")
-		if _, err := os.Stat(hookConfigPath); err == nil {
-			hookCheck.Status = "WARN"
-			hookCheck.Detail = "存在 .reasonix/hooks.yaml 配置文件，但宿主尚不提供 Hook 运行时执行"
+		hookCtx, hookCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		hookList, hookErr := runner.HookList(hookCtx)
+		hookStatus := runner.HookStatus(hookCtx)
+		hookCancel()
+		hookCheck := Check{Name: "reasonix.hooks"}
+		if hookErr == nil && !hookStatus.Unavailable {
+			hookCheck.Status = "PASS"
+			hookCheck.Detail = fmt.Sprintf("hook list/status available (%d hook(s), %d source(s))",
+				len(hookList.Hooks), len(hookStatus.Sources))
+		} else {
+			hookCheck.Status = "UNSUPPORTED"
+			hookCheck.Detail = "Reasonix Hook 查询接口不可用"
+			if hookErr != nil {
+				hookCheck.Detail += ": " + hookErr.Error()
+			} else if hookStatus.Error != "" {
+				hookCheck.Detail += ": " + hookStatus.Error
+			}
 		}
 		result.Checks = append(result.Checks, hookCheck)
 	}

@@ -619,10 +619,12 @@ func TestHookDoctorJSON(t *testing.T) {
 			SchemaVersion int   `json:"schema_version"`
 		} `json:"list"`
 		Status struct {
-			SchemaVersion int `json:"schema_version"`
-			Active        []struct {
-				Name string `json:"name"`
-			} `json:"active"`
+			SchemaVersion  int  `json:"schema_version"`
+			TrustedProject bool `json:"trusted_project"`
+			Sources        []struct {
+				Scope     string `json:"scope"`
+				HookCount int    `json:"hook_count"`
+			} `json:"sources"`
 		} `json:"status"`
 	}
 	if err := json.Unmarshal(data, &result); err != nil {
@@ -634,8 +636,8 @@ func TestHookDoctorJSON(t *testing.T) {
 	if result.Status.SchemaVersion != 1 {
 		t.Fatalf("expected status schema_version=1, got: %s", data)
 	}
-	if len(result.Status.Active) != 1 || result.Status.Active[0].Name != "test-hook" {
-		t.Fatalf("expected test-hook in active hooks, got: %s", data)
+	if !result.Status.TrustedProject || len(result.Status.Sources) != 1 || result.Status.Sources[0].HookCount != 1 {
+		t.Fatalf("expected trusted project hook source, got: %s", data)
 	}
 }
 
@@ -664,14 +666,14 @@ func TestHookDoctorHumanOutput(t *testing.T) {
 		t.Fatal(err)
 	}
 	output := string(data)
-	if !strings.Contains(output, "HOOK") || !strings.Contains(output, "STATUS") {
-		t.Fatalf("expected human table header HOOK/STATUS, got: %s", output)
+	if !strings.Contains(output, "EVENT") || !strings.Contains(output, "STATUS") {
+		t.Fatalf("expected human table header EVENT/STATUS, got: %s", output)
 	}
-	if !strings.Contains(output, "active=") {
-		t.Fatalf("expected status with active count, got: %s", output)
+	if !strings.Contains(output, "trusted_project=true") {
+		t.Fatalf("expected trusted project status, got: %s", output)
 	}
-	if !strings.Contains(output, "test-hook") {
-		t.Fatalf("expected test-hook in table, got: %s", output)
+	if !strings.Contains(output, "PreToolUse") || !strings.Contains(output, "Bash") {
+		t.Fatalf("expected hook event and matcher in table, got: %s", output)
 	}
 }
 

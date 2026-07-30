@@ -249,9 +249,26 @@ func TestParseEventStreamV1_17_20_TokenSummary(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseEventStream: %v", err)
 	}
-	// TotalTokens should sum across all events: (10+0)+(0+5)+(100+80) = 195
-	if stream.TotalTokens != 195 {
-		t.Fatalf("expected TotalTokens=195, got %d", stream.TotalTokens)
+	// run_done carries the authoritative cumulative usage. Earlier usage
+	// events must not be added again.
+	if stream.TotalTokens != 180 {
+		t.Fatalf("expected TotalTokens=180, got %d", stream.TotalTokens)
+	}
+}
+
+func TestParseEventStreamDoesNotDoubleCountUsageAndRunDone(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "events.jsonl")
+	writeEventsFile(t, path, []string{
+		`{"schema_version":1,"sequence":1,"kind":"usage","usage":{"input_tokens":14943,"output_tokens":32,"cache_hit_tokens":0,"cache_miss_tokens":14943}}`,
+		`{"schema_version":1,"sequence":2,"kind":"run_done","ok":true,"usage":{"input_tokens":14943,"output_tokens":32,"cache_hit_tokens":0,"cache_miss_tokens":14943}}`,
+	})
+	stream, err := ParseEventStream(path)
+	if err != nil {
+		t.Fatalf("ParseEventStream: %v", err)
+	}
+	if stream.TotalTokens != 14975 {
+		t.Fatalf("expected TotalTokens=14975, got %d", stream.TotalTokens)
 	}
 }
 

@@ -9,47 +9,45 @@ import (
 
 // SessionInfo corresponds to a single entry in reasonix session list --json output.
 type SessionInfo struct {
-	BranchID      string `json:"branch_id"`
-	Status        string `json:"status"`
-	Scope         string `json:"scope,omitempty"`
-	Turn          int    `json:"turn,omitempty"`
-	Lifecycle     string `json:"lifecycle,omitempty"`
-	Recovered     bool   `json:"recovered,omitempty"`
-	SchemaVersion int    `json:"schema_version"`
+	ID        string `json:"id"`
+	CreatedAt string `json:"created_at"`
+	UpdatedAt string `json:"updated_at"`
+	Scope     string `json:"scope"`
+	Turns     int    `json:"turns"`
+	State     string `json:"state"`
+	Recovered bool   `json:"recovered"`
 }
 
 // SessionListOutput wraps the full reasonix session list --json response.
 type SessionListOutput struct {
 	Sessions      []SessionInfo `json:"sessions"`
 	SchemaVersion int           `json:"schema_version"`
+	Command       string        `json:"command"`
 	ExitCode      int           `json:"exit_code"`
 	Stderr        string        `json:"stderr,omitempty"`
 }
 
 // SessionDetail corresponds to reasonix session show|status --json output.
 type SessionDetail struct {
-	BranchID      string `json:"branch_id"`
-	Status        string `json:"status"`
-	Scope         string `json:"scope,omitempty"`
-	Turn          int    `json:"turn,omitempty"`
-	Lifecycle     string `json:"lifecycle,omitempty"`
-	Recovered     bool   `json:"recovered,omitempty"`
-	SchemaVersion int    `json:"schema_version"`
-	Stderr        string `json:"stderr,omitempty"`
-	ExitCode      int    `json:"exit_code"`
+	Session       SessionInfo `json:"session"`
+	SchemaVersion int         `json:"schema_version"`
+	Command       string      `json:"command"`
+	Stderr        string      `json:"stderr,omitempty"`
+	ExitCode      int         `json:"exit_code"`
 }
 
-// dirArg returns --dir <path> when ProjectDir is set.
-func (r Runner) dirArg() []string {
+// projectRootArg maps an OMR project directory to Reasonix's project-scoped
+// session store. --dir has different semantics: it names the store itself.
+func (r Runner) projectRootArg() []string {
 	if r.ProjectDir == "" {
 		return nil
 	}
-	return []string{"--dir", r.ProjectDir}
+	return []string{"--project-root", r.ProjectDir}
 }
 
 // SessionList calls reasonix session list --json and parses the result.
 func (r Runner) SessionList(ctx context.Context) (SessionListOutput, error) {
-	result := r.Run(ctx, append([]string{"session", "list", "--json"}, r.dirArg()...)...)
+	result := r.Run(ctx, append([]string{"session", "list", "--json"}, r.projectRootArg()...)...)
 	out := SessionListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
 		return out, fmt.Errorf("reasonix session list failed (exit %d): %w", result.ExitCode, result.Err)
@@ -62,7 +60,7 @@ func (r Runner) SessionList(ctx context.Context) (SessionListOutput, error) {
 
 // SessionStatus calls reasonix session status <branch-id> --json.
 func (r Runner) SessionStatus(ctx context.Context, branchID string) (SessionDetail, error) {
-	args := append([]string{"session", "status", branchID, "--json"}, r.dirArg()...)
+	args := append([]string{"session", "status", branchID, "--json"}, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	detail := SessionDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -76,7 +74,7 @@ func (r Runner) SessionStatus(ctx context.Context, branchID string) (SessionDeta
 
 // SessionShow calls reasonix session show <branch-id> --json.
 func (r Runner) SessionShow(ctx context.Context, branchID string) (SessionDetail, error) {
-	args := append([]string{"session", "show", branchID, "--json"}, r.dirArg()...)
+	args := append([]string{"session", "show", branchID, "--json"}, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	detail := SessionDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -90,47 +88,44 @@ func (r Runner) SessionShow(ctx context.Context, branchID string) (SessionDetail
 
 // HookInfo corresponds to a single entry in reasonix hook list --json output.
 type HookInfo struct {
-	Name    string `json:"name"`
-	Status  string `json:"status"`
-	Source  string `json:"source,omitempty"`
-	Matcher string `json:"matcher,omitempty"`
-	Event   string `json:"event,omitempty"`
-	Scope   string `json:"scope,omitempty"`
+	Event  string `json:"event"`
+	Match  string `json:"match,omitempty"`
+	Scope  string `json:"scope"`
+	Status string `json:"status"`
 }
 
 // HookListOutput wraps the reasonix hook list --json response.
 type HookListOutput struct {
 	Hooks         []HookInfo `json:"hooks"`
 	SchemaVersion int        `json:"schema_version"`
+	Command       string     `json:"command"`
 	ExitCode      int        `json:"exit_code"`
 	Stderr        string     `json:"stderr,omitempty"`
+}
+
+type HookSource struct {
+	Scope     string `json:"scope"`
+	Status    string `json:"status"`
+	HookCount int    `json:"hook_count"`
 }
 
 // HookStatusOutput wraps the reasonix hook status --json response.
 // Always populated; errors are captured in Error/Unavailable fields.
 type HookStatusOutput struct {
-	Active        []HookInfo `json:"active,omitempty"`
-	Inactive      []HookInfo `json:"inactive,omitempty"`
-	Untrusted     []HookInfo `json:"untrusted,omitempty"`
-	SchemaVersion int        `json:"schema_version"`
-	ExitCode      int        `json:"exit_code"`
-	Stderr        string     `json:"stderr,omitempty"`
-	Error         string     `json:"error,omitempty"`
-	Unavailable   bool       `json:"unavailable,omitempty"`
-}
-
-// hookDirArgs returns CLI args for hook commands.
-func (r Runner) hookDirArgs() []string {
-	var args []string
-	if r.ProjectDir != "" {
-		args = append(args, "--dir", r.ProjectDir)
-	}
-	return args
+	TrustedProject bool         `json:"trusted_project"`
+	ProjectDefines bool         `json:"project_defines"`
+	Sources        []HookSource `json:"sources"`
+	SchemaVersion  int          `json:"schema_version"`
+	Command        string       `json:"command"`
+	ExitCode       int          `json:"exit_code"`
+	Stderr         string       `json:"stderr,omitempty"`
+	Error          string       `json:"error,omitempty"`
+	Unavailable    bool         `json:"unavailable,omitempty"`
 }
 
 // HookList calls reasonix hook list --json.
 func (r Runner) HookList(ctx context.Context) (HookListOutput, error) {
-	args := append([]string{"hook", "list", "--json"}, r.hookDirArgs()...)
+	args := append([]string{"hook", "list", "--json"}, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	out := HookListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -145,7 +140,7 @@ func (r Runner) HookList(ctx context.Context) (HookListOutput, error) {
 // HookStatus calls reasonix hook status --json.
 // Always returns a result; errors are captured in Error/Unavailable fields.
 func (r Runner) HookStatus(ctx context.Context) HookStatusOutput {
-	args := append([]string{"hook", "status", "--json"}, r.hookDirArgs()...)
+	args := append([]string{"hook", "status", "--json"}, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	out := HookStatusOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -162,17 +157,20 @@ func (r Runner) HookStatus(ctx context.Context) HookStatusOutput {
 
 // TaskInfo corresponds to a single entry in reasonix task list --json output.
 type TaskInfo struct {
-	ID        string `json:"id"`
-	SessionID string `json:"session_id,omitempty"`
-	Type      string `json:"type,omitempty"`
-	Status    string `json:"status"`
-	Step      int    `json:"step,omitempty"`
+	ID               string `json:"id"`
+	SessionID        string `json:"session_id"`
+	Kind             string `json:"kind"`
+	Status           string `json:"status"`
+	StartedAt        string `json:"started_at"`
+	FinishedAt       string `json:"finished_at,omitempty"`
+	ArtifactComplete bool   `json:"artifact_complete"`
 }
 
 // TaskListOutput wraps the reasonix task list --json response.
 type TaskListOutput struct {
 	Tasks         []TaskInfo `json:"tasks"`
 	SchemaVersion int        `json:"schema_version"`
+	Command       string     `json:"command"`
 	ExitCode      int        `json:"exit_code"`
 	Stderr        string     `json:"stderr,omitempty"`
 }
@@ -183,7 +181,7 @@ func (r Runner) TaskList(ctx context.Context, sessionID string) (TaskListOutput,
 	if sessionID != "" {
 		args = append(args, "--session", sessionID)
 	}
-	args = append(args, r.dirArg()...)
+	args = append(args, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	out := TaskListOutput{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -197,14 +195,11 @@ func (r Runner) TaskList(ctx context.Context, sessionID string) (TaskListOutput,
 
 // TaskDetail corresponds to reasonix task show <task-id> --json output.
 type TaskDetail struct {
-	ID            string `json:"id"`
-	SessionID     string `json:"session_id,omitempty"`
-	Type          string `json:"type,omitempty"`
-	Status        string `json:"status"`
-	Step          int    `json:"step,omitempty"`
-	SchemaVersion int    `json:"schema_version"`
-	ExitCode      int    `json:"exit_code"`
-	Stderr        string `json:"stderr,omitempty"`
+	Task          TaskInfo `json:"task"`
+	SchemaVersion int      `json:"schema_version"`
+	Command       string   `json:"command"`
+	ExitCode      int      `json:"exit_code"`
+	Stderr        string   `json:"stderr,omitempty"`
 }
 
 // TaskShow calls reasonix task show <task-id> --json, optionally with sessionID.
@@ -213,7 +208,7 @@ func (r Runner) TaskShow(ctx context.Context, taskID, sessionID string) (TaskDet
 	if sessionID != "" {
 		args = append(args, "--session", sessionID)
 	}
-	args = append(args, r.dirArg()...)
+	args = append(args, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	detail := TaskDetail{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {
@@ -225,15 +220,23 @@ func (r Runner) TaskShow(ctx context.Context, taskID, sessionID string) (TaskDet
 	return detail, nil
 }
 
+type RecoveryEntry struct {
+	SessionID string `json:"session_id"`
+	State     string `json:"state"`
+	UpdatedAt string `json:"updated_at"`
+	Tasks     int    `json:"tasks"`
+	Failures  int    `json:"failures"`
+	Pending   int    `json:"pending"`
+	InFlight  bool   `json:"in_flight"`
+}
+
 // RecoveryInfo corresponds to reasonix session recovery --json output.
 type RecoveryInfo struct {
-	BranchID      string `json:"branch_id"`
-	Status        string `json:"status"`
-	TasksTotal    int    `json:"tasks_total,omitempty"`
-	TasksFailed   int    `json:"tasks_failed,omitempty"`
-	SchemaVersion int    `json:"schema_version"`
-	ExitCode      int    `json:"exit_code"`
-	Stderr        string `json:"stderr,omitempty"`
+	Recoveries    []RecoveryEntry `json:"recoveries"`
+	SchemaVersion int             `json:"schema_version"`
+	Command       string          `json:"command"`
+	ExitCode      int             `json:"exit_code"`
+	Stderr        string          `json:"stderr,omitempty"`
 }
 
 // SessionRecovery calls reasonix session recovery [<branch-id>] --json.
@@ -243,7 +246,7 @@ func (r Runner) SessionRecovery(ctx context.Context, branchID string) (RecoveryI
 		args = append(args, branchID)
 	}
 	args = append(args, "--json")
-	args = append(args, r.dirArg()...)
+	args = append(args, r.projectRootArg()...)
 	result := r.Run(ctx, args...)
 	info := RecoveryInfo{ExitCode: result.ExitCode, Stderr: result.Stderr}
 	if result.Err != nil {

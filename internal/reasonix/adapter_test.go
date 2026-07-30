@@ -23,7 +23,7 @@ func mockCommand(stdout string, exitCode int) commandFactory {
 }
 
 func TestSessionListParsesOutput(t *testing.T) {
-	jsonOutput := `{"sessions":[{"branch_id":"abc","status":"running","scope":"delivery","turn":5,"lifecycle":"active","recovered":false,"schema_version":1}],"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"session.list","sessions":[{"id":"session-abc","created_at":"2026-07-30T00:00:00Z","updated_at":"2026-07-30T00:01:00Z","scope":"project","turns":5,"state":"active","recovered":false}]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -35,8 +35,31 @@ func TestSessionListParsesOutput(t *testing.T) {
 	if len(result.Sessions) != 1 {
 		t.Fatalf("expected 1 session, got %d", len(result.Sessions))
 	}
-	if result.Sessions[0].BranchID != "abc" {
-		t.Fatalf("expected branch_id=abc, got %q", result.Sessions[0].BranchID)
+	if result.Sessions[0].ID != "session-abc" || result.Sessions[0].State != "active" || result.Sessions[0].Turns != 5 {
+		t.Fatalf("unexpected session: %#v", result.Sessions[0])
+	}
+}
+
+func TestMachineCommandsUseProjectRoot(t *testing.T) {
+	var captured []string
+	projectDir := t.TempDir()
+	r := Runner{
+		Binary:     "reasonix",
+		ProjectDir: projectDir,
+		commandFactory: func(ctx context.Context, name string, args ...string) *exec.Cmd {
+			captured = append([]string(nil), args...)
+			return exec.CommandContext(ctx, "echo", `{"schema_version":1,"command":"session.list","sessions":[]}`)
+		},
+	}
+	if _, err := r.SessionList(context.Background()); err != nil {
+		t.Fatalf("SessionList: %v", err)
+	}
+	joined := strings.Join(captured, " ")
+	if !strings.Contains(joined, "--project-root "+projectDir) {
+		t.Fatalf("expected --project-root, got %q", joined)
+	}
+	if strings.Contains(joined, "--dir") {
+		t.Fatalf("project directory must not be forwarded as --dir: %q", joined)
 	}
 }
 
@@ -78,7 +101,7 @@ func TestSessionListInvalidJSON(t *testing.T) {
 }
 
 func TestSessionStatusParsesOutput(t *testing.T) {
-	jsonOutput := `{"branch_id":"test-branch","status":"completed","turn":3,"lifecycle":"done","recovered":true,"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"session.status","session":{"id":"session-test","created_at":"2026-07-30T00:00:00Z","updated_at":"2026-07-30T00:01:00Z","scope":"project","turns":3,"state":"idle","recovered":true}}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -87,16 +110,16 @@ func TestSessionStatusParsesOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SessionStatus: %v", err)
 	}
-	if detail.BranchID != "test-branch" {
-		t.Fatalf("expected branch_id=test-branch, got %q", detail.BranchID)
+	if detail.Session.ID != "session-test" {
+		t.Fatalf("expected session-test, got %q", detail.Session.ID)
 	}
-	if !detail.Recovered {
+	if !detail.Session.Recovered {
 		t.Fatal("expected recovered=true")
 	}
 }
 
 func TestSessionShowParsesOutput(t *testing.T) {
-	jsonOutput := `{"branch_id":"show-branch","status":"running","turn":2,"lifecycle":"active","recovered":false,"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"session.show","session":{"id":"session-show","created_at":"2026-07-30T00:00:00Z","updated_at":"2026-07-30T00:01:00Z","scope":"project","turns":2,"state":"active","recovered":false}}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -105,8 +128,8 @@ func TestSessionShowParsesOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SessionShow: %v", err)
 	}
-	if detail.BranchID != "show-branch" {
-		t.Fatalf("expected branch_id=show-branch, got %q", detail.BranchID)
+	if detail.Session.ID != "session-show" {
+		t.Fatalf("expected session-show, got %q", detail.Session.ID)
 	}
 }
 
@@ -246,7 +269,7 @@ func TestRunWithEventsParsesRunDoneAndTokens(t *testing.T) {
 }
 
 func TestSessionRecoveryParsesOutput(t *testing.T) {
-	jsonOutput := `{"branch_id":"recovery-branch","status":"partial","tasks_total":10,"tasks_failed":2,"schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"session.recovery","recoveries":[{"session_id":"session-recovery","state":"partial","updated_at":"2026-07-30T00:00:00Z","tasks":10,"failures":2,"pending":3,"in_flight":true}]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -255,22 +278,17 @@ func TestSessionRecoveryParsesOutput(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SessionRecovery: %v", err)
 	}
-	if info.BranchID != "recovery-branch" {
-		t.Fatalf("expected branch_id=recovery-branch, got %q", info.BranchID)
+	if len(info.Recoveries) != 1 {
+		t.Fatalf("expected one recovery, got %#v", info.Recoveries)
 	}
-	if info.Status != "partial" {
-		t.Fatalf("expected status=partial, got %q", info.Status)
-	}
-	if info.TasksTotal != 10 {
-		t.Fatalf("expected tasks_total=10, got %d", info.TasksTotal)
-	}
-	if info.TasksFailed != 2 {
-		t.Fatalf("expected tasks_failed=2, got %d", info.TasksFailed)
+	got := info.Recoveries[0]
+	if got.SessionID != "session-recovery" || got.State != "partial" || got.Tasks != 10 || got.Failures != 2 || got.Pending != 3 || !got.InFlight {
+		t.Fatalf("unexpected recovery: %#v", got)
 	}
 }
 
 func TestSessionRecoveryEmptyBranch(t *testing.T) {
-	jsonOutput := `{"branch_id":"","status":"unknown","schema_version":1}`
+	jsonOutput := `{"schema_version":1,"command":"session.recovery","recoveries":[]}`
 	r := Runner{
 		Binary:         "reasonix",
 		commandFactory: mockCommand(jsonOutput, 0),
@@ -279,8 +297,8 @@ func TestSessionRecoveryEmptyBranch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SessionRecovery: %v", err)
 	}
-	if info.BranchID != "" {
-		t.Fatalf("expected empty branch_id, got %q", info.BranchID)
+	if len(info.Recoveries) != 0 {
+		t.Fatalf("expected empty recoveries, got %#v", info.Recoveries)
 	}
 }
 

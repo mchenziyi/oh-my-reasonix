@@ -55,14 +55,15 @@ func runSessionList(args []string) error {
 		fmt.Println("No sessions found")
 		return nil
 	}
-	fmt.Printf("%-24s %-10s %-8s %s\n", "BRANCH ID", "STATUS", "SCOPE", "TURN")
+	fmt.Printf("%-40s %-10s %-8s %s\n", "SESSION ID", "STATE", "SCOPE", "TURNS")
 	for _, s := range result.Sessions {
-		fmt.Printf("%-24s %-10s %-8s %d\n", s.BranchID, s.Status, s.Scope, s.Turn)
+		fmt.Printf("%-40s %-10s %-8s %d\n", s.ID, s.State, s.Scope, s.Turns)
 	}
 	return nil
 }
 
 func runSessionStatus(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
 	flags := flag.NewFlagSet("session status", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
@@ -82,19 +83,19 @@ func runSessionStatus(args []string) error {
 	if *jsonOutput {
 		return writeJSONOutput(detail)
 	}
-	fmt.Printf("Branch ID:  %s\n", detail.BranchID)
-	fmt.Printf("Status:     %s\n", detail.Status)
-	if detail.Scope != "" {
-		fmt.Printf("Scope:      %s\n", detail.Scope)
+	fmt.Printf("Session ID: %s\n", detail.Session.ID)
+	fmt.Printf("State:      %s\n", detail.Session.State)
+	if detail.Session.Scope != "" {
+		fmt.Printf("Scope:      %s\n", detail.Session.Scope)
 	}
-	fmt.Printf("Turn:       %d\n", detail.Turn)
-	fmt.Printf("Lifecycle:  %s\n", detail.Lifecycle)
-	fmt.Printf("Recovered:  %t\n", detail.Recovered)
+	fmt.Printf("Turns:      %d\n", detail.Session.Turns)
+	fmt.Printf("Recovered:  %t\n", detail.Session.Recovered)
 	fmt.Printf("Schema:     %d\n", detail.SchemaVersion)
 	return nil
 }
 
 func runSessionShow(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
 	flags := flag.NewFlagSet("session show", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
@@ -114,15 +115,16 @@ func runSessionShow(args []string) error {
 	if *jsonOutput {
 		return writeJSONOutput(detail)
 	}
-	fmt.Printf("Branch ID:  %s\n", detail.BranchID)
-	fmt.Printf("Status:     %s\n", detail.Status)
-	fmt.Printf("Turn:       %d\n", detail.Turn)
-	fmt.Printf("Lifecycle:  %s\n", detail.Lifecycle)
+	fmt.Printf("Session ID: %s\n", detail.Session.ID)
+	fmt.Printf("State:      %s\n", detail.Session.State)
+	fmt.Printf("Turns:      %d\n", detail.Session.Turns)
+	fmt.Printf("Recovered:  %t\n", detail.Session.Recovered)
 	fmt.Printf("Schema:     %d\n", detail.SchemaVersion)
 	return nil
 }
 
 func runSessionRecovery(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
 	flags := flag.NewFlagSet("session recovery", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
@@ -143,10 +145,15 @@ func runSessionRecovery(args []string) error {
 	if *jsonOutput {
 		return writeJSONOutput(info)
 	}
-	fmt.Printf("Branch ID:    %s\n", info.BranchID)
-	fmt.Printf("Status:       %s\n", info.Status)
-	fmt.Printf("Tasks Total:  %d\n", info.TasksTotal)
-	fmt.Printf("Tasks Failed: %d\n", info.TasksFailed)
+	if len(info.Recoveries) == 0 {
+		fmt.Println("No recovery state found")
+		return nil
+	}
+	fmt.Printf("%-40s %-12s %-6s %-8s %-8s %s\n", "SESSION ID", "STATE", "TASKS", "FAILURES", "PENDING", "IN FLIGHT")
+	for _, recovery := range info.Recoveries {
+		fmt.Printf("%-40s %-12s %-6d %-8d %-8d %t\n",
+			recovery.SessionID, recovery.State, recovery.Tasks, recovery.Failures, recovery.Pending, recovery.InFlight)
+	}
 	return nil
 }
 

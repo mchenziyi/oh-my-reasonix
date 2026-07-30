@@ -16,10 +16,10 @@ func makeMockReasonixBinary(t *testing.T, dir string) string {
 set -e
 case "$*" in
 	*"hook list"*)
-		echo '{"hooks":[{"name":"test-hook","status":"active","event":"commit","scope":"local"}],"schema_version":1}'
+		echo '{"schema_version":1,"command":"hook.list","hooks":[{"event":"PreToolUse","match":"Bash","scope":"project","status":"active"}]}'
 		;;
 	*"hook status"*)
-		echo '{"active":[{"name":"test-hook"}],"inactive":[],"untrusted":[],"schema_version":1}'
+		echo '{"schema_version":1,"command":"hook.status","trusted_project":true,"project_defines":true,"sources":[{"scope":"project","status":"loaded","hook_count":1}]}'
 		;;
 	*)
 		echo '{"error":"unexpected args: $*"}' >&2

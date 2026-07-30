@@ -42,14 +42,15 @@ func runTaskList(args []string) error {
 		fmt.Println("No tasks found")
 		return nil
 	}
-	fmt.Printf("%-24s %-10s %-8s %s\n", "TASK ID", "STATUS", "TYPE", "STEP")
+	fmt.Printf("%-24s %-10s %-12s %s\n", "TASK ID", "STATUS", "KIND", "STARTED")
 	for _, t := range result.Tasks {
-		fmt.Printf("%-24s %-10s %-8s %d\n", t.ID, t.Status, t.Type, t.Step)
+		fmt.Printf("%-24s %-10s %-12s %s\n", t.ID, t.Status, t.Kind, t.StartedAt)
 	}
 	return nil
 }
 
 func runTaskShow(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
 	flags := flag.NewFlagSet("task show", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
@@ -70,10 +71,14 @@ func runTaskShow(args []string) error {
 	if *jsonOutput {
 		return writeJSONOutput(detail)
 	}
-	fmt.Printf("Task ID:    %s\n", detail.ID)
-	fmt.Printf("Status:     %s\n", detail.Status)
-	fmt.Printf("Type:       %s\n", detail.Type)
-	fmt.Printf("Step:       %d\n", detail.Step)
-	fmt.Printf("Session:    %s\n", detail.SessionID)
+	fmt.Printf("Task ID:           %s\n", detail.Task.ID)
+	fmt.Printf("Status:            %s\n", detail.Task.Status)
+	fmt.Printf("Kind:              %s\n", detail.Task.Kind)
+	fmt.Printf("Session:           %s\n", detail.Task.SessionID)
+	fmt.Printf("Started:           %s\n", detail.Task.StartedAt)
+	if detail.Task.FinishedAt != "" {
+		fmt.Printf("Finished:          %s\n", detail.Task.FinishedAt)
+	}
+	fmt.Printf("Artifact complete: %t\n", detail.Task.ArtifactComplete)
 	return nil
 }

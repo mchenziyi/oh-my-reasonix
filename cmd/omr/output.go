@@ -7,7 +7,18 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
+
+// normalizeLeadingTargetArgs accepts the documented "<target> [flags]" form
+// even though Go's flag package stops parsing at the first positional argument.
+func normalizeLeadingTargetArgs(args []string) []string {
+	if len(args) < 2 || strings.HasPrefix(args[0], "-") {
+		return args
+	}
+	normalized := append([]string(nil), args[1:]...)
+	return append(normalized, args[0])
+}
 
 func projectRelativePath(projectDir, path string) string {
 	if filepath.IsAbs(path) {
