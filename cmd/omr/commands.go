@@ -164,24 +164,14 @@ func runConfig(args []string) error {
 		// Missing config is not an error — it means the project is not yet configured.
 		if os.IsNotExist(err) {
 			if *jsonOutput {
-				_ = json.NewEncoder(os.Stdout).Encode(struct {
-					Path       string `json:"path"`
-					Valid      bool   `json:"valid"`
-					Configured bool   `json:"configured"`
-				}{Path: path, Valid: true, Configured: false})
+				_ = json.NewEncoder(os.Stdout).Encode(configValidationMissing{Path: path, Valid: true, Configured: false})
 			} else {
 				fmt.Printf("No OMR config found at %s (project not yet configured)\n", path)
 			}
 			return nil
 		}
 		if *jsonOutput {
-			_ = json.NewEncoder(os.Stdout).Encode(struct {
-				Path       string   `json:"path"`
-				Valid      bool     `json:"valid"`
-				Configured bool     `json:"configured"`
-				Error      string   `json:"error"`
-				Errors     []string `json:"errors"`
-			}{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: []string{err.Error()}})
+			_ = json.NewEncoder(os.Stdout).Encode(configValidationError{Path: path, Valid: false, Configured: true, Error: err.Error(), Errors: []string{err.Error()}})
 		}
 		return err
 	}

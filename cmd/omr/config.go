@@ -11,6 +11,33 @@ import (
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 )
 
+type configValidationMissing struct {
+	Path       string `json:"path"`
+	Valid      bool   `json:"valid"`
+	Configured bool   `json:"configured"`
+}
+
+type configValidationError struct {
+	Path       string   `json:"path"`
+	Valid      bool     `json:"valid"`
+	Configured bool     `json:"configured"`
+	Error      string   `json:"error"`
+	Errors     []string `json:"errors"`
+}
+
+type configValidationOutput struct {
+	Path             string                           `json:"path"`
+	Valid            bool                             `json:"valid"`
+	Configured       bool                             `json:"configured"`
+	Agents           map[string]omrconfig.AgentConfig `json:"agents"`
+	Categories       map[string]string                `json:"categories"`
+	Concurrency      int                              `json:"concurrency"`
+	MaxCost          float64                          `json:"max_cost"`
+	DisabledProfiles []string                         `json:"disabled_profiles"`
+	MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
+	Warnings         []string                         `json:"warnings,omitempty"`
+}
+
 func runConfigMigrate(args []string) error {
 	flags := flag.NewFlagSet("config migrate", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
