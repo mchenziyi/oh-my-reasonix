@@ -36,10 +36,10 @@
 
 - [x] 将 `runBenchmark` 和缓存基准移至 `cmd/omr/benchmark.go`
 - [x] 将质量评分门禁和结果读取辅助逻辑移至 `cmd/omr/benchmark.go`
+- [x] 将质量 Benchmark 参数解析和主流程移至 `cmd/omr/benchmark.go`
 - [x] 保持 replay、fixture、run-id、质量门禁参数兼容
 - [x] 验证缓存基准回归测试
 - [x] 保持质量 Benchmark 全部既有 flag 默认值和配置覆盖行为
-- [ ] 将 `runQualityBenchmark` 主流程移至独立文件
 - [ ] 运行质量基准和 CLI Smoke
 
 ### CLI-REF-03：Config 命令拆分（进行中）

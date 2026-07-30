@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -10,15 +9,12 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"sync"
-	"time"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/claude"
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
-	"github.com/mchenziyi/oh-my-reasonix/internal/qualitybench"
 )
 
 func runInstall(args []string, upgrade bool) error {
@@ -349,217 +345,6 @@ func runProfileList(args []string) error {
 			model = agent.Model + " (proj)"
 		}
 		fmt.Printf("%-16s %-8s %-10s %-18s %s\n", id, "project", "missing", model, "")
-	}
-	return nil
-}
-
-func runQualityBenchmark(args []string) error {
-	o, err := parseQualityBenchmarkOptions(args)
-	if err != nil {
-		return err
-	}
-	flags := o.flags
-	fixturesRoot, resultsPath, nativeResultsPath, omrResultsPath, outputPath := o.fixturesRoot, o.resultsPath, o.nativeResultsPath, o.omrResultsPath, o.outputPath
-	replay, paired, runtimeRun, runTests := o.replay, o.paired, o.runtimeRun, o.runTests
-	projectDir, binary, metricsDir, eventsPath, model, configPath := o.projectDir, o.binary, o.metricsDir, o.eventsPath, o.model, o.configPath
-	maxSteps, concurrency, timeout := o.maxSteps, o.concurrency, o.timeout
-	minQualifiedRate, maxCost, runIDFlag := o.minQualifiedRate, o.maxCost, o.runIDFlag
-	runID := "omr-" + time.Now().Format("20060102-150405")
-	if strings.TrimSpace(*runIDFlag) != "" {
-		runID = strings.TrimSpace(*runIDFlag)
-	}
-	configFile := *configPath
-	if configFile == "" {
-		configFile = omrconfig.FindConfig(*projectDir)
-	}
-	if cfg, configErr := omrconfig.Load(configFile); configErr == nil {
-		if !flagWasSet(flags, "fixtures") && cfg.Fixtures != "" {
-			*fixturesRoot = projectRelativePath(*projectDir, cfg.Fixtures)
-		}
-		if !flagWasSet(flags, "metrics-dir") && cfg.MetricsDir != "" {
-			*metricsDir = projectRelativePath(*projectDir, cfg.MetricsDir)
-		}
-		if !flagWasSet(flags, "model") && cfg.Model != "" {
-			*model = cfg.Model
-		}
-		if !flagWasSet(flags, "max-steps") && cfg.MaxSteps != 0 {
-			*maxSteps = cfg.MaxSteps
-		}
-		if !flagWasSet(flags, "concurrency") && cfg.Concurrency != 0 {
-			*concurrency = cfg.Concurrency
-		}
-		if !flagWasSet(flags, "timeout") && cfg.TimeoutSet {
-			*timeout = cfg.Timeout
-		}
-		if !flagWasSet(flags, "min-qualified-rate") && cfg.MinQualifiedRateSet {
-			*minQualifiedRate = cfg.MinQualifiedRate
-		}
-		if !flagWasSet(flags, "max-cost") && cfg.MaxCostSet {
-			*maxCost = cfg.MaxCost
-		}
-	} else if !os.IsNotExist(configErr) {
-		return fmt.Errorf("load OMR config: %w", configErr)
-	}
-	fixtures, err := qualitybench.Discover(*fixturesRoot)
-	if err != nil {
-		return err
-	}
-	if *runtimeRun && (*replay || *resultsPath != "") {
-		return errors.New("--runtime cannot be combined with --replay or --results")
-	}
-	if *nativeResultsPath != "" || *omrResultsPath != "" {
-		if *nativeResultsPath == "" || *omrResultsPath == "" || *replay || *runtimeRun || *resultsPath != "" {
-			return errors.New("quality comparison requires only --native-results and --omr-results")
-		}
-		native, err := loadQualityResults(*nativeResultsPath)
-		if err != nil {
-			return err
-		}
-		omr, err := loadQualityResults(*omrResultsPath)
-		if err != nil {
-			return err
-		}
-		comparison := qualitybench.CompareReports(
-			qualitybench.EvaluateAll(fixtures, native, runID, qualitybench.ExecutionModeReplay),
-			qualitybench.EvaluateAll(fixtures, omr, runID, qualitybench.ExecutionModeReplay),
-		)
-		if err := writeJSONValue(*outputPath, "quality", comparison); err != nil {
-			return err
-		}
-		if !comparison.Passed {
-			return errors.New("quality comparison failed hard gate")
-		}
-		if err := qualitybench.CheckCostGate(comparison.OMR, *maxCost); err != nil {
-			return fmt.Errorf("quality comparison cost gate failed: %w", err)
-		}
-		return nil
-	}
-	if *runtimeRun {
-		if *concurrency < 1 {
-			return errors.New("--concurrency must be at least 1")
-		}
-		if *eventsPath != "" && *concurrency > 1 {
-			return errors.New("--events requires --concurrency 1 because one event stream cannot be safely shared")
-		}
-		results := map[string]qualitybench.RunResult{}
-		var mu sync.Mutex
-		sem := make(chan struct{}, *concurrency)
-		var wg sync.WaitGroup
-		for _, fixture := range fixtures {
-			fixture := fixture
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				sem <- struct{}{}
-				defer func() { <-sem }()
-				ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-				result, runErr := qualitybench.ExecuteRuntime(ctx, fixture, *projectDir, *binary, *metricsDir, *model, *maxSteps)
-				cancel()
-				if runErr == nil && *eventsPath != "" {
-					if events, eventErr := qualitybench.ReadEventNames(*eventsPath); eventErr == nil {
-						result.Events = events
-					}
-				}
-				if runErr != nil {
-					result.Failed = true
-					if result.Error == "" {
-						result.Error = runErr.Error()
-					}
-				}
-				mu.Lock()
-				results[fixture.ID] = result
-				mu.Unlock()
-			}()
-		}
-		wg.Wait()
-		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeRuntime)
-		if err := writeJSONValue(*outputPath, "quality", report); err != nil {
-			return err
-		}
-		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
-			return fmt.Errorf("quality runtime failed: %w", err)
-		}
-		return nil
-	}
-	if *paired {
-		nativeResults := map[string]qualitybench.RunResult{}
-		omrResults := map[string]qualitybench.RunResult{}
-		for _, fixture := range fixtures {
-			native, omr, err := qualitybench.ReplayPaired(fixture)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "warning: paired replay skipped %q: %v\n", fixture.ID, err)
-				continue
-			}
-			nativeResults[fixture.ID] = native
-			omrResults[fixture.ID] = omr
-		}
-		nativeReport := qualitybench.EvaluateAll(fixtures, nativeResults, runID, qualitybench.ExecutionModePaired)
-		omrReport := qualitybench.EvaluateAll(fixtures, omrResults, runID, qualitybench.ExecutionModePaired)
-		if nativeReport.EvaluatedCount == 0 {
-			return errors.New("no fixtures contain native_replay data; use --paired only on fixtures with native_replay/omr_replay")
-		}
-		comparison := qualitybench.CompareReports(nativeReport, omrReport)
-		if err := writeJSONValue(*outputPath, "quality", comparison); err != nil {
-			return err
-		}
-		if !comparison.Passed {
-			return fmt.Errorf("paired comparison failed: native=%d/%d omr=%d/%d",
-				nativeReport.QualifiedCount, nativeReport.EvaluatedCount,
-				omrReport.QualifiedCount, omrReport.EvaluatedCount)
-		}
-		return nil
-	}
-	if *replay {
-		results := map[string]qualitybench.RunResult{}
-		for _, fixture := range fixtures {
-			var result qualitybench.RunResult
-			var replayErr error
-			if *runTests {
-				ctx, cancel := context.WithTimeout(context.Background(), *timeout)
-				result, replayErr = qualitybench.ExecuteFixture(ctx, fixture, *projectDir)
-				cancel()
-			} else {
-				result, replayErr = qualitybench.Replay(fixture)
-			}
-			if replayErr != nil {
-				results[fixture.ID] = qualitybench.RunResult{
-					Failed: true,
-					Error:  replayErr.Error(),
-				}
-				continue
-			}
-			results[fixture.ID] = result
-		}
-		report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
-		if err := writeJSONValue(*outputPath, "quality", report); err != nil {
-			return err
-		}
-		if report.EvaluatedCount == 0 {
-			return errors.New("no fixtures contain replay outcomes")
-		}
-		if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
-			return fmt.Errorf("quality replay failed: %w", err)
-		}
-		return nil
-	}
-	if *resultsPath == "" {
-		fmt.Printf("quality fixtures: %d\n", len(fixtures))
-		for _, fixture := range fixtures {
-			fmt.Printf("- %s: %s\n", fixture.ID, fixture.Task)
-		}
-		fmt.Println("no --results supplied; execution is intentionally separate from scoring")
-		return nil
-	}
-	results, err := loadQualityResults(*resultsPath)
-	if err != nil {
-		return err
-	}
-	report := qualitybench.EvaluateAll(fixtures, results, runID, qualitybench.ExecutionModeReplay)
-	if err := writeJSONValue(*outputPath, "quality", report); err != nil {
-		return err
-	}
-	if err := checkQualityGates(report, *minQualifiedRate, *maxCost); err != nil {
-		return fmt.Errorf("quality benchmark failed: %w", err)
 	}
 	return nil
 }
