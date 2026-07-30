@@ -115,6 +115,20 @@ omr profile list --project-dir . --json
 
 OMR 不会替换 Reasonix 的内置 Subagent；项目可以通过 Category routing、disabled 配置和模型覆盖来调整 OMR Subagent 的使用方式。
 
+### OMR Profile 的特色
+
+OMR Profile 的优势不在于替代 Reasonix 的运行时，而在于提供更强的项目级工程治理：
+
+- **工作流更具体**：不仅定义角色，还规定探索顺序、证据格式、风险记录和验收输出；
+- **随项目分发**：Prompt、Profile、规则和配置可以一起提交到 Git，团队成员获得一致的工作方式；
+- **生命周期可审计**：支持 dry-run、冲突检测、Manifest、SHA256、备份、回滚和卸载；
+- **证据纪律更强**：要求记录文件证据、测试结果、Review 结论、失败原因和未决问题；
+- **项目级路由**：可以按任务类别选择 Profile，并覆盖模型、Prompt 和只读声明；
+- **方案质询**：`omr-grill-me` 在开发前暴露歧义、假设、边界和验收缺口；
+- **结果可验证**：通过离线 Fixture、质量基准、成本门禁和 Native/OMR 对照报告验证工作流。
+
+因此，Reasonix 原生 Profile 更强在运行时工具、权限和状态机；OMR Profile 更强在项目规范、团队复用、证据纪律和可审计交付。
+
 ### Claude 兼容层
 
 支持只读导入：

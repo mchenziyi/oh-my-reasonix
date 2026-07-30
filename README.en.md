@@ -55,6 +55,20 @@ Reasonix built-in profiles remain native. List the effective profiles with `reas
 
 For complex work, ask Reasonix to run `omr-grill-me` before planning. It is optional and does not force every task through a questionnaire.
 
+### What makes OMR Profiles different?
+
+OMR Profiles are not a replacement for the Reasonix runtime. Their strength is project-level engineering governance:
+
+- **Concrete workflows**: they define analysis order, evidence format, risk records, and acceptance outputs;
+- **Project distribution**: prompts, profiles, rules, and configuration can travel together in Git;
+- **Auditable lifecycle**: dry-run, conflict detection, manifests, SHA256 hashes, backups, rollback, and uninstall;
+- **Evidence discipline**: file evidence, test results, review conclusions, failures, and open questions are explicit;
+- **Project routing**: categories can select profiles and override models, prompts, and read-only declarations;
+- **Design challenge**: `omr-grill-me` exposes ambiguity, assumptions, boundaries, and acceptance gaps before implementation;
+- **Verifiable outcomes**: offline fixtures, quality gates, cost gates, and Native/OMR comparison reports.
+
+Reasonix native profiles are stronger at runtime tools, permissions, sandboxing, and session/task state. OMR Profiles are stronger at project conventions, team reuse, evidence discipline, and auditable delivery.
+
 ## Upgrade and rollback
 
 Use `omr upgrade --project-dir . --dry-run` before `omr upgrade --project-dir .`. Use `omr uninstall --project-dir . --dry-run` to preview removal. Modified OMR-owned files are detected and backups are preserved. OMR does not modify global PATH, API keys, or the Reasonix binary.
