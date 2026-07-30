@@ -1,5 +1,20 @@
 # Changelog
 
+## [v1.2.2] — 2026-07-29
+
+### Added
+- **omr comment-check**: offline comment quality checker CLI — 5 deterministic rules (R001-R005), JSON/human output, credential redaction, path safety, binary/large file skip (#T13)
+- **model**: `internal/commentchecker/` — R001 (debug markers with allowlist), R002 (empty comments), R003 (comment-code similarity, warning only), R004 (credential leak, blocking, redacted), R005 (path safety)
+- **tests**: 24 offline unit tests + 13 CLI end-to-end tests covering all rules, allowlist, credential redaction, project-root boundary, symlink traversal, binary/large skip, determinism, JSON schema, human output, snapshot consistency
+- **docs**: README, TODO (T13 marked complete), gap matrix, CHANGELOG
+
+### Known Issues
+- **环境限制**：部分沙箱环境禁止 `httptest` 监听本地端口，可能导致 `internal/qualitybench` 全量测试失败；该失败不属于 Comment Checker 路径安全逻辑。
+- **INT-06**: real-client verification pending — requires Reasonix public machine interface stable release
+- **Hook/实时阻断**: Comment Checker 运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前仅提供离线 CLI
+
+---
+
 ## [v1.2.1] — 2026-07-27
 
 ### Added

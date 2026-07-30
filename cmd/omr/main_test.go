@@ -704,6 +704,258 @@ func TestHookDoctorJSONParsesWithHomeDir(t *testing.T) {
 	}
 }
 
+// --- Comment Checker CLI tests ---
+
+func TestCommentCheckHumanOutput(t *testing.T) {
+	dir := t.TempDir()
+	// Use a credential leak (R004, blocking) for a clear blocking finding.
+	if err := os.WriteFile(filepath.Join(dir, "config.txt"), []byte("# password = \"hunter2\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = original }()
+	runErr := runCommentCheck([]string{"--project-dir", dir})
+	writer.Close()
+	os.Stdout = original
+	if runErr == nil {
+		t.Fatal("expected blocking finding error")
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(data)
+	if !strings.Contains(output, "R004") || !strings.Contains(output, "password") {
+		t.Fatalf("expected human output with R004/password, got: %s", output)
+	}
+	if !strings.Contains(output, "blocking") {
+		t.Fatalf("expected blocking status, got: %s", output)
+	}
+}
+
+func TestCommentCheckJSONOutput(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.txt"), []byte("# password = \"hunter2\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = original }()
+	runErr := runCommentCheck([]string{"--project-dir", dir, "--json"})
+	writer.Close()
+	os.Stdout = original
+	if runErr == nil {
+		t.Fatal("expected blocking finding error")
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report struct {
+		SchemaVersion int `json:"schema_version"`
+		Findings      []struct {
+			RuleID   string `json:"rule_id"`
+			Severity string `json:"severity"`
+		} `json:"findings"`
+		BlockingCount int `json:"blocking_count"`
+	}
+	if err := json.Unmarshal(data, &report); err != nil {
+		t.Fatalf("invalid JSON report: %s: %v", data, err)
+	}
+	if report.SchemaVersion != 1 {
+		t.Fatalf("expected schema_version=1, got %d", report.SchemaVersion)
+	}
+	if report.BlockingCount <= 0 {
+		t.Fatalf("expected blocking_count > 0, got %d", report.BlockingCount)
+	}
+}
+
+func TestCommentCheckWithPathFlag(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// TODO: implement\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cleanFile := filepath.Join(dir, "clean.go")
+	if err := os.WriteFile(cleanFile, []byte("package main\n// clean comment\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runCommentCheck([]string{"--project-dir", dir, "--path", cleanFile})
+	if err != nil {
+		t.Fatalf("expected no error for clean file with --path, got: %v", err)
+	}
+}
+
+func TestCommentCheckAllowTags(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// TODO(admin): add auth later\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runCommentCheck([]string{"--project-dir", dir, "--allow-tags", "TODO(admin)"})
+	if err != nil {
+		t.Fatalf("expected no blocking error with allowed tag, got: %v", err)
+	}
+}
+
+func TestCommentCheckMaxFileSize(t *testing.T) {
+	dir := t.TempDir()
+	largeContent := strings.Repeat("// large comment\n", 1000)
+	if err := os.WriteFile(filepath.Join(dir, "large.go"), []byte(largeContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runCommentCheck([]string{"--project-dir", dir, "--max-file-size", "1"})
+	if err != nil {
+		t.Fatalf("expected no error when all files skipped, got: %v", err)
+	}
+}
+
+func TestCommentCheckBlockingExitCode(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "config.txt"), []byte("# password = \"hunter2\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runCommentCheck([]string{"--project-dir", dir})
+	if err == nil {
+		t.Fatal("expected blocking error for credential leak")
+	}
+	if !strings.Contains(err.Error(), "blocking") {
+		t.Fatalf("expected blocking in error message, got: %v", err)
+	}
+}
+
+func TestCommentCheckCleanServicePass(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// add returns the sum of a and b.\nfunc add(a, b int) int { return a + b }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	err := runCommentCheck([]string{"--project-dir", dir})
+	if err != nil {
+		t.Fatalf("expected no error for clean comments, got: %v", err)
+	}
+}
+
+func TestCommentCheckNoHelpOnSuccess(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader, writer, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	original := os.Stdout
+	os.Stdout = writer
+	defer func() { os.Stdout = original }()
+	runErr := runCommentCheck([]string{"--project-dir", dir})
+	writer.Close()
+	os.Stdout = original
+	if runErr != nil {
+		t.Fatalf("expected pass, got: %v", runErr)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	output := string(data)
+	if !strings.Contains(output, "PASS") {
+		t.Fatalf("expected success output, got: %s", output)
+	}
+}
+
+// --- CLI path safety tests ---
+
+func TestCommentCheckDefaultRootRejectsOutside(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outsideFile := filepath.Join(dir, "..", "outside.go")
+	if err := os.WriteFile(outsideFile, []byte("package main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(outsideFile)
+
+	err := runCommentCheck([]string{"--project-dir", dir, "--path", outsideFile})
+	if err == nil {
+		t.Fatal("expected path safety error for outside file with default root")
+	}
+	if !strings.Contains(err.Error(), "path not allowed") && !strings.Contains(err.Error(), "outside") {
+		t.Fatalf("expected path safety error message, got: %v", err)
+	}
+}
+
+func TestCommentCheckPathResolvesRelativeToProjectDir(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// clean\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// When --path is relative, it should be resolved against --project-dir,
+	// not the shell cwd.  Run from an empty temp dir to prove the point.
+	cwd := t.TempDir()
+	origDir, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chdir(cwd); err != nil {
+		t.Fatal(err)
+	}
+	defer os.Chdir(origDir)
+
+	err = runCommentCheck([]string{"--project-dir", dir, "--path", "main.go"})
+	if err != nil {
+		t.Fatalf("expected relative --path resolved against --project-dir, got: %v", err)
+	}
+}
+
+func TestCommentCheckPathRejectsTraversal(t *testing.T) {
+	dir := t.TempDir()
+	err := runCommentCheck([]string{"--project-dir", dir, "--path", "../outside.go"})
+	if err == nil {
+		t.Fatal("expected path safety error for ../ traversal")
+	}
+}
+
+func TestCommentCheckAllowedRootsExplicit(t *testing.T) {
+	dir := t.TempDir()
+	allowedDir := filepath.Join(dir, "sub")
+	if err := os.MkdirAll(allowedDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(allowedDir, "main.go"), []byte("package main\n// clean\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outsideFile := filepath.Join(dir, "outside.go")
+	if err := os.WriteFile(outsideFile, []byte("package main\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// File outside allowed-roots should be rejected even though it's inside --project-dir.
+	err := runCommentCheck([]string{"--project-dir", dir, "--allowed-roots", allowedDir, "--path", outsideFile})
+	if err == nil {
+		t.Fatal("expected path safety error for file outside explicit allowed-roots")
+	}
+}
+
+func TestCommentCheckJSONErrorForBlockedPath(t *testing.T) {
+	dir := t.TempDir()
+	runErr := runCommentCheck([]string{"--project-dir", dir, "--path", "../outside.go", "--json"})
+	if runErr == nil {
+		t.Fatal("expected path safety error")
+	}
+	if !strings.Contains(runErr.Error(), "path not allowed") && !strings.Contains(runErr.Error(), "outside") {
+		t.Fatalf("expected descriptive error, got: %v", runErr)
+	}
+}
+
 func TestHookDoctorProjectDir(t *testing.T) {
 	dir := t.TempDir()
 	mockBin := makeMockReasonixBinary(t, dir)

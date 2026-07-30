@@ -1,10 +1,10 @@
 # oh-my-reasonix 与 oh-my-opencode 差距矩阵
 
-> 冻结版本：2026-07-27
+> 冻结版本：2026-07-29
 >
 > 本文用于冻结 OMR 后续优化范围与优先级。后续实现按本文排序推进；新增能力必须先更新本文，再进入开发。
 >
-> 状态：T11 (omr-grill-me) 已完成；Comment Checker 和 INT-06 等待中。
+> 状态：T11 (omr-grill-me)、T12 (omr-grill-with-docs)、T13 (Comment Checker CLI) 已完成；INT-06 等待中。
 
 ## 1. 对比范围
 
@@ -65,7 +65,7 @@
 | Stop/完成拦截 | 主要依赖 `complete_step` | P1 |
 | Todo continuation enforcer | Reasonix 原生 goal machine 已拦截未完成 Todo；OMR 提供流程规则 | P0 |
 | Empty task response detector | Reasonix Hook/Loop 可处理空响应；OMR 提供停滞处置规则 | P0 |
-| Comment checker | 没有 | P2 |
+| Comment checker (离线) | `omr comment-check` CLI 已完成；运行时 Hook 等待 Reasonix 官方接口 (BLOCKED) | P2 |
 | Tool/Grep 输出截断 | Orchestrator 已要求精确范围和摘要化保留 | P1 |
 | Context window monitor | Orchestrator 已要求上下文不足前保留可恢复证据 | P1 |
 | Preemptive compaction | Orchestrator 已要求压缩前记录 Todo、证据和验证状态 | P1 |
@@ -165,7 +165,7 @@
 | Provider fallback | 主要依赖 Reasonix | P1 |
 | 交互式终端/Tmux | 没有 | P2 |
 | 自动更新提示 | 没有 | P2 |
-| 评论质量控制 | 没有 | P2 |
+| 评论质量控制 (离线 CLI) | `omr comment-check` 已完成；运行时 Hook BLOCKED | P2 |
 | 视觉任务编排 | 没有 | P2 |
 | Web/桌面状态面板 | 没有 OMR 层实现 | P3 |
 
@@ -213,7 +213,7 @@
 4. PreToolUse/PostToolUse；
 5. 输出截断；
 6. Context window monitor；
-7. Comment checker。
+7. Comment checker 运行时 Hook（离线 CLI 已完成，BLOCKED 等待官方接口）。
 
 ### Phase 4：工具生态（P1/P2）
 

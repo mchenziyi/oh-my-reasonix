@@ -1,16 +1,16 @@
 # oh-my-reasonix 最新开发 Todo
 
-> 版本：2026-07-23  
-> 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。  
+> 版本：2026-07-29
+> 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。
 > 原则：只实现 OMR 能独立负责的能力；Reasonix 已原生提供或尚未提供公开接口的能力，不在 OMR 中复制。
 
 ## 当前状态（最新）
 
-OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11 Grill Me 已完成，T12 Grill with Docs 已完成。当前不再重复开发这些阶段。
+OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker 离线 CLI）已完成。当前不再重复开发这些阶段。
 
 下一阶段优先级：
 
-1. Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
+1. **Comment Checker 运行时 Hook**：离线 CLI 已完成。运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前 BLOCKED；
 2. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 3. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
 
@@ -44,6 +44,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - Cache Guard；
 - Claude rules/skills/agents/mcp/hooks 导入基础链路；
 - `omr session resume`、`omr session export`；
+- `omr comment-check` CLI（参见 §10）；
 - OMR-FIX-01～11 及其自动化测试。
 
 ## 3. P0：当前最重要的 OMR 工作
@@ -84,7 +85,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 ### OMR-T08：开发体验
 
-评估显式增强模式、Ralph Loop、Comment Checker、用户级配置和交互式通知。只能作为 Prompt/配置层能力，不复制 Reasonix 后台任务或状态机。
+评估显式增强模式、Ralph Loop、用户级配置和交互式通知。只能作为 Prompt/配置层能力，不复制 Reasonix 后台任务或状态机。**Comment Checker 运行时 Hook** 在此项中，当前 BLOCKED。
 
 ### OMR-T09：规则和配置兼容性
 
@@ -93,6 +94,8 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 ## 6. BLOCKED：当前不在 OMR Todo 中实现
 
 以下能力依赖 Reasonix 稳定公开接口：Session list/status/show/search、Hook list/status 和运行时拦截、后台 Task 查询、Session recovery、结构化事件流、Todo/Hook/Task/Session 状态机、后台 Agent 结果汇聚、Tmux/桌面端实时状态面板。
+
+**Comment Checker 运行时 Hook 拦截**：离线 CLI（`omr comment-check`）已完成。运行时（commit 前自动检查、实时阻断）等待 Reasonix 官方 Hook 运行时接口。
 
 禁止读取 `~/.reasonix/projects`，禁止解析 goal-state/events/lock 私有文件，禁止在宿主 CLI 不支持时返回空列表伪造成功，禁止以 OMR 合成 ID 冒充 Reasonix Session ID。
 
@@ -139,3 +142,63 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - 达到最大轮数或信息充分时正常结束；
 - 不修改项目文件、不访问私有 Reasonix 状态；
 - `go test ./...`、`go vet ./...`、Prompt 契约测试和离线回放 Fixture 全部通过。
+
+## 9. TODO：Subagent → Task Monitor 父子任务可观测性（等待 Reasonix 官方接口）
+
+目标：在 Reasonix Desktop 的 Tasks 面板中展示 OMR 编排产生的 Subagent 树，而不是仅展示宿主独立后台 Task。
+
+待 Reasonix 官方支持后再实现：
+
+- Subagent 启动、运行、完成、失败事件；
+- `parent_task_id` 或 `parent_session_id` 关联字段；
+- Subagent 生命周期到 Task Monitor 的映射；
+- Desktop 父子任务树展示；
+- 取消、恢复、失败传播和并发状态测试。
+
+前置条件：Task Monitor 官方 PR 合并并稳定发布，且 Reasonix 暴露上述机器接口。OMR 不伪造宿主 Task 状态，也不解析私有 Session 文件。
+
+## 10. ✅ T13：Comment Checker 离线 CLI（已完成）
+
+### 目标
+
+在 OMR 中提供离线的注释质量检查 CLI，可扫描项目中的代码注释，输出结构化的 JSON/人类可读报告。不依赖网络、模型调用或 Reasonix 宿主。
+
+### 范围
+
+- 纯 Go 离线 CLI：`omr comment-check --project-dir . --json`；
+- 5 条确定性规则：
+  - R001：检测调试/临时标记（TODO、FIXME、XXX），支持白名单（`--allow-tags`）；
+  - R002：检测空注释或无意义占位注释；
+  - R003：检测注释与相邻代码过度相似（仅 warning，不阻断）；
+  - R004：检测疑似凭据泄露（blocking，输出已脱敏）；
+  - R005：路径安全校验，拒绝越界和路径穿越；
+- JSON 报告含 `schema_version`、`blocking_count`、脱敏详情和修复建议；
+- 人类可读输出含 summary、suggestion 和逐条 finding；
+- 阻断时稳定非零退出码；
+- 支持 `--path` 指定单文件、`--max-file-size` 跳过大文件、`--allowed-roots` 限制根目录。
+
+### 测试覆盖
+
+- 24 个离线单元测试 + 13 个 CLI 端到端测试；
+- 覆盖：R001～R005 全部规则、白名单、凭据脱敏、路径穿越、二进制/大文件跳过、重复运行稳定、JSON/人类输出一致、工作区快照不变。
+- R005 额外覆盖默认项目根、相对路径、文件符号链接和中间目录符号链接。
+
+### 明确不实现
+
+- 不读取 Reasonix Session、Task、Hook 文件；
+- 不实现实时事件监听或提交前 Hook 拦截；
+- 不依赖模型或网络调用判断"注释是否有价值"；
+- 不使用大模型判断注释质量；
+- 不修改全局配置或 Reasonix 二进制。
+
+### BLOCKED：运行时 Hook/实时阻断
+
+运行时（commit 前自动检查、CI 阻断）需要 Reasonix 官方 Hook 接口。OMR 的 Comment Checker 当前仅提供离线 CLI，运行时注入为 BLOCKED。
+
+### 验收
+
+- Comment Checker/CLI 定向测试、`go vet ./...`、`go build ./cmd/omr` 通过；
+- 全量 `go test ./...` 若受环境禁止 `httptest` 本地端口监听影响，必须如实记录该环境限制，不得伪报为通过；
+- `omr comment-check --project-dir . --json` 输出稳定 JSON 报告；
+- 阻断规则（R004）的凭据内容经过脱敏，不写入报告原文；
+- 文档版本一致，运行时 Hook 明确标记为等待 Reasonix 官方接口。

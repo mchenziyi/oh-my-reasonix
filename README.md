@@ -205,6 +205,14 @@ https://raw.githubusercontent.com/mchenziyi/oh-my-reasonix/main/docs/INSTALL_PRO
 ## 常用命令
 
 ~~~bash
+# 注释质量检查
+omr comment-check --project-dir . --json
+omr comment-check --project-dir . --path internal/foo.go
+omr comment-check --project-dir . --allow-tags "TODO(admin),TODO(future)"
+
+# `--path` 相对路径按 `--project-dir` 解析；默认只允许扫描项目根目录内的文件，
+# 文件和中间目录符号链接越界也会被拒绝。
+
 # 配置
 omr config validate --project-dir .
 omr config validate --project-dir . --json
@@ -330,13 +338,12 @@ go run ./cmd/omr version
 
 ## 当前状态与路线
 
-已完成 OMR-T01～T10，以及 INT-01～INT-05 自动化联调。
+已完成 OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker），以及 INT-01～INT-05 自动化联调。
 
 当前后续事项：
 
-- Comment Checker：等待 Reasonix 官方 PR 合并后，再接入运行时事件和阻断闭环；
+- **Comment Checker 运行时 Hook**：离线 CLI 已完成。运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前 BLOCKED；
 - Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
-- Grill Me：先评估为可选的方案质询 Skill，暂不默认集成；
 - INT-06：等待 Reasonix 官方接口进入可用版本后进行真实客户端验证。
 
 ## v1.17.20 机器接口兼容状态
