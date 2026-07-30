@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"sort"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -99,4 +100,13 @@ func applyProfileAgentConfig(item *profileJSON, root string, agent omrconfig.Age
 		exists = true
 	}
 	item.PromptFileExists = &exists
+}
+
+func applyProfileRouting(item *profileJSON, categories map[string][]string, disabled map[string]bool) {
+	item.Categories = append([]string(nil), categories[item.ID]...)
+	sort.Strings(item.Categories)
+	item.Disabled = disabled[item.ID]
+	if item.Disabled {
+		item.Status = "disabled"
+	}
 }

@@ -293,9 +293,7 @@ func runProfileList(args []string) error {
 			if agent, ok := configured[profile.ID]; ok {
 				applyProfileAgentConfig(&item, root, agent)
 			}
-			item.Categories = append([]string(nil), categoryByProfile[profile.ID]...)
-			sort.Strings(item.Categories)
-			item.Disabled = disabled[profile.ID]
+			applyProfileRouting(&item, categoryByProfile, disabled)
 			output = append(output, item)
 		}
 		// Append project-only profiles (configured but not installed)
