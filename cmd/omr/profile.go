@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"path/filepath"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -78,4 +79,24 @@ func applyProfileMetadata(item *profileJSON, root, profilePath string) {
 	item.AllowedTools = meta.AllowedTools
 	item.InputTypes = meta.InputTypes
 	item.OutputSections = meta.OutputSections
+}
+
+func applyProfileAgentConfig(item *profileJSON, root string, agent omrconfig.AgentConfig) {
+	item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
+	if agent.Model != "" {
+		item.EffectiveModel = agent.Model
+		item.ModelSource = "project"
+	}
+	if agent.PromptFile == "" {
+		return
+	}
+	promptPath := agent.PromptFile
+	if !filepath.IsAbs(promptPath) {
+		promptPath = filepath.Join(root, promptPath)
+	}
+	exists := false
+	if info, err := os.Stat(promptPath); err == nil && !info.IsDir() {
+		exists = true
+	}
+	item.PromptFileExists = &exists
 }

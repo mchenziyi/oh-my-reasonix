@@ -291,22 +291,7 @@ func runProfileList(args []string) error {
 			// Model info and SKILL metadata
 			applyProfileMetadata(&item, root, profile.Path)
 			if agent, ok := configured[profile.ID]; ok {
-				item.Model, item.PromptFile, item.ReadOnly = agent.Model, agent.PromptFile, agent.ReadOnly
-				if agent.Model != "" {
-					item.EffectiveModel = agent.Model
-					item.ModelSource = "project"
-				}
-				if agent.PromptFile != "" {
-					promptPath := agent.PromptFile
-					if !filepath.IsAbs(promptPath) {
-						promptPath = filepath.Join(root, promptPath)
-					}
-					exists := false
-					if info, statErr := os.Stat(promptPath); statErr == nil && !info.IsDir() {
-						exists = true
-					}
-					item.PromptFileExists = &exists
-				}
+				applyProfileAgentConfig(&item, root, agent)
 			}
 			item.Categories = append([]string(nil), categoryByProfile[profile.ID]...)
 			sort.Strings(item.Categories)
