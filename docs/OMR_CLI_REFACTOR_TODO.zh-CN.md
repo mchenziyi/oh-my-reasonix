@@ -6,6 +6,7 @@
 
 ## 当前状态
 
+- [x] CLI 工程化拆分阶段完成（2026-07-30）
 - [x] `cmd/omr/main.go` 仅负责入口、命令分发和退出码映射
 - [x] 提取版本命令至 `cmd/omr/version.go`
 - [x] 提取 Comment Checker 至 `cmd/omr/comment_check.go`
@@ -21,7 +22,7 @@
 - [x] 提取 Config 迁移和 Prompt 文件校验至 `cmd/omr/config.go`
 - [x] 完成剩余命令模块拆分并删除过渡文件 `cmd/omr/commands.go`
 - [x] 建立统一 CLI JSON 输出边界；命令特有的人类输出和错误保留在各命令内
-- [ ] 评估是否迁移到 `internal/cli`
+- [x] 完成 `internal/cli` 迁移评估，当前保留 `cmd/omr` 包内模块化结构
 
 ## 分阶段任务
 
@@ -68,14 +69,14 @@
 - [x] 保持 Profile JSON Schema 和输出字段兼容
 - [x] 验证内置、项目级和禁用 Profile 的显示结果
 
-### CLI-REF-05：安装与 Doctor 拆分
+### CLI-REF-05：安装与 Doctor 拆分 ✅
 
 - [x] 将 init/upgrade/uninstall 移至 `cmd/omr/install.go`
 - [x] 将 doctor 及其检查输出移至 `cmd/omr/doctor.go`
 - [x] 保持备份、回滚、漂移阻断和 JSON 输出不变
 - [x] 运行临时项目安装链路 E2E
 
-### CLI-REF-06：Claude 与 Hook 拆分
+### CLI-REF-06：Claude 与 Hook 拆分 ✅
 
 - [x] 将 Claude 导入命令移至 `cmd/omr/claude.go`
 - [x] 将 Hook 诊断移至 `cmd/omr/hook.go`
@@ -91,12 +92,17 @@
 - [x] 不改变现有命令的输出字段和错误码
 - [x] 为公共输出逻辑增加单元测试
 
-### CLI-REF-08：评估 `internal/cli` 包迁移
+### CLI-REF-08：评估 `internal/cli` 包迁移 ✅
 
-- [ ] 盘点现有测试对 `package main` 未导出函数的依赖
-- [ ] 设计最小 `App`/`Command` 接口和依赖注入边界
-- [ ] 仅在迁移成本可控时建立 `internal/cli`
-- [ ] 不为迁移而强行导出内部实现
+- [x] 盘点现有测试对 `package main` 未导出函数和进程级 stdout 的依赖
+- [x] 将命令分发移至 `cmd/omr/app.go`，让 `main.go` 仅处理启动与退出码
+- [x] 评估结论：当前迁移会迫使大量内部函数导出并重写测试，收益不足
+- [x] 保留 `cmd/omr` 包内模块化结构，不为目录迁移强行增加接口层
+
+评估依据：现有 CLI 测试直接调用多个未导出命令函数，并通过替换 `os.Stdout`
+验证 JSON/人类输出。当前各命令已经按文件隔离，继续迁移到 `internal/cli`
+会扩大公开 API 和依赖注入面，却不会改善用户可见行为。待未来需要复用 CLI
+作为库、或引入第二个前端时，再重新评估包级迁移。
 
 ## 每个任务的固定门禁
 
