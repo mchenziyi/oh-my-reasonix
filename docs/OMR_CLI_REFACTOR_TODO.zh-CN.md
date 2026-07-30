@@ -19,7 +19,7 @@
 - [x] 提取 JSON 报告写出逻辑至 `cmd/omr/output.go`
 - [x] 提取资产加载入口至 `cmd/omr/install.go`
 - [x] 提取 Config 迁移和 Prompt 文件校验至 `cmd/omr/config.go`
-- [ ] 完成剩余命令模块拆分
+- [x] 完成剩余命令模块拆分并删除过渡文件 `cmd/omr/commands.go`
 - [ ] 建立统一 CLI 输出与错误边界
 - [ ] 评估是否迁移到 `internal/cli`
 
@@ -77,9 +77,9 @@
 
 ### CLI-REF-06：Claude 与 Hook 拆分
 
-- [ ] 将 Claude 导入命令移至 `cmd/omr/claude.go`
-- [ ] 将 Hook 诊断移至 `cmd/omr/hook.go`
-- [ ] 保持 dry-run、冲突检测、脱敏和 JSON 输出不变
+- [x] 将 Claude 导入命令移至 `cmd/omr/claude.go`
+- [x] 将 Hook 诊断移至 `cmd/omr/hook.go`
+- [x] 保持 dry-run、冲突检测、脱敏和 JSON 输出不变
 
 ### CLI-REF-07：统一输出边界
 
