@@ -69,9 +69,9 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 为每个 Profile 补齐用途、输入、输出、只读边界和失败处理；增加 Profile/Category Schema 与示例；检测未安装、已禁用、重复覆盖和循环路由；增加模型覆盖校验和 Doctor 诊断。Visual Profile 只有宿主明确提供视觉能力时才加入。
 
-### OMR-T05：质量与成本可观测性
+### ✅ OMR-T05：质量与成本可观测性（已完成）
 
-统一 Runtime、Replay、Native/OMR 对照报告字段；增加重试次数、停滞原因、Review 阻断数、Token、成本和验证证据；支持稳定 JSON 快照；明确合成 run ID，不得称为 Reasonix Session ID；增加 Schema 版本迁移测试。
+统一 Runtime、Replay、Native/OMR 对照报告字段；增加重试次数、停滞原因、Review 阻断数、Token、成本和验证证据；支持稳定 JSON 快照和显式 `--run-id`；明确合成 run ID，不得称为 Reasonix Session ID；增加 Schema 版本迁移测试。
 
 ### ✅ OMR-T06：安装与升级体验（已完成）
 
@@ -105,7 +105,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 2. OMR-T02：Prompt/规则注入可验证性；
 3. OMR-T03：Claude 兼容层收尾；
 4. OMR-T04：Profile/Category 体验；
-5. OMR-T05：质量与成本报告；
+5. ✅ OMR-T05：质量与成本报告；
 6. ✅ OMR-T06：安装升级体验；
 7. OMR-T07～T09：P2 扩展；
 8. BLOCKED 项目等待 Reasonix 官方接口后另开适配任务。

@@ -74,7 +74,7 @@
 
 ---
 
-## 5. T06：安装与升级体验
+## 5. ✅ T06：安装与升级体验（已完成）
 
 ### 目标
 
@@ -82,11 +82,11 @@
 
 ### 实现任务
 
-1. 增加最低 Reasonix 版本和兼容矩阵检查：
+1. ✅ 增加最低 Reasonix 版本和兼容矩阵检查：
    - version；
    - 支持的 CLI 能力；
    - 不满足时给出 actionable warning/error。
-2. 增加 omr version --json：
+2. ✅ 增加 omr version --json：
    - OMR 版本；
    - Prompt/资产版本；
    - Manifest schema；
@@ -273,4 +273,3 @@ go run ./cmd/omr uninstall --project-dir <temp-project> --dry-run
 ## 13. 交给 Reasonix Agent 的执行指令
 
 请按 T05 → T06 → T07 → T08 → T09 顺序执行。允许一次性完成全部任务，但必须每个阶段先写失败测试/Fixture，再做最小实现并独立提交。每阶段结束输出修改文件、测试命令及结果、兼容性变化、风险和未实现项。遇到真实 Reasonix 客户端或宿主私有接口依赖，标记 BLOCKED 并继续不依赖该接口的工作，不得猜测或伪造结果。
-
