@@ -71,7 +71,7 @@
 ### CLI-REF-05：安装与 Doctor 拆分
 
 - [ ] 将 init/upgrade/uninstall 移至 `cmd/omr/install.go`
-- [ ] 将 doctor 及其检查输出移至 `cmd/omr/doctor.go`
+- [x] 将 doctor 及其检查输出移至 `cmd/omr/doctor.go`
 - [ ] 保持备份、回滚、漂移阻断和 JSON 输出不变
 - [ ] 运行临时项目安装链路 E2E
 
