@@ -20,7 +20,7 @@
 - [x] 提取资产加载入口至 `cmd/omr/install.go`
 - [x] 提取 Config 迁移和 Prompt 文件校验至 `cmd/omr/config.go`
 - [x] 完成剩余命令模块拆分并删除过渡文件 `cmd/omr/commands.go`
-- [ ] 建立统一 CLI 输出与错误边界
+- [x] 建立统一 CLI JSON 输出边界；命令特有的人类输出和错误保留在各命令内
 - [ ] 评估是否迁移到 `internal/cli`
 
 ## 分阶段任务
@@ -81,14 +81,15 @@
 - [x] 将 Hook 诊断移至 `cmd/omr/hook.go`
 - [x] 保持 dry-run、冲突检测、脱敏和 JSON 输出不变
 
-### CLI-REF-07：统一输出边界
+### CLI-REF-07：统一输出边界 ✅
 
 - [x] 提取 `cmd/omr/output.go`
 - [x] 提取通用 flag 检测辅助逻辑
 - [x] 将项目相对路径解析辅助逻辑集中到 `cmd/omr/output.go`
-- [ ] 集中剩余 JSON 编码、人类输出和错误包装的公共逻辑
-- [ ] 不改变现有命令的输出字段和错误码
-- [ ] 为公共输出逻辑增加单元测试
+- [x] 集中成功 JSON 编码公共逻辑
+- [x] 保留命令特有的人类输出和错误包装，避免引入无收益抽象
+- [x] 不改变现有命令的输出字段和错误码
+- [x] 为公共输出逻辑增加单元测试
 
 ### CLI-REF-08：评估 `internal/cli` 包迁移
 

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -43,7 +42,7 @@ func runVersion(args []string) error {
 			info.Reasonix = "not found in PATH"
 			info.Compatible = false
 		}
-		return json.NewEncoder(os.Stdout).Encode(info)
+		return writeJSONOutput(info)
 	}
 	fmt.Printf("omr %s\n", version)
 	if path, lookErr := exec.LookPath("reasonix"); lookErr == nil {

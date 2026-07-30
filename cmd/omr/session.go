@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -50,7 +49,7 @@ func runSessionList(args []string) error {
 		return fmt.Errorf("session list: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(result)
+		return writeJSONOutput(result)
 	}
 	if len(result.Sessions) == 0 {
 		fmt.Println("No sessions found")
@@ -81,7 +80,7 @@ func runSessionStatus(args []string) error {
 		return fmt.Errorf("session status: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(detail)
+		return writeJSONOutput(detail)
 	}
 	fmt.Printf("Branch ID:  %s\n", detail.BranchID)
 	fmt.Printf("Status:     %s\n", detail.Status)
@@ -113,7 +112,7 @@ func runSessionShow(args []string) error {
 		return fmt.Errorf("session show: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(detail)
+		return writeJSONOutput(detail)
 	}
 	fmt.Printf("Branch ID:  %s\n", detail.BranchID)
 	fmt.Printf("Status:     %s\n", detail.Status)
@@ -142,7 +141,7 @@ func runSessionRecovery(args []string) error {
 		return fmt.Errorf("session recovery: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(info)
+		return writeJSONOutput(info)
 	}
 	fmt.Printf("Branch ID:    %s\n", info.BranchID)
 	fmt.Printf("Status:       %s\n", info.Status)

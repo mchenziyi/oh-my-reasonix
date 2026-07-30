@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -37,7 +36,7 @@ func runTaskList(args []string) error {
 		return fmt.Errorf("task list: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(result)
+		return writeJSONOutput(result)
 	}
 	if len(result.Tasks) == 0 {
 		fmt.Println("No tasks found")
@@ -69,7 +68,7 @@ func runTaskShow(args []string) error {
 		return fmt.Errorf("task show: %w", err)
 	}
 	if *jsonOutput {
-		return json.NewEncoder(os.Stdout).Encode(detail)
+		return writeJSONOutput(detail)
 	}
 	fmt.Printf("Task ID:    %s\n", detail.ID)
 	fmt.Printf("Status:     %s\n", detail.Status)

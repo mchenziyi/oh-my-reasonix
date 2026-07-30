@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -25,6 +26,22 @@ func flagWasSet(flags *flag.FlagSet, name string) bool {
 	return set
 }
 
+func encodeJSON(writer io.Writer, value any, pretty bool) error {
+	encoder := json.NewEncoder(writer)
+	if pretty {
+		encoder.SetIndent("", "  ")
+	}
+	return encoder.Encode(value)
+}
+
+func writeJSONOutput(value any) error {
+	return encodeJSON(os.Stdout, value, false)
+}
+
+func writePrettyJSONOutput(value any) error {
+	return encodeJSON(os.Stdout, value, true)
+}
+
 func writeJSONValue(path string, label string, value interface{}) error {
 	writer := os.Stdout
 	var file *os.File
@@ -37,9 +54,7 @@ func writeJSONValue(path string, label string, value interface{}) error {
 		defer file.Close()
 		writer = file
 	}
-	encoder := json.NewEncoder(writer)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(value); err != nil {
+	if err := encodeJSON(writer, value, true); err != nil {
 		return err
 	}
 	if path != "" {

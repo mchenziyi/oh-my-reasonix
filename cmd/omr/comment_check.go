@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -58,9 +57,7 @@ func runCommentCheck(args []string) error {
 	}
 
 	if *jsonOutput {
-		encoder := json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "  ")
-		if err := encoder.Encode(report); err != nil {
+		if err := writePrettyJSONOutput(report); err != nil {
 			return err
 		}
 	} else {

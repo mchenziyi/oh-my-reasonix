@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -40,7 +39,7 @@ func runHook(args []string) error {
 			List   reasonix.HookListOutput   `json:"list"`
 			Status reasonix.HookStatusOutput `json:"status"`
 		}
-		return json.NewEncoder(os.Stdout).Encode(hookDoctorOutput{List: listResult, Status: statusResult})
+		return writeJSONOutput(hookDoctorOutput{List: listResult, Status: statusResult})
 	}
 	if len(listResult.Hooks) == 0 {
 		fmt.Println("No hooks found")

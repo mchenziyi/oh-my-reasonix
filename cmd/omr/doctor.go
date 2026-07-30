@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"os"
 
@@ -19,7 +18,7 @@ func runDoctor(args []string) error {
 	assets, _ := loadAssetsFromInvocation()
 	result, runErr := doctor.Run(*projectDir, assets)
 	if *jsonOutput {
-		if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		if err := writeJSONOutput(result); err != nil {
 			return err
 		}
 	} else {

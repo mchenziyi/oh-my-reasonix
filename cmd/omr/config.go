@@ -105,8 +105,7 @@ func runConfigValidate(args []string) error {
 			MCP              []omrconfig.MCPDiagnostic        `json:"mcp"`
 			Warnings         []string                         `json:"warnings,omitempty"`
 		}{Path: path, Valid: true, Configured: true, Agents: cfg.Agents, Categories: cfg.Categories, Concurrency: cfg.Concurrency, MaxCost: cfg.MaxCost, DisabledProfiles: cfg.DisabledProfiles, MCP: mcpDiags, Warnings: categoryDiags}
-		_ = json.NewEncoder(os.Stdout).Encode(output)
-		return nil
+		return writeJSONOutput(output)
 	}
 	fmt.Printf("OMR config valid: %s\n", path)
 	for _, diag := range categoryDiags {
@@ -277,7 +276,5 @@ func writeOMRConfigSchema() error {
 			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]{0,63}$"}},
 		},
 	}
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(schema)
+	return writePrettyJSONOutput(schema)
 }

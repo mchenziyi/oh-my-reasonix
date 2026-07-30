@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -73,7 +72,7 @@ func runProfileList(args []string) error {
 			}
 			output = append(output, item)
 		}
-		return json.NewEncoder(os.Stdout).Encode(output)
+		return writeJSONOutput(output)
 	}
 	configured, categoryByProfile, disabled, configErr := loadProfileConfig(root)
 	if configErr != nil {

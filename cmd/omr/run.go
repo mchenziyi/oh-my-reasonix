@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -48,7 +47,7 @@ func runRun(args []string) error {
 				Result reasonix.Result      `json:"result"`
 				Events reasonix.EventStream `json:"events"`
 			}
-			return json.NewEncoder(os.Stdout).Encode(runOutput{Result: result, Events: stream})
+			return writeJSONOutput(runOutput{Result: result, Events: stream})
 		}
 		fmt.Printf("Run completed (exit %d)\n", result.ExitCode)
 		fmt.Printf("Events: %d, run_done=%t\n", len(stream.Events), stream.RunDone)
