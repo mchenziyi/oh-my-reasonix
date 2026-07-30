@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"os"
 
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
@@ -26,6 +27,13 @@ type profileJSON struct {
 	EffectiveModel   string   `json:"effective_model,omitempty"`
 	ModelSource      string   `json:"model_source,omitempty"`
 	PromptShortHash  string   `json:"prompt_short_hash,omitempty"`
+}
+
+func runProfile(args []string) error {
+	if len(args) == 0 || args[0] != "list" {
+		return errors.New("profile requires list")
+	}
+	return runProfileList(args[1:])
 }
 
 func loadProfileConfig(root string) (map[string]omrconfig.AgentConfig, map[string][]string, map[string]bool, error) {

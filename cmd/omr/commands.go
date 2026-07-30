@@ -61,7 +61,7 @@ func runClaude(args []string) error {
 	dryRun := flags.Bool("dry-run", false, "show what would be imported")
 	force := flags.Bool("force", false, "overwrite existing files")
 	jsonOut := flags.Bool("json", false, "output report as JSON")
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	opts := claude.Options{
@@ -251,15 +251,12 @@ func runConfigValidate(args []string) error {
 	return nil
 }
 
-func runProfile(args []string) error {
-	if len(args) == 0 || args[0] != "list" {
-		return errors.New("profile requires list")
-	}
+func runProfileList(args []string) error {
 	flags := flag.NewFlagSet("profile list", flag.ContinueOnError)
 	flags.SetOutput(os.Stderr)
 	projectDir := flags.String("project-dir", ".", "project directory")
 	jsonOutput := flags.Bool("json", false, "write JSON output")
-	if err := flags.Parse(args[1:]); err != nil {
+	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	root, err := install.ProjectRoot(*projectDir)
