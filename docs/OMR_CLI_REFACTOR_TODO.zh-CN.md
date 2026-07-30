@@ -10,6 +10,11 @@
 - [x] 提取版本命令至 `cmd/omr/version.go`
 - [x] 提取 Comment Checker 至 `cmd/omr/comment_check.go`
 - [x] 提取 Task 查询命令至 `cmd/omr/task.go`
+- [x] 提取 Session 命令至 `cmd/omr/session.go`
+- [x] 提取 Benchmark dispatcher/cache 至 `cmd/omr/benchmark.go`
+- [x] 提取 Benchmark 评分辅助逻辑至 `cmd/omr/benchmark.go`
+- [x] 提取 Hook Doctor 至 `cmd/omr/hook.go`
+- [x] 提取 `run` 命令至 `cmd/omr/run.go`
 - [ ] 完成剩余命令模块拆分
 - [ ] 建立统一 CLI 输出与错误边界
 - [ ] 评估是否迁移到 `internal/cli`
@@ -23,12 +28,14 @@
 - [x] 保持 JSON 字段、错误文本和退出码不变
 - [x] 运行 `go test ./cmd/omr`、`go vet ./cmd/omr`、`go build ./cmd/omr`
 
-### CLI-REF-02：Benchmark 命令拆分
+### CLI-REF-02：Benchmark 命令拆分（进行中）
 
-- [ ] 将 `runBenchmark`、缓存基准和质量基准移至 `cmd/omr/benchmark.go`
-- [ ] 保持 replay、fixture、run-id、质量门禁参数兼容
-- [ ] 验证质量基准和缓存基准回归测试
-- [ ] 运行相关包测试及 CLI Smoke
+- [x] 将 `runBenchmark` 和缓存基准移至 `cmd/omr/benchmark.go`
+- [x] 将质量评分门禁和结果读取辅助逻辑移至 `cmd/omr/benchmark.go`
+- [x] 保持 replay、fixture、run-id、质量门禁参数兼容
+- [x] 验证缓存基准回归测试
+- [ ] 将 `runQualityBenchmark` 主流程移至独立文件
+- [ ] 运行质量基准和 CLI Smoke
 
 ### CLI-REF-03：Config 命令拆分
 
