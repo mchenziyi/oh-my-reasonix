@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/claude"
 	"github.com/mchenziyi/oh-my-reasonix/internal/doctor"
@@ -127,11 +126,4 @@ func runDoctor(args []string) error {
 		result.Render(os.Stdout)
 	}
 	return runErr
-}
-
-func projectRelativePath(projectDir, path string) string {
-	if filepath.IsAbs(path) {
-		return path
-	}
-	return filepath.Join(projectDir, path)
 }

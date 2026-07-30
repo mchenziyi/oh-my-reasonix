@@ -5,7 +5,15 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 )
+
+func projectRelativePath(projectDir, path string) string {
+	if filepath.IsAbs(path) {
+		return path
+	}
+	return filepath.Join(projectDir, path)
+}
 
 func flagWasSet(flags *flag.FlagSet, name string) bool {
 	set := false
