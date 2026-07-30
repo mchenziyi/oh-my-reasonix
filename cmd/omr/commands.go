@@ -808,13 +808,6 @@ func runQualityBenchmark(args []string) error {
 	return nil
 }
 
-func checkQualityGates(report qualitybench.Report, minimumRate, maximumCost float64) error {
-	if err := qualitybench.CheckGate(report, minimumRate); err != nil {
-		return err
-	}
-	return qualitybench.CheckCostGate(report, maximumCost)
-}
-
 func projectRelativePath(projectDir, path string) string {
 	if filepath.IsAbs(path) {
 		return path
@@ -830,18 +823,6 @@ func flagWasSet(flags *flag.FlagSet, name string) bool {
 		}
 	})
 	return set
-}
-
-func loadQualityResults(path string) (map[string]qualitybench.RunResult, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-	results := map[string]qualitybench.RunResult{}
-	if err := json.Unmarshal(data, &results); err != nil {
-		return nil, fmt.Errorf("parse quality results: %w", err)
-	}
-	return results, nil
 }
 
 func writeJSONValue(path string, label string, value interface{}) error {
