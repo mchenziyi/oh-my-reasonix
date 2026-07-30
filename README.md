@@ -1,5 +1,7 @@
 # oh-my-reasonix
 
+[English README](README.en.md)
+
 oh-my-reasonix（OMR）是 Reasonix 的项目级增强层：负责安装和升级、Prompt 组合、Profile 分发、Claude 配置兼容、质量门禁、成本报告和机器接口适配。
 
 它不替代 Reasonix，也不复制 Reasonix 的 Session、Task、Hook、Todo 或权限状态机。OMR 把可复用的工作流约束和项目配置安全地安装到项目中，再由 Reasonix 负责实际执行。
