@@ -354,32 +354,16 @@ func runProfileList(args []string) error {
 }
 
 func runQualityBenchmark(args []string) error {
-	flags := flag.NewFlagSet("benchmark quality", flag.ContinueOnError)
-	flags.SetOutput(os.Stderr)
-	fixturesRoot := flags.String("fixtures", "benchmarks/fixtures", "fixture root")
-	resultsPath := flags.String("results", "", "optional JSON map of fixture id to RunResult")
-	nativeResultsPath := flags.String("native-results", "", "Native JSON results for quality comparison")
-	omrResultsPath := flags.String("omr-results", "", "OMR JSON results for quality comparison")
-	outputPath := flags.String("output", "", "optional JSON report path")
-	replay := flags.Bool("replay", false, "run fixtures with deterministic replay outcomes")
-	paired := flags.Bool("paired", false, "run native/omr paired replay comparison (requires full-flow fixtures with native_replay/omr_replay)")
-	runtimeRun := flags.Bool("runtime", false, "run fixtures through the real Reasonix CLI")
-	runTests := flags.Bool("run-tests", false, "run fixture hidden and regression tests")
-	projectDir := flags.String("project-dir", ".", "project directory for fixture tests")
-	binary := flags.String("binary", "reasonix", "Reasonix executable for --runtime")
-	metricsDir := flags.String("metrics-dir", "", "metrics output directory for --runtime")
-	eventsPath := flags.String("events", "", "optional JSONL structured event log for --runtime")
-	model := flags.String("model", "", "optional Reasonix model for --runtime")
-	maxSteps := flags.Int("max-steps", 0, "optional Reasonix step limit for --runtime")
-	concurrency := flags.Int("concurrency", 1, "maximum concurrent --runtime fixtures")
-	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
-	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
-	maxCost := flags.Float64("max-cost", 0, "optional aggregate cost budget; 0 disables the gate")
-	runIDFlag := flags.String("run-id", "", "stable report run ID (default: timestamp-based)")
-	configPath := flags.String("config", "", "optional OMR config (TOML or JSONC; default: <project>/.reasonix/omr/config.jsonc or config.toml)")
-	if err := flags.Parse(args); err != nil {
+	o, err := parseQualityBenchmarkOptions(args)
+	if err != nil {
 		return err
 	}
+	flags := o.flags
+	fixturesRoot, resultsPath, nativeResultsPath, omrResultsPath, outputPath := o.fixturesRoot, o.resultsPath, o.nativeResultsPath, o.omrResultsPath, o.outputPath
+	replay, paired, runtimeRun, runTests := o.replay, o.paired, o.runtimeRun, o.runTests
+	projectDir, binary, metricsDir, eventsPath, model, configPath := o.projectDir, o.binary, o.metricsDir, o.eventsPath, o.model, o.configPath
+	maxSteps, concurrency, timeout := o.maxSteps, o.concurrency, o.timeout
+	minQualifiedRate, maxCost, runIDFlag := o.minQualifiedRate, o.maxCost, o.runIDFlag
 	runID := "omr-" + time.Now().Format("20060102-150405")
 	if strings.TrimSpace(*runIDFlag) != "" {
 		runID = strings.TrimSpace(*runIDFlag)

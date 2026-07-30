@@ -13,6 +13,7 @@
 - [x] 提取 Session 命令至 `cmd/omr/session.go`
 - [x] 提取 Benchmark dispatcher/cache 至 `cmd/omr/benchmark.go`
 - [x] 提取 Benchmark 评分辅助逻辑至 `cmd/omr/benchmark.go`
+- [x] 提取质量 Benchmark 参数解析至 `cmd/omr/benchmark.go`
 - [x] 提取 Hook Doctor 至 `cmd/omr/hook.go`
 - [x] 提取 `run` 命令至 `cmd/omr/run.go`
 - [x] 提取 JSON 报告写出逻辑至 `cmd/omr/output.go`
@@ -37,10 +38,11 @@
 - [x] 将质量评分门禁和结果读取辅助逻辑移至 `cmd/omr/benchmark.go`
 - [x] 保持 replay、fixture、run-id、质量门禁参数兼容
 - [x] 验证缓存基准回归测试
+- [x] 保持质量 Benchmark 全部既有 flag 默认值和配置覆盖行为
 - [ ] 将 `runQualityBenchmark` 主流程移至独立文件
 - [ ] 运行质量基准和 CLI Smoke
 
-### CLI-REF-03：Config 命令拆分
+### CLI-REF-03：Config 命令拆分（进行中）
 
 - [x] 将迁移和 Prompt 校验移至 `cmd/omr/config.go`
 - [x] 将内置 Profile 目录移至 `cmd/omr/config.go`
@@ -60,9 +62,10 @@
 - [ ] 覆盖 validate、migrate、schema 输出
 - [ ] 验证迁移失败时零写入和回滚行为
 
-### CLI-REF-04：Profile 命令拆分
+### CLI-REF-04：Profile 命令拆分（进行中）
 
-- [ ] 将 Profile 列表、详情、启用/禁用和路由诊断移至 `cmd/omr/profile.go`
+- [x] 将 Profile 列表路由和组装辅助逻辑移至 `cmd/omr/profile.go`
+- [ ] 将 Profile 列表主输出流程移至 `cmd/omr/profile.go`
 - [ ] 保持 Profile JSON Schema 和输出字段兼容
 - [ ] 验证内置、项目级和禁用 Profile 的显示结果
 
