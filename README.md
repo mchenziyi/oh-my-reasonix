@@ -4,6 +4,19 @@ oh-my-reasonix（OMR）是 Reasonix 的项目级增强层：负责安装和升�
 
 它不替代 Reasonix，也不复制 Reasonix 的 Session、Task、Hook、Todo 或权限状态机。OMR 把可复用的工作流约束和项目配置安全地安装到项目中，再由 Reasonix 负责实际执行。
 
+如果你只想知道怎么开始：在一个已有 `reasonix.toml` 的项目中运行 `omr init --project-dir .`，然后用 Reasonix 打开这个项目即可。OMR 不会替你启动 Reasonix，也不会接管模型、Session 或权限。
+
+## 适合谁
+
+- 希望把一套可复用开发规则安装到多个 Reasonix 项目中的个人或团队；
+- 需要 Explore、Research、Debug、Planner 等只读辅助 Profile 的项目；
+- 需要安装可预览、升级可回滚、配置有 Hash 和备份证据的团队；
+- 需要离线质量 Fixture、成本门禁和结构化报告的工程项目。
+
+## OMR 不是什么
+
+OMR 不是新的 Agent Runtime、模型服务或桌面客户端。它不复制 Reasonix 的 Session、Task、Todo、Hook、权限、沙箱和后台任务状态机；这些能力仍由 Reasonix 原生提供。
+
 ## OMR 解决什么问题
 
 直接使用 Reasonix 时，团队通常还需要自己维护：
@@ -135,6 +148,13 @@ OMR 不读取 Reasonix 私有目录或数据库，不从人类可读 stdout 猜�
 
 ## 快速开始
 
+### 前置条件
+
+- Go 1.23+（使用源码或 `go run` 安装时）；
+- 已安装并完成认证的 Reasonix；
+- 项目根目录存在 `reasonix.toml`；
+- Reasonix v1.17.20 或更高版本（可用 `omr version --json` 检查）。
+
 ### 一分钟安装
 
 已有 Reasonix 项目（含 `reasonix.toml`）：
@@ -149,6 +169,26 @@ go run github.com/mchenziyi/oh-my-reasonix/cmd/omr@latest doctor --project-dir .
 # 查看 Profile
 go run github.com/mchenziyi/oh-my-reasonix/cmd/omr@latest profile list --project-dir .
 ~~~
+
+安装会在项目内生成或更新：
+
+~~~text
+reasonix.toml                         # 增加 OMR Prompt 引用
+.reasonix/omr/generated/              # 合并后的系统 Prompt
+.reasonix/skills/                     # OMR Profile
+.reasonix/omr/manifest.lock.yaml      # 资产和 Hash 清单
+.reasonix/omr/backups/                 # 升级前备份
+~~~
+
+首次运行建议：
+
+~~~bash
+omr doctor --project-dir .
+omr profile list --project-dir . --json
+reasonix subagent list --dir .
+~~~
+
+然后在 Reasonix 客户端中提出普通开发任务。复杂任务可以先明确要求使用 `omr-grill-me` 进行方案质询，再进入规划和实现。
 
 从源码构建：
 
