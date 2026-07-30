@@ -53,6 +53,7 @@
 - [x] 将 Profile SKILL 元数据解析移至 `cmd/omr/profile.go`
 - [x] 将项目级 Agent 配置覆盖移至 `cmd/omr/profile.go`
 - [x] 将 Profile 分类和禁用状态组装移至 `cmd/omr/profile.go`
+- [x] 统一项目专属 Profile 列表计算逻辑
 - [ ] 将 `runConfigValidate` 主验证流程移至 `cmd/omr/config.go`
 - [ ] 保持 TOML/JSON/JSONC 分发逻辑不变
 - [ ] 覆盖 validate、migrate、schema 输出
