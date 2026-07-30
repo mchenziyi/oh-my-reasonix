@@ -74,3 +74,11 @@ func validatePromptFiles(cfg omrconfig.Config, projectDir string) []string {
 	}
 	return errorsFound
 }
+
+func knownOMRProfiles() map[string]bool {
+	return map[string]bool{
+		"omr-explore": true, "omr-research": true, "omr-debug": true,
+		"omr-planner": true, "omr-frontend": true, "omr-git": true,
+		"omr-lsp": true, "omr-grill-me": true, "omr-grill-with-docs": true,
+	}
+}

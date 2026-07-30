@@ -205,11 +205,7 @@ func runConfig(args []string) error {
 	// Category diagnostic: check each category routes to an existing profile
 	var categoryDiags []string
 	// Known profiles from built-in set
-	knownProfiles := map[string]bool{
-		"omr-explore": true, "omr-research": true, "omr-debug": true,
-		"omr-planner": true, "omr-frontend": true, "omr-git": true,
-		"omr-lsp": true, "omr-grill-me": true, "omr-grill-with-docs": true,
-	}
+	knownProfiles := knownOMRProfiles()
 	// Also check agent configs
 	for profile := range cfg.Agents {
 		knownProfiles[profile] = true
