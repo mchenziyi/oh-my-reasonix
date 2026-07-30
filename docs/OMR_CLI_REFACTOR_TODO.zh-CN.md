@@ -17,6 +17,7 @@
 - [x] 提取 `run` 命令至 `cmd/omr/run.go`
 - [x] 提取 JSON 报告写出逻辑至 `cmd/omr/output.go`
 - [x] 提取资产加载入口至 `cmd/omr/install.go`
+- [x] 提取 Config 迁移和 Prompt 文件校验至 `cmd/omr/config.go`
 - [ ] 完成剩余命令模块拆分
 - [ ] 建立统一 CLI 输出与错误边界
 - [ ] 评估是否迁移到 `internal/cli`
@@ -41,7 +42,8 @@
 
 ### CLI-REF-03：Config 命令拆分
 
-- [ ] 将 `runConfig`、迁移、Schema 和 Prompt 校验移至 `cmd/omr/config.go`
+- [x] 将迁移和 Prompt 校验移至 `cmd/omr/config.go`
+- [ ] 将 `runConfig` 和 Schema 输出移至 `cmd/omr/config.go`
 - [ ] 保持 TOML/JSON/JSONC 分发逻辑不变
 - [ ] 覆盖 validate、migrate、schema 输出
 - [ ] 验证迁移失败时零写入和回滚行为
