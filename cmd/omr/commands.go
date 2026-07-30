@@ -743,13 +743,3 @@ func projectRelativePath(projectDir, path string) string {
 	}
 	return filepath.Join(projectDir, path)
 }
-
-func flagWasSet(flags *flag.FlagSet, name string) bool {
-	set := false
-	flags.Visit(func(f *flag.Flag) {
-		if f.Name == name {
-			set = true
-		}
-	})
-	return set
-}
