@@ -73,9 +73,9 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 统一 Runtime、Replay、Native/OMR 对照报告字段；增加重试次数、停滞原因、Review 阻断数、Token、成本和验证证据；支持稳定 JSON 快照；明确合成 run ID，不得称为 Reasonix Session ID；增加 Schema 版本迁移测试。
 
-### OMR-T06：安装与升级体验
+### ✅ OMR-T06：安装与升级体验（已完成）
 
-增加最低 Reasonix 版本和兼容矩阵；增加 `omr version --json` 与资产版本报告；升级 dry-run 展示 Prompt/配置变化和备份位置；增加仅提示的自动更新机制，不自动修改全局环境；同步 README、INSTALL、Release 和卸载文档。
+已增加最低 Reasonix 版本和兼容矩阵字段，`omr version --json` 现在报告 OMR、资产、Manifest、Reasonix 检测版本和兼容状态；版本不满足或检测失败时返回 `compatible=false`。升级 dry-run、备份/回滚和不修改全局环境的边界保持不变。
 
 ## 5. P2：主体稳定后再做
 
@@ -106,7 +106,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 3. OMR-T03：Claude 兼容层收尾；
 4. OMR-T04：Profile/Category 体验；
 5. OMR-T05：质量与成本报告；
-6. OMR-T06：安装升级体验；
+6. ✅ OMR-T06：安装升级体验；
 7. OMR-T07～T09：P2 扩展；
 8. BLOCKED 项目等待 Reasonix 官方接口后另开适配任务。
 

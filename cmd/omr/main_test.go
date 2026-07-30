@@ -956,6 +956,25 @@ func TestCommentCheckJSONErrorForBlockedPath(t *testing.T) {
 	}
 }
 
+func TestCompatibleReasonixVersion(t *testing.T) {
+	tests := []struct {
+		output string
+		want   bool
+	}{
+		{output: "reasonix v1.17.20", want: true},
+		{output: "reasonix v1.18.0", want: true},
+		{output: "reasonix v2.0.0", want: true},
+		{output: "reasonix v1.17.19", want: false},
+		{output: "reasonix v1.16.99", want: false},
+		{output: "not-a-version", want: false},
+	}
+	for _, tt := range tests {
+		if got := compatibleReasonixVersion(tt.output); got != tt.want {
+			t.Errorf("compatibleReasonixVersion(%q) = %v, want %v", tt.output, got, tt.want)
+		}
+	}
+}
+
 func TestHookDoctorProjectDir(t *testing.T) {
 	dir := t.TempDir()
 	mockBin := makeMockReasonixBinary(t, dir)

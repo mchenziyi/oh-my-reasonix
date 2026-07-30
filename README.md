@@ -350,6 +350,8 @@ go run ./cmd/omr version
 
 OMR 基于 Reasonix v1.17.20 的公开机器接口设计，当前兼容状态：
 
+`omr version --json` 会输出 `minimum_reasonix_version` 和 `compatible` 字段；当前最低支持版本为 Reasonix v1.17.20。
+
 | 接口 | 状态 | 说明 |
 |------|------|------|
 | session list | ✅ 通过 | 只读查询 Session 列表 |
