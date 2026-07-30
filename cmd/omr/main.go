@@ -925,11 +925,15 @@ func runQualityBenchmark(args []string) error {
 	timeout := flags.Duration("timeout", 2*time.Minute, "per benchmark execution timeout")
 	minQualifiedRate := flags.Float64("min-qualified-rate", 1, "fail when qualified rate is below this value (0..1)")
 	maxCost := flags.Float64("max-cost", 0, "optional aggregate cost budget; 0 disables the gate")
+	runIDFlag := flags.String("run-id", "", "stable report run ID (default: timestamp-based)")
 	configPath := flags.String("config", "", "optional OMR config (TOML or JSONC; default: <project>/.reasonix/omr/config.jsonc or config.toml)")
 	if err := flags.Parse(args); err != nil {
 		return err
 	}
 	runID := "omr-" + time.Now().Format("20060102-150405")
+	if strings.TrimSpace(*runIDFlag) != "" {
+		runID = strings.TrimSpace(*runIDFlag)
+	}
 	configFile := *configPath
 	if configFile == "" {
 		configFile = omrconfig.FindConfig(*projectDir)
