@@ -32,7 +32,7 @@
 - [x] 保持 JSON 字段、错误文本和退出码不变
 - [x] 运行 `go test ./cmd/omr`、`go vet ./cmd/omr`、`go build ./cmd/omr`
 
-### CLI-REF-02：Benchmark 命令拆分（进行中）
+### CLI-REF-02：Benchmark 命令拆分 ✅
 
 - [x] 将 `runBenchmark` 和缓存基准移至 `cmd/omr/benchmark.go`
 - [x] 将质量评分门禁和结果读取辅助逻辑移至 `cmd/omr/benchmark.go`
@@ -40,9 +40,9 @@
 - [x] 保持 replay、fixture、run-id、质量门禁参数兼容
 - [x] 验证缓存基准回归测试
 - [x] 保持质量 Benchmark 全部既有 flag 默认值和配置覆盖行为
-- [ ] 运行质量基准和 CLI Smoke
+- [x] 运行质量基准和 CLI Smoke
 
-### CLI-REF-03：Config 命令拆分（进行中）
+### CLI-REF-03：Config 命令拆分 ✅
 
 - [x] 将迁移和 Prompt 校验移至 `cmd/omr/config.go`
 - [x] 将内置 Profile 目录移至 `cmd/omr/config.go`
@@ -58,15 +58,15 @@
 - [x] 统一项目专属 Profile 列表计算逻辑
 - [x] 为 Profile 组装辅助逻辑增加回归测试
 - [x] 将 `runConfigValidate` 主验证流程移至 `cmd/omr/config.go`
-- [ ] 保持 TOML/JSON/JSONC 分发逻辑不变
-- [ ] 覆盖 validate、migrate、schema 输出
-- [ ] 验证迁移失败时零写入和回滚行为
+- [x] 保持 TOML/JSON/JSONC 分发逻辑不变
+- [x] 覆盖 validate、migrate、schema 输出
+- [x] 验证迁移失败时零写入和回滚行为
 
-### CLI-REF-04：Profile 命令拆分（进行中）
+### CLI-REF-04：Profile 命令拆分 ✅
 
 - [x] 将 Profile 列表路由、主输出流程和组装辅助逻辑移至 `cmd/omr/profile.go`
-- [ ] 保持 Profile JSON Schema 和输出字段兼容
-- [ ] 验证内置、项目级和禁用 Profile 的显示结果
+- [x] 保持 Profile JSON Schema 和输出字段兼容
+- [x] 验证内置、项目级和禁用 Profile 的显示结果
 
 ### CLI-REF-05：安装与 Doctor 拆分
 
