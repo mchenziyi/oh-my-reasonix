@@ -335,22 +335,9 @@ func runProfile(args []string) error {
 	}
 	profiles := m.NormalizedProfiles()
 	if *jsonOutput {
-		configured := map[string]omrconfig.AgentConfig{}
-		categoryByProfile := map[string][]string{}
-		disabled := map[string]bool{}
-		configPath := omrconfig.FindConfig(root)
-		if _, statErr := os.Stat(configPath); statErr == nil {
-			cfg, configErr := omrconfig.Load(configPath)
-			if configErr != nil {
-				return configErr
-			}
-			configured = cfg.Agents
-			for category, profile := range cfg.Categories {
-				categoryByProfile[profile] = append(categoryByProfile[profile], category)
-			}
-			for _, profile := range cfg.DisabledProfiles {
-				disabled[profile] = true
-			}
+		configured, categoryByProfile, disabled, configErr := loadProfileConfig(root)
+		if configErr != nil {
+			return configErr
 		}
 		output := make([]profileJSON, 0, len(profiles))
 		for _, profile := range profiles {
@@ -424,25 +411,12 @@ func runProfile(args []string) error {
 		}
 		return json.NewEncoder(os.Stdout).Encode(output)
 	}
-	categoryByProfile := map[string][]string{}
-	disabled := map[string]bool{}
-	configured := map[string]omrconfig.AgentConfig{}
-	configPath := omrconfig.FindConfig(root)
-	if _, statErr := os.Stat(configPath); statErr == nil {
-		cfg, configErr := omrconfig.Load(configPath)
-		if configErr != nil {
-			return configErr
-		}
-		configured = cfg.Agents
-		for category, profile := range cfg.Categories {
-			categoryByProfile[profile] = append(categoryByProfile[profile], category)
-		}
-		for profile := range categoryByProfile {
-			sort.Strings(categoryByProfile[profile])
-		}
-		for _, profile := range cfg.DisabledProfiles {
-			disabled[profile] = true
-		}
+	configured, categoryByProfile, disabled, configErr := loadProfileConfig(root)
+	if configErr != nil {
+		return configErr
+	}
+	for profile := range categoryByProfile {
+		sort.Strings(categoryByProfile[profile])
 	}
 	fmt.Printf("%-16s %-8s %-10s %-18s %s\n", "PROFILE", "SOURCE", "STATUS", "MODEL", "CATEGORIES")
 	for _, profile := range profiles {
