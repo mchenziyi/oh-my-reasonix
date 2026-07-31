@@ -298,9 +298,9 @@ Reasonix v1.17.20 `--events-jsonl` 为布尔开关，输出 JSONL 到 stdout。O
 
 ---
 
-## 9. INT-06 用户操作说明 ⏳ [pending]
+## 9. INT-06 真实客户端验证 ✅ [completed]
 
-> INT-06 尚未实际执行，以下为操作步骤。完成 GUI 对照后需补充结果。
+> 2026-07-30 已使用 Reasonix v1.18.0 完成真实客户端验证；本节原操作说明已执行。
 
 1. 在 Reasonix GUI 中启动一个任务（如"写一个 hello world"）
 2. 让任务运行 2-3 轮 turn
@@ -310,6 +310,16 @@ Reasonix v1.17.20 `--events-jsonl` 为布尔开关，输出 JSONL 到 stdout。O
    omr task list --project-dir . --json
    ```
 4. 如中断 Session，测试 `omr session recovery <id> --json`
+
+实际结果：
+
+- Session list/status/show：✅；
+- Task list：✅，当前项目无后台 Task；
+- Hook list/status：✅，当前项目未配置 Hook；
+- Session recovery：✅，当前项目无恢复快照；
+- JSONL 事件流：✅，35 条事件且最终 `run_done.ok=true`；
+- Token 汇总：✅，修复重复累计后为 14975；
+- 对应 OMR 修复提交：`9ee47f6`。
 
 ---
 

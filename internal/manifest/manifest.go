@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -65,6 +66,19 @@ type Manifest struct {
 	ProfilePath    string        `json:"profile_path,omitempty"`
 	ProfileSHA256  string        `json:"profile_sha256,omitempty"`
 	BackupPath     string        `json:"backup_path,omitempty"`
+	Hook           *HookRecord   `json:"hook,omitempty"`
+}
+
+// HookRecord records the OMR-managed Hook state in the Manifest.
+// It is entirely optional; old manifests without it remain valid.
+type HookRecord struct {
+	Enabled             bool   `json:"enabled"`
+	SettingsPath        string `json:"settings_path"`
+	Event               string `json:"event"`
+	Description         string `json:"description"`
+	EntrySHA256         string `json:"entry_sha256"`
+	BaseFileSHA256      string `json:"base_file_sha256,omitempty"`
+	InstalledFileSHA256 string `json:"installed_file_sha256,omitempty"`
 }
 
 func New() Manifest {
@@ -100,7 +114,36 @@ func (m Manifest) Validate() error {
 			return fmt.Errorf("asset %q has unresolved license status", asset.ID)
 		}
 	}
+	if m.Hook != nil {
+		if m.Hook.SettingsPath != ".reasonix/settings.json" ||
+			m.Hook.Event != "PreToolUse" ||
+			m.Hook.Description != "[oh-my-reasonix] Comment Checker before git commit" {
+			return fmt.Errorf("manifest Hook metadata is incomplete")
+		}
+		if !validSHA256(m.Hook.EntrySHA256) {
+			return fmt.Errorf("manifest Hook entry hash is invalid")
+		}
+		if m.Hook.Enabled && !validSHA256(m.Hook.InstalledFileSHA256) {
+			return fmt.Errorf("manifest Hook installed file hash is invalid")
+		}
+		for _, value := range []string{m.Hook.BaseFileSHA256, m.Hook.InstalledFileSHA256} {
+			if value != "" && !validSHA256(value) {
+				return fmt.Errorf("manifest Hook file hash is invalid")
+			}
+		}
+		if !m.Hook.Enabled && (m.Hook.BaseFileSHA256 != "" || m.Hook.InstalledFileSHA256 != "") {
+			return fmt.Errorf("disabled manifest Hook contains enabled-state file hashes")
+		}
+	}
 	return nil
+}
+
+func validSHA256(value string) bool {
+	if len(value) != 64 {
+		return false
+	}
+	_, err := hex.DecodeString(value)
+	return err == nil
 }
 
 func (m Manifest) NormalizedProfiles() []Profile {

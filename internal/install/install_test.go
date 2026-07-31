@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/commenthook"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 )
@@ -33,6 +34,47 @@ func newProject(t *testing.T, config string) string {
 		t.Fatal(err)
 	}
 	return root
+}
+
+func TestUpgradeMigratesHookAndRefreshesManifestRecord(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	oldOmr := filepath.Join(root, "old-omr")
+	if err := os.WriteFile(oldOmr, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: oldOmr,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	newOmr := filepath.Join(root, "new-omr")
+	if err := os.WriteFile(newOmr, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Init(Options{ProjectDir: root, Upgrade: true, HookCommand: newOmr, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := manifest.Load(ManifestPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Hook == nil || !got.Hook.Enabled || got.Hook.EntrySHA256 == "" {
+		t.Fatalf("hook record was not refreshed: %#v", got.Hook)
+	}
+	settings, err := os.ReadFile(commenthook.SettingsPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(settings), commenthook.BuildHookCommand(newOmr)) ||
+		strings.Contains(string(settings), commenthook.BuildHookCommand(oldOmr)) {
+		t.Fatalf("Hook command was not migrated: %s", settings)
+	}
 }
 
 func TestInitIsIdempotentAndUninstallRestoresConfig(t *testing.T) {
@@ -73,6 +115,235 @@ func TestInitIsIdempotentAndUninstallRestoresConfig(t *testing.T) {
 	if _, err := os.Stat(ManifestPath(root)); !os.IsNotExist(err) {
 		t.Fatalf("manifest still exists: %v", err)
 	}
+}
+
+func TestUninstallRemovesOMRHookAndPreservesUserHook(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := commenthook.SettingsPath(root)
+	if err := os.WriteFile(settingsPath, []byte(`{"hooks":{"PreToolUse":[{"match":"read","command":"user-hook","description":"user hook"}]}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	omrPath := filepath.Join(root, "stable-omr")
+	if err := os.WriteFile(omrPath, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: omrPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := Uninstall(Options{ProjectDir: root, HookCommand: omrPath}); err != nil {
+		t.Fatal(err)
+	}
+	settings, err := os.ReadFile(settingsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(settings), commenthook.OMRDescription) {
+		t.Fatalf("OMR Hook remained after uninstall: %s", settings)
+	}
+	if !strings.Contains(string(settings), "user-hook") {
+		t.Fatalf("user Hook was removed during uninstall: %s", settings)
+	}
+	if _, err := os.Stat(ManifestPath(root)); !os.IsNotExist(err) {
+		t.Fatalf("Manifest should be removed: %v", err)
+	}
+}
+
+func TestUpgradeBlocksModifiedHookWithoutWriting(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	omrPath := filepath.Join(root, "stable-omr")
+	if err := os.WriteFile(omrPath, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: omrPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := commenthook.SettingsPath(root)
+	beforeManifest, err := os.ReadFile(ManifestPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tampered := strings.Replace(
+		string(mustReadFile(t, settingsPath)),
+		`"timeout": 10000`,
+		`"timeout": 9999`,
+		1,
+	)
+	if err := os.WriteFile(settingsPath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	upgraded := assets
+	upgraded.Orchestrator = []byte("changed orchestrator\n")
+	if _, err := Init(Options{
+		ProjectDir:  root,
+		Upgrade:     true,
+		HookCommand: omrPath,
+		Assets:      upgraded,
+	}); err == nil {
+		t.Fatal("expected modified Hook to block upgrade")
+	}
+	afterManifest, err := os.ReadFile(ManifestPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(afterManifest) != string(beforeManifest) {
+		t.Fatal("Manifest changed after blocked Hook upgrade")
+	}
+	if string(mustReadFile(t, settingsPath)) != tampered {
+		t.Fatal("settings changed after blocked Hook upgrade")
+	}
+}
+
+func TestUpgradeDryRunPlansHookMigrationWithoutWriting(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	oldOmr := filepath.Join(root, "old-omr")
+	if err := os.WriteFile(oldOmr, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: oldOmr,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	newOmr := filepath.Join(root, "new-omr")
+	if err := os.WriteFile(newOmr, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsPath := commenthook.SettingsPath(root)
+	beforeSettings := mustReadFile(t, settingsPath)
+	beforeManifest := mustReadFile(t, ManifestPath(root))
+	report, err := Init(Options{
+		ProjectDir:  root,
+		Upgrade:     true,
+		DryRun:      true,
+		HookCommand: newOmr,
+		Assets:      assets,
+	})
+	if err != nil {
+		t.Fatalf("dry-run Hook migration: %v %#v", err, report)
+	}
+	if report.Written || report.NoOp {
+		t.Fatalf("dry-run migration should only report a plan: %#v", report)
+	}
+	if string(mustReadFile(t, settingsPath)) != string(beforeSettings) {
+		t.Fatal("dry-run migration changed Hook settings")
+	}
+	if string(mustReadFile(t, ManifestPath(root))) != string(beforeManifest) {
+		t.Fatal("dry-run migration changed Manifest")
+	}
+}
+
+func TestUninstallDryRunPreservesHookAndManifest(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	omrPath := filepath.Join(root, "stable-omr")
+	if err := os.WriteFile(omrPath, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: omrPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsPath := commenthook.SettingsPath(root)
+	beforeSettings := mustReadFile(t, settingsPath)
+	beforeManifest := mustReadFile(t, ManifestPath(root))
+	report, err := Uninstall(Options{
+		ProjectDir:  root,
+		DryRun:      true,
+		HookCommand: omrPath,
+	})
+	if err != nil {
+		t.Fatalf("dry-run uninstall: %v %#v", err, report)
+	}
+	if report.Written {
+		t.Fatalf("dry-run uninstall reported a write: %#v", report)
+	}
+	if string(mustReadFile(t, settingsPath)) != string(beforeSettings) {
+		t.Fatal("dry-run uninstall changed Hook settings")
+	}
+	if string(mustReadFile(t, ManifestPath(root))) != string(beforeManifest) {
+		t.Fatal("dry-run uninstall changed Manifest")
+	}
+}
+
+func TestUninstallBlocksModifiedHookWithoutWriting(t *testing.T) {
+	root := newProject(t, "[agent]\nmodel = \"test\"\n")
+	assets := testAssets()
+	if _, err := Init(Options{ProjectDir: root, Assets: assets}); err != nil {
+		t.Fatal(err)
+	}
+	omrPath := filepath.Join(root, "stable-omr")
+	if err := os.WriteFile(omrPath, []byte("binary"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := commenthook.EnableHook(commenthook.TransactionOptions{
+		ProjectDir: root,
+		OmrCommand: omrPath,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	settingsPath := commenthook.SettingsPath(root)
+	tampered := strings.Replace(
+		string(mustReadFile(t, settingsPath)),
+		`"timeout": 10000`,
+		`"timeout": 9999`,
+		1,
+	)
+	if err := os.WriteFile(settingsPath, []byte(tampered), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	beforeManifest := mustReadFile(t, ManifestPath(root))
+	beforePrompt := mustReadFile(t, GeneratedPromptPath(root))
+
+	if _, err := Uninstall(Options{ProjectDir: root, HookCommand: omrPath}); err == nil {
+		t.Fatal("expected modified Hook to block uninstall")
+	}
+	if string(mustReadFile(t, settingsPath)) != tampered {
+		t.Fatal("blocked uninstall changed Hook settings")
+	}
+	if string(mustReadFile(t, ManifestPath(root))) != string(beforeManifest) {
+		t.Fatal("blocked uninstall changed Manifest")
+	}
+	if string(mustReadFile(t, GeneratedPromptPath(root))) != string(beforePrompt) {
+		t.Fatal("blocked uninstall changed generated Prompt")
+	}
+}
+
+func mustReadFile(t *testing.T, path string) []byte {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }
 
 func TestComposeRequiresPersistenceConfirmation(t *testing.T) {

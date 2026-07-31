@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/commenthook"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 )
@@ -15,9 +16,21 @@ func Uninstall(opts Options) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
+	if err := commenthook.ValidateManagedPath(ManifestPath(root), root); err != nil {
+		return Report{Root: root, Errors: []string{"unsafe OMR manifest path: " + err.Error()}}, err
+	}
 	m, err := manifest.Load(ManifestPath(root))
 	if err != nil {
 		return Report{Root: root, Errors: []string{fmt.Sprintf("load manifest: %v", err)}}, err
+	}
+	if opts.HookCommand == "" {
+		opts.HookCommand, _ = commenthook.ResolveOmrPath()
+	}
+	hookPlan, err := commenthook.PlanUninstallLifecycle(root, opts.HookCommand, m.Hook)
+	if err != nil {
+		report := Report{Root: root, Manifest: m}
+		report.Conflicts = append(report.Conflicts, "Comment Checker Hook uninstall blocked: "+err.Error())
+		return report, fmt.Errorf("uninstall blocked by Hook conflict")
 	}
 	configPath, err := requireReasonixConfig(root)
 	if err != nil {
@@ -81,6 +94,9 @@ func Uninstall(opts Options) (Report, error) {
 	if configChanged {
 		report.Changes = append(report.Changes, Change{Path: "reasonix.toml", Action: "UPDATE", Detail: "field-level restore of agent.system_prompt_file"})
 	}
+	if hookPlan.SettingsChanged {
+		report.Changes = append(report.Changes, Change{Path: commenthook.HookSettingsRel, Action: "UPDATE", Detail: "remove OMR Comment Checker Hook"})
+	}
 	if len(report.Conflicts) > 0 {
 		return report, fmt.Errorf("uninstall blocked by conflicts")
 	}
@@ -97,6 +113,7 @@ func Uninstall(opts Options) (Report, error) {
 		oldProfiles[profile.Path], profileExisted[profile.Path] = readIfExists(path)
 	}
 	oldManifest, manifestExisted := readIfExists(ManifestPath(root))
+	hookBackupCreated := false
 	rollback := func() {
 		if configChanged {
 			restoreFile(configPath, true, oldConfig)
@@ -113,9 +130,22 @@ func Uninstall(opts Options) (Report, error) {
 		if manifestExisted {
 			_ = fileutil.AtomicWrite(ManifestPath(root), oldManifest, 0o644)
 		}
+		if hookPlan.SettingsChanged {
+			restoreFile(hookPlan.SettingsPath, hookPlan.BeforeExisted, hookPlan.Before)
+		}
+		if hookBackupCreated {
+			commenthook.RemoveLifecycleBackup(hookPlan.BackupPath)
+		}
+	}
+	if hookPlan.SettingsChanged {
+		hookBackupCreated, err = commenthook.EnsureLifecycleBackup(hookPlan, root)
+		if err != nil {
+			return reportWithError(report, fmt.Errorf("write Hook backup: %w", err))
+		}
 	}
 	if configChanged {
 		if err := fileutil.AtomicWrite(configPath, []byte(newConfig), 0o644); err != nil {
+			rollback()
 			return reportWithError(report, err)
 		}
 	}
@@ -134,6 +164,12 @@ func Uninstall(opts Options) (Report, error) {
 			}
 		}
 	}
+	if hookPlan.SettingsChanged {
+		if err := fileutil.AtomicWrite(hookPlan.SettingsPath, hookPlan.After, 0o644); err != nil {
+			rollback()
+			return reportWithError(report, fmt.Errorf("write Hook settings: %w", err))
+		}
+	}
 	if err := os.Remove(ManifestPath(root)); err != nil && !os.IsNotExist(err) {
 		rollback()
 		return reportWithError(report, err)
@@ -141,6 +177,7 @@ func Uninstall(opts Options) (Report, error) {
 	if m.BackupPath != "" {
 		_ = os.RemoveAll(filepath.Join(root, filepath.FromSlash(m.BackupPath)))
 	}
+	_ = os.RemoveAll(commenthook.HookBackupPath(root))
 	removeEmptyDir(filepath.Dir(generatedPath))
 	for _, profile := range m.NormalizedProfiles() {
 		removeEmptyDir(filepath.Dir(ProfilePath(root, profile.Path)))

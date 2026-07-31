@@ -1,12 +1,17 @@
 package doctor
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/commenthook"
+	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
+	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
+	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
 func doctorAssets() install.Assets {
@@ -53,6 +58,75 @@ func TestRunRejectsGeneratedPromptDrift(t *testing.T) {
 	result, err := Run(root, doctorAssets())
 	if err == nil || len(result.Errors) == 0 {
 		t.Fatalf("expected drift error: %#v %v", result, err)
+	}
+}
+
+func TestDoctorRunBlocksHookEntryHashDrift(t *testing.T) {
+	root := doctorProject(t)
+	settings := []byte(`{"hooks":{"PreToolUse":[{"match":"bash","command":"` + commenthook.OMRCommandLegacy + `","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`)
+	settingsPath := commenthook.SettingsPath(root)
+	if err := os.WriteFile(settingsPath, settings, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	m, err := manifest.Load(install.ManifestPathForDoctor(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.Hook = hookRecordForTest(t, settings, true)
+	m.Hook.EntrySHA256 = strings.Repeat("f", 64)
+	if err := manifest.Write(install.ManifestPathForDoctor(root), m); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := Run(root, doctorAssets())
+	if err == nil || !result.Blocking() {
+		t.Fatalf("expected blocking doctor result, got err=%v result=%#v", err, result)
+	}
+	found := false
+	for _, detail := range result.Errors {
+		found = found || strings.Contains(detail, "comment-hook")
+	}
+	if !found {
+		t.Fatalf("comment Hook drift was not promoted to result.Errors: %#v", result.Errors)
+	}
+}
+
+func TestDoctorRejectsSettingsFileSymlink(t *testing.T) {
+	root := doctorProject(t)
+	outside := filepath.Join(t.TempDir(), "settings.json")
+	if err := os.WriteFile(outside, []byte("{}"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	settingsPath := commenthook.SettingsPath(root)
+	if err := os.Symlink(outside, settingsPath); err != nil {
+		t.Skip("symlinks not supported:", err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || !result.Blocking() {
+		t.Fatalf("expected settings symlink to block doctor, got err=%v result=%#v", err, result)
+	}
+}
+
+func TestDoctorRejectsManifestSymlink(t *testing.T) {
+	root := doctorProject(t)
+	manifestPath := install.ManifestPathForDoctor(root)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	outside := filepath.Join(t.TempDir(), "manifest.lock.yaml")
+	if err := os.WriteFile(outside, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(manifestPath); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, manifestPath); err != nil {
+		t.Skip("symlinks not supported:", err)
+	}
+	result, err := Run(root, doctorAssets())
+	if err == nil || !result.Blocking() {
+		t.Fatalf("expected manifest symlink to block doctor, got err=%v result=%#v", err, result)
 	}
 }
 
@@ -288,6 +362,139 @@ func TestHookCheckWarnNotBlocking(t *testing.T) {
 	}
 	if len(result.Errors) > 0 {
 		t.Fatal("WARN hook check should not produce errors")
+	}
+}
+
+func TestCommentHookDiagnosticWarnsForLegacyCommand(t *testing.T) {
+	root := t.TempDir()
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"hooks":{"PreToolUse":[{"match":"bash","command":"` + commenthook.OMRCommandLegacy + `","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	check := commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "/opt/homebrew/bin/omr", nil, hookRecordForTest(t, []byte(data), true))
+	if check.Status != "WARN" || !strings.Contains(check.Detail, "PATH") {
+		t.Fatalf("expected legacy migration warning, got %#v", check)
+	}
+}
+
+func TestCommentHookDiagnosticDetectsExecutablePathDrift(t *testing.T) {
+	root := t.TempDir()
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	data := `{"hooks":{"PreToolUse":[{"match":"bash","command":"/old/path/omr hook comment-check guard --project-dir .","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	check := commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "/new/path/omr", nil, nil)
+	if check.Status != "ERROR" {
+		t.Fatalf("expected path drift error, got %#v", check)
+	}
+}
+
+func TestCommentHookDiagnosticReportsUnresolvableExecutableBeforeDrift(t *testing.T) {
+	root := t.TempDir()
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// An absolute-path entry whose current omr binary cannot be resolved must
+	// be reported as an unresolvable executable, not as a drifted entry.
+	data := `{"hooks":{"PreToolUse":[{"match":"bash","command":"/old/path/omr hook comment-check guard --project-dir .","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	check := commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "", errors.New("omr binary moved"), nil)
+	if check.Status != "ERROR" || !strings.Contains(check.Detail, "无法解析") {
+		t.Fatalf("expected unresolvable executable error, got %#v", check)
+	}
+	if strings.Contains(check.Detail, "被修改") {
+		t.Fatalf("must not misreport as drift when the executable is unresolvable: %#v", check)
+	}
+}
+
+func TestCommentHookDiagnosticRequiresManifestOwnership(t *testing.T) {
+	root := t.TempDir()
+	data := []byte(`{"hooks":{"PreToolUse":[{"match":"bash","command":"/opt/homebrew/bin/omr hook comment-check guard --project-dir .","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`)
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	check := commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "/opt/homebrew/bin/omr", nil, nil)
+	if check.Status != "ERROR" || !strings.Contains(check.Detail, "Manifest") {
+		t.Fatalf("expected missing Manifest ownership error, got %#v", check)
+	}
+
+	record := hookRecordForTest(t, data, false)
+	check = commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "/opt/homebrew/bin/omr", nil, record)
+	if check.Status != "ERROR" || !strings.Contains(check.Detail, "禁用") {
+		t.Fatalf("expected disabled Manifest ownership error, got %#v", check)
+	}
+}
+
+func TestCommentHookDiagnosticChecksManifestHashes(t *testing.T) {
+	root := t.TempDir()
+	data := []byte(`{"hooks":{"PreToolUse":[{"match":"bash","command":"/opt/homebrew/bin/omr hook comment-check guard --project-dir .","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`)
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	record := hookRecordForTest(t, data, true)
+	record.EntrySHA256 = strings.Repeat("f", 64)
+	check := commentHookDiagnosticWithExecutable(root, true, reasonix.HookListOutput{}, "/opt/homebrew/bin/omr", nil, record)
+	if check.Status != "ERROR" || !strings.Contains(check.Detail, "条目哈希") {
+		t.Fatalf("expected entry hash error, got %#v", check)
+	}
+}
+
+func TestCommentHookDiagnosticPassesWithMatchingManifestAndProjectHook(t *testing.T) {
+	root := t.TempDir()
+	data := []byte(`{"hooks":{"PreToolUse":[{"match":"bash","command":"/opt/homebrew/bin/omr hook comment-check guard --project-dir .","description":"` + commenthook.OMRDescription + `","timeout":10000}]}}`)
+	path := commenthook.SettingsPath(root)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	hooks := reasonix.HookListOutput{Hooks: []reasonix.HookInfo{{
+		Event: "PreToolUse", Match: "bash", Scope: "project", Status: "active",
+	}}}
+	check := commentHookDiagnosticWithExecutable(root, true, hooks, "/opt/homebrew/bin/omr", nil, hookRecordForTest(t, data, true))
+	if check.Status != "PASS" {
+		t.Fatalf("expected PASS, got %#v", check)
+	}
+}
+
+func hookRecordForTest(t *testing.T, settings []byte, enabled bool) *manifest.HookRecord {
+	t.Helper()
+	parsed, err := commenthook.ParseSettings(settings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries := parsed.Hooks["PreToolUse"]
+	if len(entries) != 1 {
+		t.Fatalf("expected one Hook entry, got %d", len(entries))
+	}
+	return &manifest.HookRecord{
+		Enabled:             enabled,
+		SettingsPath:        commenthook.HookSettingsRel,
+		Event:               "PreToolUse",
+		Description:         commenthook.OMRDescription,
+		EntrySHA256:         fileutil.SHA256(entries[0].Raw),
+		InstalledFileSHA256: fileutil.SHA256(settings),
 	}
 }
 

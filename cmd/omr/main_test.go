@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -706,7 +708,84 @@ func TestHookDoctorJSONParsesWithHomeDir(t *testing.T) {
 	}
 }
 
-// --- Comment Checker CLI tests ---
+// --- Guard CLI process exit code tests ---
+
+func buildOmrBinary(t *testing.T) string {
+	t.Helper()
+	binary := filepath.Join(t.TempDir(), "omr")
+	// Determine module root from this source file's location.
+	_, srcFile, _, _ := runtime.Caller(0)
+	moduleRoot := filepath.Clean(filepath.Join(filepath.Dir(srcFile), "..", ".."))
+	cmd := exec.Command("go", "build", "-o", binary, ".")
+	cmd.Dir = filepath.Join(moduleRoot, "cmd", "omr")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("build omr: %v\n%s", err, out)
+	}
+	return binary
+}
+
+func guardCLI(t *testing.T, binary, projectDir, payload string) (string, int) {
+	t.Helper()
+	cmd := exec.Command(binary, "hook", "comment-check", "guard", "--project-dir", projectDir)
+	cmd.Stdin = strings.NewReader(payload)
+	out, _ := cmd.CombinedOutput()
+	return string(out), cmd.ProcessState.ExitCode()
+}
+
+func TestGuardCLI_NonCommitExitZero(t *testing.T) {
+	binary := buildOmrBinary(t)
+	_, code := guardCLI(t, binary, t.TempDir(), `{"event":"PreToolUse","cwd":"/tmp","toolName":"bash","toolArgs":{"command":"echo hello"}}`)
+	if code != 0 {
+		t.Fatalf("expected exit 0 for non-commit, got %d", code)
+	}
+}
+
+func TestGuardCLI_InvalidJSONExitOne(t *testing.T) {
+	binary := buildOmrBinary(t)
+	_, code := guardCLI(t, binary, t.TempDir(), `{invalid}`)
+	if code != 1 {
+		t.Fatalf("expected exit 1 for invalid JSON, got %d", code)
+	}
+}
+
+func TestGuardCLI_InvalidToolArgsExitOne(t *testing.T) {
+	binary := buildOmrBinary(t)
+	_, code := guardCLI(t, binary, t.TempDir(), `{"event":"PreToolUse","toolName":"bash","toolArgs":42}`)
+	if code != 1 {
+		t.Fatalf("expected exit 1 for invalid toolArgs, got %d", code)
+	}
+}
+
+func TestGuardCLI_BlockingCommitExitTwo(t *testing.T) {
+	binary := buildOmrBinary(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// password = \"hunter2\"\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	out, code := guardCLI(t, binary, dir, `{"event":"PreToolUse","cwd":"/tmp","toolName":"bash","toolArgs":{"command":"git commit -m test"}}`)
+	if code != 2 {
+		t.Fatalf("expected exit 2 for blocking commit, got %d", code)
+	}
+	if strings.Contains(out, "git commit") {
+		t.Fatal("stderr must not contain the command")
+	}
+	if strings.Contains(out, "hunter2") {
+		t.Fatal("stderr must not contain raw credentials")
+	}
+}
+
+func TestGuardCLI_CleanCommitExitZero(t *testing.T) {
+	binary := buildOmrBinary(t)
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "main.go"), []byte("package main\n// clean comment\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, code := guardCLI(t, binary, dir, `{"event":"PreToolUse","cwd":"/tmp","toolName":"bash","toolArgs":{"command":"git commit -m test"}}`)
+	if code != 0 {
+		t.Fatalf("expected exit 0 for clean commit, got %d", code)
+	}
+}
 
 func TestCommentCheckHumanOutput(t *testing.T) {
 	dir := t.TempDir()

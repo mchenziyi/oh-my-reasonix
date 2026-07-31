@@ -269,6 +269,13 @@ omr comment-check --project-dir . --allow-tags "TODO(admin),TODO(future)"
 # `--path` 相对路径按 `--project-dir` 解析；默认只允许扫描项目根目录内的文件，
 # 文件和中间目录符号链接越界也会被拒绝。
 
+# Comment Checker Hook（默认关闭）
+omr hook comment-check status --project-dir . --json
+omr hook comment-check enable --project-dir . --dry-run
+omr hook comment-check enable --project-dir .
+omr hook comment-check disable --project-dir . --dry-run
+omr hook comment-check disable --project-dir .
+
 # 配置
 omr config validate --project-dir .
 omr config validate --project-dir . --json
@@ -287,6 +294,7 @@ omr session list --project-dir . --json
 omr session status <branch-id> --project-dir . --json
 omr session recovery <branch-id> --project-dir . --json
 omr hook doctor --project-dir . --json
+omr hook comment-check status --project-dir . --json
 omr task list --project-dir . --json
 omr task show <task-id> --project-dir . --json
 
@@ -396,13 +404,12 @@ go run ./cmd/omr version
 
 ## 当前状态与路线
 
-已完成 OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker），以及 INT-01～INT-05 自动化联调。
+已完成 OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker）、T14（Comment Checker 运行时 Hook，已通过 Reasonix v1.18 桌面端验证），以及 INT-01～INT-06 全部联调。
 
 当前后续事项：
 
-- **Comment Checker 运行时 Hook**：离线 CLI 已完成。运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前 BLOCKED；
 - Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
-- INT-06：等待 Reasonix 官方接口进入可用版本后进行真实客户端验证。
+- Subagent 父子任务树与 Desktop 映射：等待 Reasonix 提供稳定的父子关联事件和机器接口。
 
 ## v1.17.20 机器接口兼容状态
 
@@ -429,9 +436,9 @@ OMR 基于 Reasonix v1.17.20 的公开机器接口设计，当前兼容状态：
 | 非零退出事件落盘 | ✅ 通过 | 失败事件写入日志 |
 | 事件脱敏 | ✅ 通过 | 敏感信息自动过滤 |
 | run_done / token 汇总 | ✅ 通过 | 运行完成和 Token 统计 |
-| INT-06 真实客户端 | ⏳ pending | 需要 Reasonix 真实客户端验证 |
+| INT-06 真实客户端 | ✅ 通过 | Reasonix v1.18.0 真实 Session、Hook、Task、Recovery 和事件流验证 |
 
-**注意**：以上状态基于 Mock 和本地 CLI 验证。INT-06（真实客户端验证）在 Reasonix 公开接口稳定后执行，当前保持 pending，不伪造通过。
+**注意**：自动化回归由 Mock 和本地 CLI 覆盖；INT-06 已额外使用 Reasonix v1.18.0 真实客户端验证。空 Task/Recovery/Hook 列表表示当前项目没有对应状态，不代表接口失败。
 
 ## 常见错误与排查
 

@@ -97,7 +97,7 @@ OMR does not read private Reasonix directories or infer session state from human
 
 ## Current limitations
 
-The following intentionally remain outside OMR until Reasonix exposes stable public interfaces: real-client INT-06 verification, runtime Comment Checker hooks, Subagent parent/child task trees, OMR-to-Desktop Task Monitor mapping, background-agent result aggregation, and Tmux/desktop live task panels.
+INT-06 real-client verification is complete against Reasonix v1.18.0. Comment Checker runtime Hook (T14) is also complete and desktop-verified: default-disabled, explicit enable/disable, stable absolute executable resolution, legacy-command migration, dry-run, conflict detection, Doctor diagnostics, rollback, blocking with redaction, and clean-commit pass-through.
 
 ## Development
 

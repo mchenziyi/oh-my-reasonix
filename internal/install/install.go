@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/commenthook"
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
@@ -20,6 +21,7 @@ type Options struct {
 	AllowPersistUserPrompt   bool
 	AcceptReasonixBaseUpdate bool
 	Upgrade                  bool
+	HookCommand              string
 	Assets                   Assets
 }
 
@@ -99,9 +101,22 @@ func Init(opts Options) (Report, error) {
 		return Report{Root: root, Errors: []string{err.Error()}}, err
 	}
 	cfg := parseAgentConfig(string(oldConfig))
+	if err := commenthook.ValidateManagedPath(ManifestPath(root), root); err != nil {
+		return Report{Root: root, Errors: []string{"unsafe OMR manifest path: " + err.Error()}}, err
+	}
 	existing, hasManifest, err := loadManifest(root)
 	if err != nil {
 		return Report{Root: root, Errors: []string{err.Error()}}, err
+	}
+	var hookPlan commenthook.LifecyclePlan
+	if opts.Upgrade {
+		if opts.HookCommand == "" {
+			opts.HookCommand, _ = commenthook.ResolveOmrPath()
+		}
+		hookPlan, err = commenthook.PlanUpgradeLifecycle(root, opts.HookCommand, existing.Hook)
+		if err != nil {
+			return conflictReport(root, "Comment Checker Hook upgrade blocked: "+err.Error())
+		}
 	}
 
 	generatedPath := GeneratedPromptPath(root)
@@ -179,19 +194,28 @@ func Init(opts Options) (Report, error) {
 	}
 	orchestratorSourceHash := promptcompose.SHA256String(promptcompose.Canonicalize(string(opts.Assets.Orchestrator)))
 	newManifest := buildManifest(composition, orchestratorSourceHash, profiles, userSource, userPresent, baseValue, backupRel)
+	if opts.Upgrade {
+		newManifest.Hook = hookPlan.Record
+	} else if hasManifest && existing.Hook != nil {
+		hook := *existing.Hook
+		newManifest.Hook = &hook
+	}
 	manifestChanged := !hasManifest || !manifestsEqual(existing, newManifest)
-	if !configChanged && !generatedChanged && !profilesChanged && !manifestChanged {
+	if !configChanged && !generatedChanged && !profilesChanged && !hookPlan.SettingsChanged && !manifestChanged {
 		report.NoOp = true
 		report.Manifest = existing
 		return report, nil
 	}
 
 	report.Changes = appendInstallChanges(report.Changes, root, configChanged, generatedChanged, profilesChanged, profiles, manifestChanged, backupRel)
+	if hookPlan.SettingsChanged {
+		report.Changes = append(report.Changes, Change{Path: commenthook.HookSettingsRel, Action: "UPDATE", Detail: "migrate OMR Comment Checker Hook command"})
+	}
 	report.Manifest = newManifest
 	if opts.DryRun {
 		return report, nil
 	}
-	if err := writeInstall(root, configPath, oldConfig, newConfig, generatedPath, []byte(composition.Content), profiles, ManifestPath(root), newManifest, backupRel, configChanged, generatedChanged, profilesChanged, manifestChanged); err != nil {
+	if err := writeInstall(root, configPath, oldConfig, newConfig, generatedPath, []byte(composition.Content), profiles, ManifestPath(root), newManifest, backupRel, hookPlan, configChanged, generatedChanged, profilesChanged, manifestChanged); err != nil {
 		report.Errors = append(report.Errors, err.Error())
 		return report, err
 	}
@@ -373,7 +397,7 @@ func appendInstallChanges(changes []Change, root string, configChanged, generate
 	return changes
 }
 
-func writeInstall(root, configPath string, oldConfig []byte, newConfig string, generatedPath string, generated []byte, profiles []profileAsset, manifestPath string, m manifest.Manifest, backupRel string, configChanged, generatedChanged, profilesChanged, manifestChanged bool) error {
+func writeInstall(root, configPath string, oldConfig []byte, newConfig string, generatedPath string, generated []byte, profiles []profileAsset, manifestPath string, m manifest.Manifest, backupRel string, hookPlan commenthook.LifecyclePlan, configChanged, generatedChanged, profilesChanged, manifestChanged bool) error {
 	oldGenerated, generatedExisted := readIfExists(generatedPath)
 	oldProfiles := map[string][]byte{}
 	profileExisted := map[string]bool{}
@@ -384,6 +408,7 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 	oldManifest, manifestExisted := readIfExists(manifestPath)
 	backupPath := filepath.Join(root, filepath.FromSlash(backupRel), "reasonix.toml")
 	backupCreated := false
+	hookBackupCreated := false
 	rollback := func() {
 		if configChanged {
 			restoreFile(configPath, true, oldConfig)
@@ -399,8 +424,14 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 		if manifestChanged {
 			restoreFile(manifestPath, manifestExisted, oldManifest)
 		}
+		if hookPlan.SettingsChanged {
+			restoreFile(hookPlan.SettingsPath, hookPlan.BeforeExisted, hookPlan.Before)
+		}
 		if backupCreated {
 			_ = os.Remove(backupPath)
+		}
+		if hookBackupCreated {
+			commenthook.RemoveLifecycleBackup(hookPlan.BackupPath)
 		}
 	}
 	if configChanged && !fileExists(backupPath) {
@@ -408,6 +439,14 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 			return fmt.Errorf("write backup: %w", err)
 		}
 		backupCreated = true
+	}
+	if hookPlan.SettingsChanged {
+		var err error
+		hookBackupCreated, err = commenthook.EnsureLifecycleBackup(hookPlan, root)
+		if err != nil {
+			rollback()
+			return fmt.Errorf("write Hook backup: %w", err)
+		}
 	}
 	if generatedChanged {
 		if err := fileutil.AtomicWrite(generatedPath, generated, 0o644); err != nil {
@@ -427,6 +466,12 @@ func writeInstall(root, configPath string, oldConfig []byte, newConfig string, g
 		if err := fileutil.AtomicWrite(configPath, []byte(newConfig), 0o644); err != nil {
 			rollback()
 			return fmt.Errorf("write reasonix.toml: %w", err)
+		}
+	}
+	if hookPlan.SettingsChanged {
+		if err := fileutil.AtomicWrite(hookPlan.SettingsPath, hookPlan.After, 0o644); err != nil {
+			rollback()
+			return fmt.Errorf("write Hook settings: %w", err)
 		}
 	}
 	if manifestChanged {
@@ -530,7 +575,14 @@ func PromptSourceDrift(root string, m manifest.Manifest, assets Assets) []string
 }
 
 func manifestsEqual(a, b manifest.Manifest) bool {
-	return a.SchemaVersion == b.SchemaVersion && a.Product == b.Product && a.Version == b.Version && a.ReasonixCommit == b.ReasonixCommit && a.Prompt == b.Prompt && a.ProfilePath == b.ProfilePath && a.ProfileSHA256 == b.ProfileSHA256 && a.BackupPath == b.BackupPath && equalProfiles(a.Profiles, b.Profiles) && equalConfig(a.Config, b.Config) && equalAssets(a.Assets, b.Assets)
+	return a.SchemaVersion == b.SchemaVersion && a.Product == b.Product && a.Version == b.Version && a.ReasonixCommit == b.ReasonixCommit && a.Prompt == b.Prompt && a.ProfilePath == b.ProfilePath && a.ProfileSHA256 == b.ProfileSHA256 && a.BackupPath == b.BackupPath && equalHook(a.Hook, b.Hook) && equalProfiles(a.Profiles, b.Profiles) && equalConfig(a.Config, b.Config) && equalAssets(a.Assets, b.Assets)
+}
+
+func equalHook(a, b *manifest.HookRecord) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	return *a == *b
 }
 
 func equalProfiles(a, b []manifest.Profile) bool {

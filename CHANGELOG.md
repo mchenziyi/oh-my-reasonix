@@ -1,5 +1,25 @@
 # Changelog
 
+## [Unreleased]
+
+### Added
+- **T14: Comment Checker 运行时 Hook**：默认关闭的提交前注释质量门禁。新增 `omr hook comment-check enable/status/disable/guard` 命令，通过 Reasonix 原生 PreToolUse Hook 在 `git commit` 前自动调用 Comment Checker，存在 blocking finding 时以退出码 2 阻断提交。
+- **internal/commenthook/**：纯合并器（EnableMerge/DisableMerge）、Guard stdin 解析器、事务写入（备份/原子写入/回滚）、路径安全（symlink 越界检测）、所有权标记、冲突检测、幂等保证。
+- **Manifest HookRecord**：可选扩展字段，记录 Hook 启用状态、Entry SHA256 和文件 SHA256；向后兼容旧 Manifest。
+- **omr doctor** 新增 `comment-hook` 诊断检查：支持 PASS/WARN/ERROR/UNSUPPORTED 四种状态，只诊断不写入。
+- **Guard 退出码矩阵**：非提交命令/clean → 0，blocking finding → 2，扫描失败 fail closed → 2，非法 payload → 1。
+
+### Fixed
+- **Reasonix v1.18 machine interfaces**: project-scoped Session, Task, Hook, and Recovery queries now use `--project-root` and parse the published nested JSON schemas.
+- **event token totals**: native `run_done.usage` is treated as the authoritative cumulative total, preventing duplicate counting with preceding `usage` events.
+- **hook doctor**: detects the native Hook list/status interfaces instead of reporting them as unsupported.
+
+### Completed
+- **INT-06**: real-client verification completed against Reasonix v1.18.0. Session list/status/show, Task list, Hook list/status, Recovery, and native JSONL event parsing all passed.
+- **T14**: Comment Checker 运行时 Hook 完成交付：配置模型、Guard、事务写入、CLI、Doctor 诊断、稳定绝对执行路径和旧版相对命令迁移；已通过 Reasonix v1.18 桌面端阻断、脱敏、放行与禁用验证。默认关闭，不自动启用。
+
+---
+
 ## [v1.2.2] — 2026-07-29
 
 ### Added
@@ -10,8 +30,7 @@
 
 ### Known Issues
 - **环境限制**：部分沙箱环境禁止 `httptest` 监听本地端口，可能导致 `internal/qualitybench` 全量测试失败；该失败不属于 Comment Checker 路径安全逻辑。
-- **INT-06**: real-client verification pending — requires Reasonix public machine interface stable release
-- **Hook/实时阻断**: Comment Checker 运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前仅提供离线 CLI
+- **Hook/实时阻断**: v1.2.2 当时仅提供离线 CLI；该限制已在 Unreleased 的 T14 中解决。
 
 ---
 

@@ -1,18 +1,18 @@
 # oh-my-reasonix 最新开发 Todo
 
-> 版本：2026-07-29
+> 版本：2026-07-30
 > 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。
 > 原则：只实现 OMR 能独立负责的能力；Reasonix 已原生提供或尚未提供公开接口的能力，不在 OMR 中复制。
 
 ## 当前状态（最新）
 
-OMR-T01～T10 已完成，INT-01～INT-05 已完成自动化联调。T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker 离线 CLI）已完成。当前不再重复开发这些阶段。
+OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker 离线 CLI）均已完成。INT-01～INT-05 自动化联调和 INT-06 真实客户端验证也已完成。当前不再重复开发这些阶段。
 
 下一阶段优先级：
 
-1. **Comment Checker 运行时 Hook**：离线 CLI 已完成。运行时 Hook 拦截等待 Reasonix 官方 Hook 接口，当前 BLOCKED；
+1. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
 2. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
-3. INT-06：等待 Reasonix 机器接口进入可用版本后，进行真实客户端验证。
+3. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
 
 ## 1. 与 oh-my-opencode 的对比结论
 
@@ -44,28 +44,30 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - Cache Guard；
 - Claude rules/skills/agents/mcp/hooks 导入基础链路；
 - `omr session resume`、`omr session export`；
+- Session list/status/show、Task list/show、Hook list/status、Recovery 与结构化事件流只读联调；
+- INT-06 Reasonix v1.18.0 真实客户端验证；
 - `omr comment-check` CLI（参见 §10）；
 - OMR-FIX-01～11 及其自动化测试。
 
-## 3. P0：当前最重要的 OMR 工作
+## 3. P0：已完成的核心工作
 
-### OMR-T01：真实质量基准扩展
+### ✅ OMR-T01：真实质量基准扩展（已完成）
 
 增加脱敏的多文件任务 Fixture，覆盖 Explore → Plan → Implement → Test → Review → Complete 全流程；固定允许/禁止路径、隐藏测试、回归测试和预期事件；增加 Native/OMR 配对回放和失败保留规则；报告区分基础设施失败、任务失败、判定失败和模型失败。
 
 验收：新增 Fixture 可离线 replay，`go test ./...` 和 `omr benchmark quality --replay` 通过，失败运行不被静默丢弃；不得无配对证据宣称 OMR 优于 Native。
 
-### OMR-T02：Prompt/规则注入可验证性
+### ✅ OMR-T02：Prompt/规则注入可验证性（已完成）
 
 明确根目录和子目录 `AGENTS.md` 的读取顺序、目标文件路径向上收集规则的优先级、README 和 `.reasonix/rules` 条件规则协议；在 Orchestrator Prompt 中加入来源、路径、冲突和有效性要求；增加 Prompt fixture 验证顺序和冲突处理。不得把动态时间、绝对路径或 Hash 写入模型 Prompt。
 
-## 4. P1：可独立实现的能力
+## 4. P1：已完成的独立能力
 
-### OMR-T03：Claude 兼容层收尾
+### ✅ OMR-T03：Claude 兼容层收尾（已完成）
 
 增加 `.claude/commands` 只读导入；为 Agent/Skill 增加 frontmatter Schema 校验；MCP 导入增加兼容性报告；Hook 报告列出可转换内容和无法保留的运行时语义；保持 dry-run、冲突、全量回滚和敏感信息保护。
 
-### OMR-T04：Profile 与 Category 体验
+### ✅ OMR-T04：Profile 与 Category 体验（已完成）
 
 为每个 Profile 补齐用途、输入、输出、只读边界和失败处理；增加 Profile/Category Schema 与示例；检测未安装、已禁用、重复覆盖和循环路由；增加模型覆盖校验和 Doctor 诊断。Visual Profile 只有宿主明确提供视觉能力时才加入。
 
@@ -77,38 +79,35 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 
 已增加最低 Reasonix 版本和兼容矩阵字段，`omr version --json` 现在报告 OMR、资产、Manifest、Reasonix 检测版本和兼容状态；版本不满足或检测失败时返回 `compatible=false`。升级 dry-run、备份/回滚和不修改全局环境的边界保持不变。
 
-## 5. P2：主体稳定后再做
+## 5. P2：已完成的扩展能力
 
-### OMR-T07：工具生态 Profile
+### ✅ OMR-T07：工具生态 Profile（已完成）
 
 按宿主能力评估 LSP、AST/AST-Grep、Git Master、Browser/Playwright 和 Skill 内嵌 MCP。宿主没有对应能力时只记录调查结果，不嵌入不可执行资产。
 
-### OMR-T08：开发体验
+### ✅ OMR-T08：开发体验（已完成）
 
-评估显式增强模式、Ralph Loop、用户级配置和交互式通知。只能作为 Prompt/配置层能力，不复制 Reasonix 后台任务或状态机。**Comment Checker 运行时 Hook** 在此项中，当前 BLOCKED。
+评估显式增强模式、Ralph Loop、用户级配置和交互式通知。只能作为 Prompt/配置层能力，不复制 Reasonix 后台任务或状态机。**Comment Checker 运行时 Hook** 已因 Reasonix v1.18 原生 Hook 可用而解除阻塞，并已在 T14 完成。
 
-### OMR-T09：规则和配置兼容性
+### ✅ OMR-T09：规则和配置兼容性（已完成）
 
 完善配置 Schema 自动生成、编辑器提示、JSONC 文档、`.agents/skills` 兼容、用户级/项目级优先级以及跨平台路径和权限测试。
 
 ## 6. BLOCKED：当前不在 OMR Todo 中实现
 
-以下能力依赖 Reasonix 稳定公开接口：Session list/status/show/search、Hook list/status 和运行时拦截、后台 Task 查询、Session recovery、结构化事件流、Todo/Hook/Task/Session 状态机、后台 Agent 结果汇聚、Tmux/桌面端实时状态面板。
+以下能力仍依赖 Reasonix 后续稳定公开接口：Subagent 父子关联事件、后台 Agent 结果汇聚、OMR 到 Desktop Task Monitor 的映射，以及 Tmux/桌面端实时状态面板。
 
-**Comment Checker 运行时 Hook 拦截**：离线 CLI（`omr comment-check`）已完成。运行时（commit 前自动检查、实时阻断）等待 Reasonix 官方 Hook 运行时接口。
+Session list/status/show、Hook list/status、后台 Task 查询、Session recovery 和结构化事件流已完成公开接口适配与真实客户端验证，不再属于 BLOCKED。
+
+**Comment Checker 运行时 Hook 拦截**：Reasonix v1.18 已提供原生阻塞型 Hook，不再属于宿主 BLOCKED；OMR 的安装、合并、回滚和跨平台执行适配列入 T14。
 
 禁止读取 `~/.reasonix/projects`，禁止解析 goal-state/events/lock 私有文件，禁止在宿主 CLI 不支持时返回空列表伪造成功，禁止以 OMR 合成 ID 冒充 Reasonix Session ID。
 
 ## 7. 推荐开发顺序
 
-1. OMR-T01：真实质量基准；
-2. OMR-T02：Prompt/规则注入可验证性；
-3. OMR-T03：Claude 兼容层收尾；
-4. OMR-T04：Profile/Category 体验；
-5. ✅ OMR-T05：质量与成本报告；
-6. ✅ OMR-T06：安装升级体验；
-7. OMR-T07～T09：P2 扩展；
-8. BLOCKED 项目等待 Reasonix 官方接口后另开适配任务。
+1. ✅ T14：Comment Checker 运行时 Hook 安装、诊断与回滚；
+2. Subagent 父子任务树、Desktop/Tmux 和后台结果汇聚等待 Reasonix 官方接口；
+3. 不重复开发已经完成的 T01～T13 与 INT-01～INT-06。
 
 每个任务必须先写回归测试或 Fixture，做最小代码修改，运行 `gofmt`、`git diff --check`、`go test ./...`、`go vet ./...`，更新本文件和差距矩阵，并保留未跟踪的 `omr`、`.reasonix/`。只有真实客户端行为无法通过自动化判断时，才请求用户协助。
 
@@ -127,7 +126,7 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - 支持 dry-run、禁用和项目级配置；
 - 增加离线 Fixture：5 项 Prompt 契约测试 + 5 项纯 Go 离线回放测试，覆盖三种停止条件、未确认假设隔离和文件快照不变。
 
-### 明确不实现
+### T13 范围内明确不实现
 
 - 不执行文件修改、Hook、Task 或后台任务；
 - 不复制 Reasonix Session/恢复状态机；
@@ -186,14 +185,14 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 ### 明确不实现
 
 - 不读取 Reasonix Session、Task、Hook 文件；
-- 不实现实时事件监听或提交前 Hook 拦截；
+- T13 不实现实时事件监听或提交前 Hook 拦截；该能力转入 T14；
 - 不依赖模型或网络调用判断"注释是否有价值"；
 - 不使用大模型判断注释质量；
 - 不修改全局配置或 Reasonix 二进制。
 
-### BLOCKED：运行时 Hook/实时阻断
+### ✅ T14：运行时 Hook/实时阻断
 
-运行时（commit 前自动检查、CI 阻断）需要 Reasonix 官方 Hook 接口。OMR 的 Comment Checker 当前仅提供离线 CLI，运行时注入为 BLOCKED。
+Reasonix v1.18 已支持项目级阻塞型 Hook。OMR 的 Comment Checker 已实现完整的运行时 Hook：显式启用、配置合并、稳定绝对执行入口（guard）、旧版相对命令迁移、Doctor 诊断、禁用与回滚。自动化测试、CLI Smoke 和真实 Reasonix 桌面端的普通 Bash 放行、敏感注释阻断并脱敏、修复后提交放行及禁用流程均已通过。
 
 ### 验收
 
@@ -201,4 +200,4 @@ OMR 已完成 Prompt/Profile 发行、安装升级、质量基准和 Reasonix �
 - 全量 `go test ./...` 若受环境禁止 `httptest` 本地端口监听影响，必须如实记录该环境限制，不得伪报为通过；
 - `omr comment-check --project-dir . --json` 输出稳定 JSON 报告；
 - 阻断规则（R004）的凭据内容经过脱敏，不写入报告原文；
-- 文档版本一致，运行时 Hook 明确标记为等待 Reasonix 官方接口。
+- 文档版本一致，运行时 Hook 标记为"T14 已完成并通过真实 Reasonix 桌面端验证"。

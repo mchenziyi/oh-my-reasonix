@@ -33,6 +33,50 @@ func TestValidateAcceptsKnownLicense(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsIncompleteHookRecord(t *testing.T) {
+	tests := []HookRecord{
+		{},
+		{
+			Enabled:      false,
+			SettingsPath: ".reasonix/settings.json",
+			Event:        "PreToolUse",
+			Description:  "owned",
+			EntrySHA256:  "not-a-sha256",
+		},
+		{
+			Enabled:             true,
+			SettingsPath:        ".reasonix/settings.json",
+			Event:               "PreToolUse",
+			Description:         "owned",
+			EntrySHA256:         strings.Repeat("a", 64),
+			InstalledFileSHA256: "",
+		},
+	}
+	for _, hook := range tests {
+		m := validManifest()
+		m.Hook = &hook
+		if err := m.Validate(); err == nil {
+			t.Fatalf("expected invalid Hook record to fail: %#v", hook)
+		}
+	}
+}
+
+func TestValidateAcceptsCompleteHookRecord(t *testing.T) {
+	m := validManifest()
+	m.Hook = &HookRecord{
+		Enabled:             true,
+		SettingsPath:        ".reasonix/settings.json",
+		Event:               "PreToolUse",
+		Description:         "[oh-my-reasonix] Comment Checker before git commit",
+		EntrySHA256:         strings.Repeat("a", 64),
+		BaseFileSHA256:      strings.Repeat("b", 64),
+		InstalledFileSHA256: strings.Repeat("c", 64),
+	}
+	if err := m.Validate(); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNormalizedProfilesAcceptsLegacyFields(t *testing.T) {
 	profiles := validManifest().NormalizedProfiles()
 	if len(profiles) != 1 || profiles[0].ID != "omr-explore" || profiles[0].Path != "profile/SKILL.md" || profiles[0].ContentSHA256 != "profile-hash" {

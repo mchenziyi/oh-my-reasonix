@@ -1,5 +1,8 @@
 # OMR-INT-01～INT-06：Reasonix 机器接口联调开发计划
 
+> **状态：已完成** — INT-01～INT-06 已全部完成。Reasonix PR #6859 已合并；INT-06 已使用 Reasonix v1.18.0 完成真实客户端验证。
+> 本文档为历史开发计划，保留完整记录，不删除。
+
 ## 1. 目标
 
 在 Reasonix 官方机器接口已经合并并进入可用版本后，让 OMR 以只读方式消费宿主公开 JSON/JSONL 接口，完成 Session、Hook、Task、Recovery、事件流和结果汇聚的联调。
@@ -206,7 +209,7 @@ reasonix run --events-jsonl <task>
 - 结果汇聚与质量报告 Schema；
 - Reasonix 接口错误不会产生部分成功报告。
 
-## 9. INT-06：真实客户端验证
+## 9. INT-06：真实客户端验证 ✅
 
 该阶段必须暂停自动开发并请求用户协助。
 
@@ -229,7 +232,19 @@ reasonix run --events-jsonl <task>
 - 不一致项和后续修复；
 - 不上传不必要的用户项目内容。
 
-在用户未启动客户端或未授权读取项目内容前，INT-06 必须标记 BLOCKED，不能声称通过。
+### 最终结果（2026-07-30）
+
+- Reasonix：v1.18.0；
+- OMR：v1.2.2，修复提交 `9ee47f6`；
+- Session list/status/show：通过；
+- Hook list/status/doctor：通过；
+- Task list：通过，测试时列表为空；
+- Session recovery：通过，测试时列表为空；
+- `run --events-jsonl`：真实模型调用通过，35 条事件，最终 `run_done.ok=true`；
+- Token 汇总：修复 `usage` 与 `run_done` 重复累计后为 14975；
+- 全量 `go test ./...`、`go vet ./...`、`go build ./cmd/omr`：通过。
+
+INT-06 已完成，不再标记 BLOCKED。
 
 ## 10. 通用适配器要求
 

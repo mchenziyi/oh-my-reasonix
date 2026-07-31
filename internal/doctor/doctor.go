@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/commenthook"
 	omrconfig "github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
@@ -75,6 +76,9 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 	} else if !os.IsNotExist(statErr) {
 		result.Errors = append(result.Errors, fmt.Sprintf("read OMR config: %v", statErr))
 	}
+	var hookList reasonix.HookListOutput
+	var hookErr error
+	var reasonixHooksAvailable bool
 	binary, err := resolveReasonixBinary()
 	if err != nil {
 		result.Warnings = append(result.Warnings, "reasonix executable not found in PATH; runtime capability checks skipped")
@@ -100,7 +104,7 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			}
 		}
 		hookCtx, hookCancel := context.WithTimeout(context.Background(), 5*time.Second)
-		hookList, hookErr := runner.HookList(hookCtx)
+		hookList, hookErr = runner.HookList(hookCtx)
 		hookStatus := runner.HookStatus(hookCtx)
 		hookCancel()
 		hookCheck := Check{Name: "reasonix.hooks"}
@@ -118,8 +122,14 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 			}
 		}
 		result.Checks = append(result.Checks, hookCheck)
+		reasonixHooksAvailable = hookErr == nil && !hookStatus.Unavailable
 	}
-	m, err := manifest.Load(install.ManifestPathForDoctor(root))
+	manifestPath := install.ManifestPathForDoctor(root)
+	if err := commenthook.ValidateManagedPath(manifestPath, root); err != nil {
+		result.Errors = append(result.Errors, "unsafe OMR manifest path: "+err.Error())
+		return result, err
+	}
+	m, err := manifest.Load(manifestPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			result.Errors = append(result.Errors, "OMR manifest not found; run omr init")
@@ -129,6 +139,11 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, err
 	}
 	result.Checks = append(result.Checks, Check{Name: "manifest", Status: "PASS", Detail: "schema and required fields valid"})
+	commentHookCheck := commentHookDiagnostic(root, reasonixHooksAvailable, hookList, m.Hook)
+	result.Checks = append(result.Checks, commentHookCheck)
+	if commentHookCheck.Status == "ERROR" {
+		result.Errors = append(result.Errors, "comment-hook: "+commentHookCheck.Detail)
+	}
 	if hasOMRConfig && (len(omrConfig.Agents) > 0 || len(omrConfig.Categories) > 0 || len(omrConfig.DisabledProfiles) > 0) {
 		installed := make(map[string]bool)
 		for _, profile := range m.NormalizedProfiles() {
@@ -324,4 +339,116 @@ func resultError(result Result) error {
 		return nil
 	}
 	return fmt.Errorf("doctor found %d blocking issue(s)", len(result.Errors))
+}
+
+// commentHookDiagnostic checks the Comment Checker Hook status.
+// It is diagnostic-only (no writes).
+func commentHookDiagnostic(root string, reasonixHooksAvailable bool, hookList reasonix.HookListOutput, hookRecord *manifest.HookRecord) Check {
+	omrPath, resolveErr := commenthook.ResolveOmrPath()
+	return commentHookDiagnosticWithExecutable(root, reasonixHooksAvailable, hookList, omrPath, resolveErr, hookRecord)
+}
+
+func commentHookDiagnosticWithExecutable(root string, reasonixHooksAvailable bool, hookList reasonix.HookListOutput, omrPath string, resolveErr error, hookRecord *manifest.HookRecord) Check {
+	settingsPath := commenthook.SettingsPath(root)
+	if err := commenthook.ValidateManagedPath(settingsPath, root); err != nil {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "settings 路径不安全: " + err.Error()}
+	}
+	raw, err := os.ReadFile(settingsPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			if hookRecord != nil && hookRecord.Enabled {
+				return Check{Name: "comment-hook", Status: "ERROR", Detail: "Manifest 声明 Hook 已启用，但 settings.json 不存在"}
+			}
+			return Check{Name: "comment-hook", Status: "WARN", Detail: "未启用（默认状态）；settings.json 不存在"}
+		}
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "读取 settings.json 失败: " + err.Error()}
+	}
+
+	parsed, parseErr := commenthook.ParseSettings(raw)
+	if parseErr != nil {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "settings.json 解析失败: " + parseErr.Error()}
+	}
+
+	entries := parsed.Hooks["PreToolUse"]
+	enabled := false
+	drifted := false
+	legacy := false
+	markerCount := 0
+	var ownedRaw []byte
+	for _, re := range entries {
+		if re.HasOMRDescription() {
+			markerCount++
+			if re.IsOMROwnedFor(omrPath) {
+				enabled = true
+				ownedRaw = re.Raw
+				if entry, ok := re.Entry(); ok && entry.Command == commenthook.OMRCommandLegacy {
+					legacy = true
+				}
+			} else {
+				drifted = true
+			}
+		}
+	}
+
+	if markerCount > 1 {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "检测到多个 OMR Hook 条目；需要人工处理"}
+	}
+
+	if !enabled && !drifted {
+		if hookRecord != nil && hookRecord.Enabled {
+			return Check{Name: "comment-hook", Status: "ERROR", Detail: "Manifest 声明 Hook 已启用，但 settings 中没有 OMR 条目"}
+		}
+		return Check{Name: "comment-hook", Status: "WARN", Detail: "未启用（默认状态）；使用 `omr hook comment-check enable` 启用"}
+	}
+
+	if markerCount > 0 && resolveErr != nil {
+		// The omr executable cannot be resolved (moved, removed, or PATH
+		// changed). Report the root cause before claiming the entry drifted:
+		// an absolute-path entry cannot be verified against a missing binary.
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "无法解析稳定的 omr 可执行路径；已安装 Hook 无法验证且 command 无法执行"}
+	}
+
+	if drifted {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "OMR Hook 条目已被修改，与规范不一致"}
+	}
+
+	if hookRecord == nil {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "settings 中存在 OMR Hook，但 Manifest 缺少 Hook 所有权记录"}
+	}
+	if !hookRecord.Enabled {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "settings 中存在 OMR Hook，但 Manifest 将其标记为禁用"}
+	}
+	if hookRecord.SettingsPath != commenthook.HookSettingsRel ||
+		hookRecord.Event != "PreToolUse" ||
+		hookRecord.Description != commenthook.OMRDescription {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "Manifest Hook 所有权字段与规范不一致"}
+	}
+	if hookRecord.EntrySHA256 != fileutil.SHA256(ownedRaw) {
+		return Check{Name: "comment-hook", Status: "ERROR", Detail: "Manifest Hook 条目哈希与 settings 不一致"}
+	}
+	if hookRecord.InstalledFileSHA256 != fileutil.SHA256(raw) {
+		return Check{Name: "comment-hook", Status: "WARN", Detail: "OMR Hook 条目有效，但 settings 文件包含安装后的其它变更；可重跑 enable 刷新 Manifest 证据"}
+	}
+
+	if legacy {
+		return Check{Name: "comment-hook", Status: "WARN", Detail: "已启用旧版 PATH 依赖命令；请重新运行 `omr hook comment-check enable` 迁移为绝对路径"}
+	}
+
+	if !reasonixHooksAvailable {
+		return Check{Name: "comment-hook", Status: "UNSUPPORTED", Detail: "Reasonix 不支持 Hook 或 Hook 查询接口不可用"}
+	}
+
+	// Check if Reasonix can see the hook.
+	visible := false
+	for _, h := range hookList.Hooks {
+		if h.Event == "PreToolUse" && h.Match == "bash" && h.Scope == "project" && (h.Status == "active" || h.Status == "enabled") {
+			visible = true
+			break
+		}
+	}
+	if !visible {
+		return Check{Name: "comment-hook", Status: "WARN", Detail: "已启用但 Reasonix hook list 中不可见（可能需重启 Reasonix）"}
+	}
+
+	return Check{Name: "comment-hook", Status: "PASS", Detail: "已启用，条目规范，omr 可执行路径有效，Reasonix 可见"}
 }
