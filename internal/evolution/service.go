@@ -59,7 +59,7 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 		}
 		overlay := "When this task fails, inspect the failure evidence and run the smallest relevant regression test before retrying."
 		h := sha256.Sum256([]byte(overlay))
-		proposal := Proposal{SchemaVersion: SchemaVersion, ID: NewID("proposal", pattern.ID), PatternID: pattern.ID, Title: "Improve handling of " + pattern.FailureClass, Rationale: "Repeated failures were observed; review this conservative suggestion before enabling it.", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "pending", CreatedAt: Now(), UpdatedAt: Now()}
+		proposal := Proposal{SchemaVersion: SchemaVersion, ID: NewID("proposal", pattern.ID), PatternID: pattern.ID, Title: "Improve handling of " + pattern.FailureClass, Rationale: "Repeated failures were observed; review this conservative suggestion before enabling it.", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "pending", EvidenceCount: len(pattern.EpisodeIDs), CreatedAt: Now(), UpdatedAt: Now()}
 		if proposer != nil {
 			generated, generateErr := proposer.Propose(*pattern)
 			if generateErr != nil {
@@ -69,6 +69,7 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 			proposal.SchemaVersion = SchemaVersion
 			proposal.PatternID = pattern.ID
 			proposal.Status = "pending"
+			proposal.EvidenceCount = len(pattern.EpisodeIDs)
 			proposal.UpdatedAt = Now()
 		}
 		if err := store.SaveProposal(proposal); err != nil {

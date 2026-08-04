@@ -86,6 +86,7 @@ func ImportPackage(store Store, path string) (int, error) {
 		local.ApprovedAt = ""
 		local.RollbackReason = ""
 		local.ImportedFrom = p.SourceScopeID + ":" + source.ID
+		local.EvidenceCount = source.EvidenceCount
 		local.CreatedAt = Now()
 		local.UpdatedAt = local.CreatedAt
 		if err := store.SaveProposal(local); err != nil {

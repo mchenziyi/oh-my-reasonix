@@ -1,10 +1,21 @@
 # Changelog
 
-## [Unreleased — v2.0.0 target]
+## [Unreleased]
+
+## [v2.0.1] — 2026-08-04
+
+### Added
+- **Promotion Gate**：`omr evolve approve` 现在执行证据数量、质量评分、离线安全验证和内容 Hash 校验，并以稳定 JSON 结果报告门禁状态。
+- 批准失败时不写入 Overlay、生成 Prompt 或 Manifest；通过门禁后仍保留快照和回滚路径。
+
+### Compatibility
+- v2.0.0 Proposal 仍可读取；缺失证据元数据的旧 Proposal 必须经过新的门禁并会被明确拒绝。
+
+### Safety
+- Promotion Gate 只证明协议完整性和安全约束，不宣称模型质量提升。
 
 ### Planned
-- **自动自进化**：将 OMR 定位为 Reasonix 的项目级外置策略大脑。Reasonix 继续负责 Agent 推理和执行，OMR 自动收集任务 Episode、识别重复模式、生成受约束 Proposal、执行 Control/Candidate 配对回放，并通过项目级 Evolution Overlay 完成审批、生效、观察和回滚。
-- **版本主线**：开发版本提升为 `2.0.0`。当前仅冻结设计与路线，尚未创建 `v2.0.0` Tag 或 Release，也不将规划中的自进化能力标记为已交付。
+- **v2.0.2 观察期指标**：记录 Proposal 生效前后 Episode、成本、失败分类和回滚原因。
 - 设计文档：[`docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)。
 
 ### Added

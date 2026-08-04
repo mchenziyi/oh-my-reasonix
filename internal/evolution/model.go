@@ -51,6 +51,7 @@ type Proposal struct {
 	ApprovedAt     string `json:"approved_at,omitempty"`
 	RollbackReason string `json:"rollback_reason,omitempty"`
 	ImportedFrom   string `json:"imported_from,omitempty"`
+	EvidenceCount  int    `json:"evidence_count,omitempty"`
 }
 
 type Experiment struct {
@@ -60,6 +61,11 @@ type Experiment struct {
 	Valid         bool     `json:"valid"`
 	Checks        []string `json:"checks"`
 	CreatedAt     string   `json:"created_at"`
+	GateStatus    string   `json:"gate_status,omitempty"`
+	GateReason    string   `json:"gate_reason,omitempty"`
+	QualityScore  int      `json:"quality_score,omitempty"`
+	EvidenceCount int      `json:"evidence_count,omitempty"`
+	SafetyPassed  bool     `json:"safety_passed"`
 }
 
 func NewID(prefix string, content string) string {
@@ -105,6 +111,9 @@ func (p Proposal) Validate() error {
 func (e Experiment) Validate() error {
 	if e.SchemaVersion != SchemaVersion || e.ID == "" || e.ProposalID == "" || e.CreatedAt == "" {
 		return fmt.Errorf("invalid experiment")
+	}
+	if e.GateStatus != "" && e.GateStatus != "passed" && e.GateStatus != "insufficient_evidence" && e.GateStatus != "quality_below_threshold" && e.GateStatus != "offline_validation_failed" {
+		return fmt.Errorf("invalid experiment gate status")
 	}
 	return nil
 }

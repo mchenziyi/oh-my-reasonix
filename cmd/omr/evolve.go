@@ -137,9 +137,15 @@ func runEvolve(args []string) error {
 				_ = fileutil.AtomicWrite(manifestPath, oldManifest, 0600)
 			}
 		}
-		experiment := evolution.ValidateProposal(p)
-		if !experiment.Valid {
-			return errors.New("proposal failed offline validation")
+		experiment, gate := evolution.EvaluatePromotion(p)
+		if !gate.Passed {
+			if saveErr := s.SaveExperiment(experiment); saveErr != nil {
+				return saveErr
+			}
+			if *jsonOut {
+				_ = emitEvolve(gate, true)
+			}
+			return fmt.Errorf("promotion gate failed: %s", gate.Code)
 		}
 		if e = s.SaveExperiment(experiment); e != nil {
 			return e
@@ -158,7 +164,13 @@ func runEvolve(args []string) error {
 			restore()
 			return fmt.Errorf("apply overlay prompt: %w", e)
 		}
-		return s.SaveProposal(p)
+		if e = s.SaveProposal(p); e != nil {
+			return e
+		}
+		if *jsonOut {
+			return emitEvolve(gate, true)
+		}
+		return nil
 	case "reject":
 		if len(args) < 2 {
 			return errors.New("reject requires id")
