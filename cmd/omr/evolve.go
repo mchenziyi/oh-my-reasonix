@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/evolution"
@@ -15,7 +16,7 @@ import (
 
 func runEvolve(args []string) error {
 	if len(args) == 0 {
-		return errors.New("evolve requires status, proposals, report, export, import, approve, reject, history, rollback, or doctor")
+		return errors.New("evolve requires status, proposals, report, export, import, approve, reject, history, rollback, doctor, prune, or repair")
 	}
 	fs := flag.NewFlagSet("evolve", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -23,7 +24,8 @@ func runEvolve(args []string) error {
 	jsonOut := fs.Bool("json", false, "JSON output")
 	outputPath := fs.String("output", "", "experience package output path")
 	inputPath := fs.String("input", "", "experience package input path")
-	dryRun := fs.Bool("dry-run", false, "preview import without writing")
+	dryRun := fs.Bool("dry-run", false, "preview without writing")
+	keepEpisodes := fs.Int("keep-episodes", 500, "keep at most this many newest episodes when pruning")
 	_ = fs.Parse(args[1:])
 	// Go's flag package stops at the first positional argument. Evolve commands
 	// intentionally accept `approve <id> --project-dir ...`, so recover flags
@@ -36,6 +38,11 @@ func runEvolve(args []string) error {
 			*jsonOut = true
 		} else if args[i] == "--dry-run" {
 			*dryRun = true
+		} else if args[i] == "--keep-episodes" && i+1 < len(args) {
+			if v, err := strconv.Atoi(args[i+1]); err == nil {
+				*keepEpisodes = v
+			}
+			i++
 		}
 	}
 	s, err := evolution.NewStore(*project)
@@ -193,23 +200,40 @@ func runEvolve(args []string) error {
 		p.UpdatedAt = evolution.Now()
 		return s.SaveProposal(p)
 	case "doctor":
-		if _, e := s.ListEpisodes(); e != nil {
+		stats, e := s.Stats()
+		if e != nil {
 			return e
 		}
-		if _, e := s.ListPatterns(); e != nil {
-			return e
+		if *jsonOut {
+			return emitEvolve(stats, true)
 		}
-		if _, e := s.ListProposals(); e != nil {
-			return e
+		fmt.Printf("Evolution store: PASS (%s scope)\n", stats.ScopeID)
+		for _, c := range stats.Collections {
+			fmt.Printf("  %-12s files=%d bytes=%d earliest=%s latest=%s\n",
+				c.Name, c.Files, c.Bytes, c.EarliestTime, c.LatestTime)
 		}
-		if _, e := s.ListExperiments(); e != nil {
-			return e
+		if len(stats.Snapshots) > 0 {
+			fmt.Printf("  maintenance snapshots: %d\n", len(stats.Snapshots))
 		}
-		if _, e := s.ListObservations(); e != nil {
-			return e
-		}
-		fmt.Println("Evolution store: PASS")
 		return nil
+	case "prune":
+		result, e := s.Prune(evolution.PruneOptions{KeepEpisodes: *keepEpisodes, DryRun: *dryRun})
+		if e != nil {
+			if *jsonOut {
+				_ = emitEvolve(result, true)
+			}
+			return e
+		}
+		return emitEvolve(result, *jsonOut)
+	case "repair":
+		result, e := s.Repair(evolution.RepairOptions{DryRun: *dryRun})
+		if e != nil {
+			if *jsonOut {
+				_ = emitEvolve(result, true)
+			}
+			return e
+		}
+		return emitEvolve(result, *jsonOut)
 	case "rollback":
 		if len(args) < 2 {
 			return errors.New("rollback requires id")

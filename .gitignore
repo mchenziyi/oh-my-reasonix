@@ -2,8 +2,8 @@
 bin/
 coverage.out
 
-# Local binary
-omr
+# Local binary (repo root only)
+/omr
 
 # Reasonix project metadata (user-local, not to be committed)
 .reasonix/

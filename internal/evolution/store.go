@@ -251,6 +251,12 @@ func (s Store) LoadProposal(id string) (Proposal, error) {
 	return p, err
 }
 
+func (s Store) LoadPattern(id string) (Pattern, error) {
+	var p Pattern
+	err := s.read(filepath.Join("patterns", id+".json"), &p)
+	return p, err
+}
+
 func (s Store) list(dir string, out func([]byte) error) error {
 	if err := s.checkScope(); err != nil {
 		return err

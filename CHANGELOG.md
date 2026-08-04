@@ -1,5 +1,14 @@
 # Changelog
 
+## [v2.0.4] — 2026-08-04
+
+### Added
+- **Evolution 数据保留与压缩（LP-01）**：`omr evolve doctor --json` 输出 Episode/Observation/Pattern/Proposal/Experiment 的只读统计（文件数、字节数、最早/最晚时间，损坏文件单独报告）。
+- **`omr evolve prune`**：只删除已终态 Proposal（rejected/rolled_back）关联的旧 Episode/Observation，受 `--keep-episodes` 窗口约束；保留 pending/approved Proposal 及其必要证据；支持 `--dry-run` 零写入预览。
+- **`omr evolve repair`**：只修复可确定推导的内容——孤儿 Observation、同 ID 重复文件（保留规范文件名）、无效 Pattern 索引；发现损坏 JSON、symlink 或跨 Scope 数据时 fail closed 零写入。
+- **维护快照**：删除前写入带 Hash 的 `maintenance/snapshot-<hash>.json`（含 base64 内容），失败自动回滚；`RestoreSnapshot` 支持按 Hash 手动恢复，Doctor 报告快照列表。
+- 所有维护操作保持 Scope 隔离、symlink 防护、0600 权限与原子写入。
+
 ## [Unreleased]
 
 ## [v2.0.3] — 2026-08-04
