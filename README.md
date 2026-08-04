@@ -406,11 +406,19 @@ go run ./cmd/omr version
 
 已完成 OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Checker）、T14（Comment Checker 运行时 Hook，已通过 Reasonix v1.18 桌面端验证），以及 INT-01～INT-06 全部联调。
 
-当前后续事项：
+后续本地增强（LP-01～LP-06）已全部交付：
 
-- **v2.0.0 自动自进化 MVP**、v2.0.1 Promotion Gate、v2.0.2 观察期报告与 v2.0.3 经验包导入导出均已交付。经验共享仍需显式导入且不会自动批准，详见 [v2.0.0 自动自进化开发计划](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)；
+- **v2.0.4（LP-01）**：Evolution 数据保留、压缩与修复——`evolve doctor` 只读统计、`evolve prune`、`evolve repair`，删除前带 Hash 快照且失败自动恢复，dry-run 零写入、幂等、fail closed。
+- **v2.0.5（LP-02）**：观测报告增强——按 Proposal/TaskClass 聚合 before/after、成功率、Token、耗时与观察期进度；`evolve history <id>` 详细统计；报告只输出脱敏聚合，不宣称“提升/显著改善”。
+- **v2.0.6（LP-03）**：Profile/Prompt 效果基准——`benchmark profile --replay/--matrix` 与 6 类离线 Fixture，指标为过程指标，明确声明“非模型质量证明”。
+- **v2.0.7（LP-04）**：Hook 审计日志——`.reasonix/omr/audit/` 脱敏日志、`hook comment-check logs/--clear`、条目/字节上限淘汰、日志不可用 fail closed。
+- **v2.0.8（LP-05）**：经验包签名——Ed25519 本地签名（`export --sign --key`）、`import --require-signature --trusted-key`，篡改/密钥不匹配/未知字段 fail closed，导入保持 pending。
+- **v2.0.9（LP-06）**：文档单一事实源——历史计划标注 Archived、能力矩阵、链接检查与命令示例 Smoke（`tests/docs_check.sh`）。
+
+当前可用能力的完整划分见 [当前可用能力矩阵](docs/OMR_CAPABILITY_MATRIX.zh-CN.md)。剩余事项只涉及 Reasonix 官方接口：
+
 - Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
-- Subagent 父子任务树与 Desktop 映射：等待 Reasonix 提供稳定的父子关联事件和机器接口。
+- Subagent 父子任务树与 Desktop 映射：等待 Reasonix 提供稳定的父子关联事件和机器接口（BLOCKED，未猜测、未伪造）。
 
 ## v1.17.20 机器接口兼容状态
 

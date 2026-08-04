@@ -1,5 +1,8 @@
 # OMR-T13：Comment Checker 与项目状态文档整理
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 > **状态：已完成** — 全部 5 个步骤（T13-01～T13-05）已执行完毕。
 > Comment Checker 离线 CLI 已实现；文档状态已统一；运行时 Hook 部分保持 BLOCKED。
 

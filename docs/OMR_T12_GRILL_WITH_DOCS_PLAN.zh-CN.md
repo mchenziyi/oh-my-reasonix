@@ -1,5 +1,8 @@
 # OMR-T12：Grill with Docs 文档化方案质询
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 目标
 
 在 T11 `omr-grill-me` 的只读质询基础上，增加一个显式启用的 `omr-grill-with-docs` Profile：把用户已确认的术语、事实和高影响决策沉淀到项目文档中。它不增强模型推理，也不复制 Reasonix 的 Session、Hook、Task 或恢复状态机。

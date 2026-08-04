@@ -4,7 +4,7 @@
 >
 > 本文用于冻结 OMR 后续优化范围与优先级。后续实现按本文排序推进；新增能力必须先更新本文，再进入开发。
 >
-> 状态：T11 (omr-grill-me)、T12 (omr-grill-with-docs)、T13 (Comment Checker CLI)、T14 (Comment Checker 运行时 Hook) 和 INT-06 真实客户端验证均已完成。
+> 状态：T11 (omr-grill-me)、T12 (omr-grill-with-docs)、T13 (Comment Checker CLI)、T14 (Comment Checker 运行时 Hook) 和 INT-06 真实客户端验证均已完成；v2.0.0～v2.0.3 自动自进化、LP-01～LP-06 本地增强（v2.0.4～v2.0.9）均已交付。当前剩余缺口只涉及 Reasonix 官方宿主接口，见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
 
 ## 1. 对比范围
 

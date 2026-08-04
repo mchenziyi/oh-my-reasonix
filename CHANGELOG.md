@@ -1,5 +1,12 @@
 # Changelog
 
+## [v2.0.9] — 2026-08-04
+
+### Added
+- **文档单一事实源清理（LP-06）**：README 中/英、CHANGELOG、Todo、Gap Matrix 与 Evolution 计划的版本和状态统一到 v2.0.9；22 份历史开发计划文档标注 Archived（保留审计价值），其中 Task Monitor 系列标注为依赖 Reasonix 官方接口（BLOCKED）。
+- 新增 [当前可用能力矩阵](docs/OMR_CAPABILITY_MATRIX.zh-CN.md)：区分 CLI 已实现能力、Reasonix Desktop 可用范围与需要官方接口的范围，明确不把宿主未实现接口写成 OMR 已实现。
+- 新增 [tests/docs_check.sh](tests/docs_check.sh)：文档链接检查、命令示例机器路径检查、过期表述扫描、中英文 README 状态一致性检查与能力矩阵存在性校验。
+
 ## [v2.0.8] — 2026-08-04
 
 ### Added

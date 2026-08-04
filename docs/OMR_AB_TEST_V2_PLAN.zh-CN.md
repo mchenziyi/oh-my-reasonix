@@ -1,5 +1,8 @@
 # OMR / Native A-B 测试 V2 执行计划
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 > 用途：交给 Reasonix Agent 执行一次可复核的 OMR 与原生 Reasonix 对照测试。
 > 
 > 本轮重点不是追求更高分，而是修正 V1 的归因问题，区分 OMR 能力、Reasonix 宿主能力、项目自身问题和测试环境阻塞。

@@ -84,4 +84,7 @@ fi
 grep -q '"valid":false' "$project_dir/invalid-config.json"
 grep -q 'duplicate key' "$project_dir/invalid-config.json"
 
+# LP-06: documentation consistency gate (links, stale phrases, zh/en status).
+bash "$repo_dir/tests/docs_check.sh" >/dev/null
+
 echo "OMR CLI smoke: PASS"

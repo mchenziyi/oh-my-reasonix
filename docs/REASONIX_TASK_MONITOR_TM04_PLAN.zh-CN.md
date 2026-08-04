@@ -1,5 +1,11 @@
 # Reasonix TM-04：任务控制操作开发计划
 
+> **Archived（已归档）**：本文记录 Reasonix 官方宿主接口的调研与计划。相关工作依赖 Reasonix 官方接口，当前标记 BLOCKED，OMR 未猜测、未伪造、未自行实现；本文保留作为审计依据。
+
+
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 目标
 
 在 TM-01～TM-03 的只读 Task Monitor 基础上，为 Reasonix 增加安全、可审计的任务控制能力：停止、取消、恢复，以及打开关联 Session。控制操作必须复用原生 Task/Session 状态，不复制第二套状态机。

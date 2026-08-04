@@ -6,7 +6,7 @@ oh-my-reasonix (OMR) is a project-level engineering layer for [Reasonix](https:/
 
 OMR does not replace Reasonix. Reasonix remains responsible for model execution, sessions, tasks, permissions, sandboxing, hooks, todo state, and background jobs.
 
-OMR v2.0.0-v2.0.3 deliver controlled automatic evolution: OMR remains an external project policy brain, while Reasonix remains the agent and execution runtime. The MVP, Promotion Gate, observation reports, rollback, and explicit experience package import/export are delivered. The remaining work requires Reasonix host interfaces for subagent parent-child task mapping and live Desktop/Tmux monitoring. See [`docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md).
+OMR v2.0.0-v2.0.9 deliver controlled local enhancement on top of Reasonix: OMR remains an external project policy brain, while Reasonix remains the agent and execution runtime. Delivered: automatic evolution MVP (v2.0.0), Promotion Gate (v2.0.1), observation reports (v2.0.2), experience package import/export (v2.0.3), evolution data retention/prune/repair (v2.0.4), enhanced observation reporting (v2.0.5), profile/prompt quality benchmark (v2.0.6), hook audit logs (v2.0.7), signed experience packages (v2.0.8), and the documentation single-source-of-truth cleanup with a capability matrix (v2.0.9). The remaining work requires Reasonix host interfaces for subagent parent-child task mapping and live Desktop/Tmux monitoring (marked BLOCKED, never fabricated). See the [capability matrix](docs/OMR_CAPABILITY_MATRIX.zh-CN.md) and [`docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md).
 
 ## Why OMR?
 

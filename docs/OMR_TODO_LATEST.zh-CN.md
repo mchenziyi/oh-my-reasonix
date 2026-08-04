@@ -1,9 +1,10 @@
 # oh-my-reasonix 最新开发 Todo
 
 > 版本：2026-08-04
-> 当前版本：OMR v2.0.3
+> 当前版本：OMR v2.0.9（LP-01～LP-06 全部交付）
 > 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。
 > 原则：只实现 OMR 能独立负责的能力；Reasonix 已原生提供或尚未提供公开接口的能力，不在 OMR 中复制。
+> 当前可用能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
 
 ## 当前状态（最新）
 
@@ -13,8 +14,10 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 
 1. ✅ **v2.0.0～v2.0.3 自动自进化**：EV00～EV10、Promotion Gate、观察期报告、项目 Scope 隔离和经验包导入导出均已完成。批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。
 2. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
-3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
-4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
+3. ✅ **LP-01～LP-05（v2.0.4～v2.0.8）**：Evolution 数据保留/修复、观测报告增强、Profile 基准、Hook 审计日志、经验包签名，均已完成交付（独立提交 761e9da / 421aa64 / 36e954a / 251c03d / cfa26a1）。
+4. ✅ **LP-06（v2.0.9）**：文档单一事实源、能力矩阵与链接检查已完成。
+5. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
+6. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口（BLOCKED）。
 
 ## v2.0.0～v2.0.3：OMR 自动自进化（已交付）
 
@@ -32,12 +35,21 @@ OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推�
 omr evolve status --project-dir . --json
 omr evolve proposals --project-dir . --json
 omr evolve report --project-dir . --json
+omr evolve history <proposal-id> --project-dir . --json
+omr evolve doctor --project-dir . --json
+omr evolve prune --dry-run --keep-episodes 500 --project-dir . --json
+omr evolve repair --dry-run --project-dir . --json
 omr evolve export --project-dir . --output /tmp/omr-experience.json
+omr evolve export --sign --key /path/to/sign-key.pem --project-dir . --output /tmp/omr-experience-signed.json
 omr evolve import --project-dir . --input /tmp/omr-experience.json
+omr evolve import --require-signature --trusted-key /path/to/sign-key.pub.pem --project-dir . --input /tmp/omr-experience-signed.json
 omr evolve approve <proposal-id> --project-dir .
 omr evolve reject <proposal-id> --project-dir .
 omr evolve rollback <proposal-id> --project-dir .
-omr evolve doctor --project-dir .
+omr benchmark profile --profile omr-explore --replay --project-dir .
+omr benchmark profile --matrix --replay --project-dir .
+omr hook comment-check logs --project-dir . --json
+omr hook comment-check logs --project-dir . --clear --dry-run
 ```
 
 ## 1. 与 oh-my-opencode 的对比结论

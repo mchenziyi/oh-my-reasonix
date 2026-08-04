@@ -1,5 +1,8 @@
 # OMR-T03：Claude 兼容层收尾开发计划
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 1. 目标
 
 在不复制 Claude/Reasonix 宿主运行时的前提下，补齐 OMR 的 Claude 配置导入能力，使 `.claude/commands`、Agent/Skill frontmatter、MCP 和 Hook 导入都有清晰的兼容性边界、冲突报告、dry-run 和回滚证据。

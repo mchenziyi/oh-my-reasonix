@@ -1,5 +1,8 @@
 # OMR-T04：Profile 与 Category 体验开发计划
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 1. 目标
 
 让 OMR 的 Profile 和 Category routing 更容易理解、配置、诊断和回归验证，确保用户能明确知道：

@@ -1,5 +1,8 @@
 # OMR-T11：Grill Me 方案质询 Skill 开发计划
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 交付目标
 
 在 OMR 中增加一个可选、只读、项目级的 `omr-grill-me` Profile，用于复杂开发任务开始前发现目标歧义、未经确认的假设、边界、失败路径和验收缺口。它只输出质询结果，不修改文件，不接管 Reasonix Session、Hook、Task 或恢复状态机。

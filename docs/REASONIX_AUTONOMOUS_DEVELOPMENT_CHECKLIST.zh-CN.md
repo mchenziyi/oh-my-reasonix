@@ -1,5 +1,8 @@
 # oh-my-reasonix 后续自主开发任务书
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 > 用途：将本文完整交给 Reasonix，让它在当前仓库中按顺序自主开发、测试和提交。
 >
 > 当前仓库：`oh-my-reasonix`

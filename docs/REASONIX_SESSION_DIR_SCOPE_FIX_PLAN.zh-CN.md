@@ -1,5 +1,8 @@
 # Reasonix v1.17.20 Session --dir 作用域修复计划
 
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 1. 问题摘要
 
 Reasonix v1.17.20 对同一个 project Session 出现不一致行为：

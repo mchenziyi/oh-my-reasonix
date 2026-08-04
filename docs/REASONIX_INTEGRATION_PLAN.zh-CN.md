@@ -1,5 +1,11 @@
 # OMR × Reasonix 集成计划
 
+> **Archived（已归档）**：本文记录 Reasonix 官方宿主接口的调研与计划。相关工作依赖 Reasonix 官方接口，当前标记 BLOCKED，OMR 未猜测、未伪造、未自行实现；本文保留作为审计依据。
+
+
+> **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
+
 ## 已验证的宿主能力
 
 当前 Reasonix 分支已通过相关测试，具备：
