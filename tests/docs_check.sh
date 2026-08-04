@@ -75,6 +75,7 @@ for f in docs/REASONIX_TASK_MONITOR_DEVELOPMENT_PLAN.zh-CN.md \
          docs/REASONIX_TASK_MONITOR_TM04_PLAN.zh-CN.md \
          docs/REASONIX_TASK_MONITOR_TM05_PLAN.zh-CN.md \
          docs/REASONIX_INTEGRATION_PLAN.zh-CN.md; do
+  [ -f "$f" ] || fail "missing host-interface doc $f"
   if grep -q '已完成交付' "$f" && grep -q 'BLOCKED' "$f"; then
     fail "contradictory archive banners in $f"
   fi
