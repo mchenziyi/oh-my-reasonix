@@ -61,6 +61,7 @@ func runRun(args []string) error {
 					if recordErr := evolution.RecordRun(store, prompt, result, reasonix.EventStream{}); recordErr != nil {
 						fmt.Fprintf(os.Stderr, "evolution: %v\n", recordErr)
 					}
+					logEvolutionObservation(store, *projectDir)
 				}
 				if result.Err != nil {
 					return fmt.Errorf("run failed (exit %d): %w", result.ExitCode, result.Err)
@@ -75,6 +76,7 @@ func runRun(args []string) error {
 					if recordErr := evolution.RecordRun(store, prompt, result, stream); recordErr != nil {
 						fmt.Fprintf(os.Stderr, "evolution: %v\n", recordErr)
 					}
+					logEvolutionObservation(store, *projectDir)
 				}
 				fmt.Fprintf(os.Stderr, "evolution: event validation: %s\n", strings.Join(stream.Errors, "; "))
 				if result.Err != nil {
@@ -94,6 +96,7 @@ func runRun(args []string) error {
 			if err := recordErr; err != nil {
 				fmt.Fprintf(os.Stderr, "evolution: %v\n", err)
 			}
+			logEvolutionObservation(store, *projectDir)
 		}
 		if autoEvents {
 			_ = os.Remove(*eventsJSONL)
@@ -126,4 +129,18 @@ func runRun(args []string) error {
 		fmt.Fprint(os.Stderr, result.Stderr)
 	}
 	return nil
+}
+
+func logEvolutionObservation(store evolution.Store, projectDir string) {
+	rolled, err := evolution.ObserveApproved(store, func(id string) error {
+		if err := store.RestoreOverlay(id); err != nil {
+			return err
+		}
+		return runInstall([]string{"--project-dir", projectDir}, true)
+	})
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "evolution: observation: %v\n", err)
+	} else if len(rolled) > 0 {
+		fmt.Fprintf(os.Stderr, "evolution: automatically rolled back %s\n", strings.Join(rolled, ", "))
+	}
 }

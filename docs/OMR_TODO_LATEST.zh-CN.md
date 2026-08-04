@@ -11,7 +11,7 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 
 下一阶段优先级：
 
-1. **v2.0.0 自动自进化**：按 EV00～EV10 实现 OMR 驱动的自动采集、模式识别、提案、配对回放、审批、生效和回滚。完整冻结方案见 [`OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)。
+1. ✅ **v2.0.0 自动自进化 MVP**：EV00～EV10 已完成；批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。后续进入观察指标和报告增强。
 2. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
 3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
@@ -24,13 +24,14 @@ OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推�
 
 首个 MVP 只实现“重复 Review/测试失败 → Pattern → Proposal → 配对验证 → 批准 → Overlay → 观察/回滚”这一条完整闭环。PR #6998 可增强 Task 可观测性，但不是 MVP 硬前置。
 
-当前实现进度：EV-MVP-00～08 自动化链路已完成（Schema、Evolution 存储、`omr run` 自动 Episode 采集、三次同类失败触发、严格 Proposal、离线验证、审批/拒绝/回滚、Overlay、Manifest/Doctor 漂移检查）；EV-MVP-10 尚未开始，必须由用户在临时项目进行真实客户端联调。
+当前实现进度：EV-MVP-00～09 自动化链路已完成，EV-MVP-10 已在临时项目完成真实联调（重复失败触发 Proposal、批准生效、后续任务执行、Rollback 恢复 Prompt Hash）。v2.0.0 MVP 已交付；后续工作转入观察期与指标增强。
 
 常用命令：
 
 ```bash
 omr evolve status --project-dir . --json
 omr evolve proposals --project-dir . --json
+omr evolve report --project-dir . --json
 omr evolve approve <proposal-id> --project-dir .
 omr evolve reject <proposal-id> --project-dir .
 omr evolve rollback <proposal-id> --project-dir .

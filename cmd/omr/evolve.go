@@ -15,7 +15,7 @@ import (
 
 func runEvolve(args []string) error {
 	if len(args) == 0 {
-		return errors.New("evolve requires status, proposals, approve, reject, history, rollback, or doctor")
+		return errors.New("evolve requires status, proposals, report, approve, reject, history, rollback, or doctor")
 	}
 	fs := flag.NewFlagSet("evolve", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
@@ -74,6 +74,12 @@ func runEvolve(args []string) error {
 			return e
 		}
 		return emitEvolve(v, *jsonOut)
+	case "report":
+		v, e := evolution.BuildReport(s)
+		if e != nil {
+			return e
+		}
+		return emitEvolve(v, *jsonOut)
 	case "approve":
 		if len(args) < 2 {
 			return errors.New("approve requires id")
@@ -106,6 +112,7 @@ func runEvolve(args []string) error {
 			return e
 		}
 		p.Status = "approved"
+		p.ApprovedAt = evolution.Now()
 		p.UpdatedAt = evolution.Now()
 		if e = s.SnapshotOverlay(p.ID); e != nil {
 			return e

@@ -3,6 +3,7 @@ package evolution
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 	"os"
 	"path/filepath"
@@ -115,5 +116,66 @@ func TestOverlayRollbackToEmpty(t *testing.T) {
 	}
 	if v, _ := s.ReadOverlay(); v != "rule" {
 		t.Fatal(v)
+	}
+}
+
+func TestObserveApprovedRollsBackAfterTwoFailures(t *testing.T) {
+	s, _ := NewStore(t.TempDir())
+	if err := s.SnapshotOverlay("p1"); err != nil {
+		t.Fatal(err)
+	}
+	p := Proposal{SchemaVersion: 1, ID: "p1", PatternID: "pattern", Title: "rule", Overlay: "rule", Status: "approved", ApprovedAt: "2026-08-04T01:00:00Z", UpdatedAt: "2026-08-04T01:00:00Z"}
+	if err := s.SaveProposal(p); err != nil {
+		t.Fatal(err)
+	}
+	for i, at := range []string{"2026-08-04T01:01:00Z", "2026-08-04T01:02:00Z"} {
+		e := Episode{SchemaVersion: 1, ID: fmt.Sprintf("e%d", i), TaskClass: "build", FailureClass: "task_failure", CreatedAt: at}
+		if err := s.RecordEpisode(e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	called := 0
+	rolled, err := ObserveApproved(s, func(id string) error {
+		called++
+		return s.RestoreOverlay(id)
+	})
+	if err != nil || len(rolled) != 1 || called != 1 {
+		t.Fatalf("rolled=%v called=%d err=%v", rolled, called, err)
+	}
+	got, err := s.LoadProposal("p1")
+	if err != nil || got.Status != "rolled_back" {
+		t.Fatalf("proposal=%+v err=%v", got, err)
+	}
+}
+
+func TestObserveApprovedWaitsForSecondFailure(t *testing.T) {
+	s, _ := NewStore(t.TempDir())
+	p := Proposal{SchemaVersion: 1, ID: "p1", PatternID: "pattern", Title: "rule", Overlay: "rule", Status: "approved", ApprovedAt: "2026-08-04T01:00:00Z", UpdatedAt: "2026-08-04T01:00:00Z"}
+	if err := s.SaveProposal(p); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordEpisode(Episode{SchemaVersion: 1, ID: "e1", TaskClass: "build", FailureClass: "task_failure", CreatedAt: "2026-08-04T01:01:00Z"}); err != nil {
+		t.Fatal(err)
+	}
+	rolled, err := ObserveApproved(s, func(string) error { return fmt.Errorf("unexpected rollback") })
+	if err != nil || len(rolled) != 0 {
+		t.Fatalf("rolled=%v err=%v", rolled, err)
+	}
+}
+
+func TestBuildReportAggregatesWithoutSensitiveContent(t *testing.T) {
+	s, _ := NewStore(t.TempDir())
+	if err := s.RecordEpisode(Episode{SchemaVersion: 1, ID: "ok", TaskClass: "build", Succeeded: true, CreatedAt: Now(), PromptTokens: 10, OutputTokens: 3}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordEpisode(Episode{SchemaVersion: 1, ID: "bad", TaskClass: "build", FailureClass: "task_failure", CreatedAt: Now(), PromptTokens: 20, OutputTokens: 4}); err != nil {
+		t.Fatal(err)
+	}
+	r, err := BuildReport(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Episodes != 2 || r.Successes != 1 || r.Failures != 1 || r.PromptTokens != 30 || r.OutputTokens != 7 || r.FailureClasses["task_failure"] != 1 {
+		t.Fatalf("unexpected report: %+v", r)
 	}
 }

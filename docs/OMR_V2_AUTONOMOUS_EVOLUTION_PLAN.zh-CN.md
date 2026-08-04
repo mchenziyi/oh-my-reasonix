@@ -1,6 +1,6 @@
 # OMR v2.0.0 自动自进化开发计划
 
-> 状态：EV-MVP-00～08 自动化实现完成，等待 EV-MVP-10 真实联调
+> 状态：EV-MVP-00～10 已完成；v2.0.0 MVP 已交付，观察期自动回滚增强已实现
 > 目标版本：OMR v2.0.0
 > 核心定位：OMR 是 Reasonix 的项目级外置策略大脑；Reasonix 保持 Agent 与执行引擎职责。
 
@@ -209,13 +209,14 @@ v2.0.0 首次交付默认使用 L2。L3 必须在积累足够真实数据后单�
 
 批准后先创建 Snapshot，再通过原子写入切换 `active/` 和 `evolution.lock.yaml`。新策略进入观察期，默认观察后续 5 个相关任务。
 
-测试通过率下降、Review 问题增加、成本超限、用户明确纠正、Manifest/Hash 异常或原问题再次出现时自动回滚。被回滚 Proposal 标记为 rejected，不允许在没有新证据的情况下再次晋级。
+测试通过率下降、Review 问题增加、成本超限、用户明确纠正、Manifest/Hash 异常或原问题再次出现时自动回滚。当前实现先采用确定性保护：批准后观察后续 Episode，累计两次失败即恢复 Snapshot、重建 Prompt/Manifest，并将 Proposal 标记为 `rolled_back`；更细粒度指标将在后续版本增加。
 
 ## 14. 控制面 CLI
 
 ```bash
 omr evolve status
 omr evolve proposals
+omr evolve report
 omr evolve approve <proposal-id>
 omr evolve reject <proposal-id>
 omr evolve history

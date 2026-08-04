@@ -7,6 +7,10 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
+// RollbackFunc restores the effective prompt and manifest after the overlay
+// snapshot has been restored.
+type RollbackFunc func(proposalID string) error
+
 type Proposer interface {
 	Propose(pattern Pattern) (Proposal, error)
 }
@@ -72,4 +76,46 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 		}
 	}
 	return nil
+}
+
+// ObserveApproved applies the conservative observation policy: after an
+// approved proposal, two subsequent failed episodes trigger a rollback. The
+// episode store is the source of truth; no model judgement is involved.
+func ObserveApproved(store Store, rollback RollbackFunc) ([]string, error) {
+	proposals, err := store.ListProposals()
+	if err != nil {
+		return nil, err
+	}
+	episodes, err := store.ListEpisodes()
+	if err != nil {
+		return nil, err
+	}
+	var rolledBack []string
+	for _, proposal := range proposals {
+		if proposal.Status != "approved" || proposal.ApprovedAt == "" {
+			continue
+		}
+		failures := 0
+		for _, episode := range episodes {
+			if episode.CreatedAt > proposal.ApprovedAt && !episode.Succeeded && episode.FailureClass != "" {
+				failures++
+			}
+		}
+		if failures < 2 {
+			continue
+		}
+		if rollback != nil {
+			if err := rollback(proposal.ID); err != nil {
+				return rolledBack, err
+			}
+		}
+		proposal.Status = "rolled_back"
+		proposal.RollbackReason = "two failed episodes during observation"
+		proposal.UpdatedAt = Now()
+		if err := store.SaveProposal(proposal); err != nil {
+			return rolledBack, err
+		}
+		rolledBack = append(rolledBack, proposal.ID)
+	}
+	return rolledBack, nil
 }

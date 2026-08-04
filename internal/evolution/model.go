@@ -38,16 +38,18 @@ type Pattern struct {
 }
 
 type Proposal struct {
-	SchemaVersion int    `json:"schema_version"`
-	ID            string `json:"id"`
-	PatternID     string `json:"pattern_id"`
-	Title         string `json:"title"`
-	Rationale     string `json:"rationale"`
-	Overlay       string `json:"overlay"`
-	Status        string `json:"status"`
-	ContentSHA256 string `json:"content_sha256"`
-	CreatedAt     string `json:"created_at"`
-	UpdatedAt     string `json:"updated_at"`
+	SchemaVersion  int    `json:"schema_version"`
+	ID             string `json:"id"`
+	PatternID      string `json:"pattern_id"`
+	Title          string `json:"title"`
+	Rationale      string `json:"rationale"`
+	Overlay        string `json:"overlay"`
+	Status         string `json:"status"`
+	ContentSHA256  string `json:"content_sha256"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
+	ApprovedAt     string `json:"approved_at,omitempty"`
+	RollbackReason string `json:"rollback_reason,omitempty"`
 }
 
 type Experiment struct {
