@@ -269,3 +269,102 @@ func TestEvolveRestoreSnapshotCommandPath(t *testing.T) {
 		t.Fatal("expected restore")
 	}
 }
+
+func TestEvolveReportJSONIncludesProposalStats(t *testing.T) {
+	dir, s := evolveTestStore(t)
+	// Add an approved proposal with after observations.
+	overlay := "active"
+	h := sha256.Sum256([]byte(overlay))
+	if err := s.SaveProposal(evolution.Proposal{SchemaVersion: 1, ID: "p-active", PatternID: "pattern-a", Title: "t", Rationale: "r", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "approved", ApprovedAt: evolution.Now(), CreatedAt: evolution.Now(), UpdatedAt: evolution.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveObservation(evolution.Observation{SchemaVersion: 1, ID: "o-active", ProposalID: "p-active", EpisodeID: "ep-active", Phase: "after", Succeeded: true, CreatedAt: evolution.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.RecordEpisode(evolution.Episode{SchemaVersion: 1, ID: "ep-active", TaskClass: "build", Succeeded: true, CreatedAt: evolution.Now()}); err != nil {
+		t.Fatal(err)
+	}
+
+	out, err := captureRunOutput(func() error {
+		return runEvolve([]string{"report", "--project-dir", dir, "--json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report struct {
+		SchemaVersion int `json:"schema_version"`
+		ProposalStats []struct {
+			ProposalID string `json:"proposal_id"`
+			Status     string `json:"status"`
+		} `json:"proposal_stats"`
+		TaskClasses []struct {
+			TaskClass string `json:"task_class"`
+			Episodes  int    `json:"episodes"`
+		} `json:"task_classes"`
+	}
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatalf("invalid JSON: %v: %s", err, out)
+	}
+	if report.SchemaVersion != 1 {
+		t.Fatalf("schema_version: %+v", report)
+	}
+	foundActive := false
+	for _, ps := range report.ProposalStats {
+		if ps.ProposalID == "p-active" {
+			foundActive = true
+			if ps.Status != "insufficient_evidence" {
+				t.Fatalf("expected insufficient_evidence, got %q", ps.Status)
+			}
+		}
+	}
+	if !foundActive {
+		t.Fatalf("p-active missing from proposal stats: %+v", report.ProposalStats)
+	}
+	foundTask := false
+	for _, tc := range report.TaskClasses {
+		if tc.TaskClass == "build" {
+			foundTask = true
+		}
+	}
+	if !foundTask {
+		t.Fatal("task_classes missing build")
+	}
+}
+
+func TestEvolveHistoryJSONDetailedStats(t *testing.T) {
+	dir, s := evolveTestStore(t)
+	if err := s.SaveObservation(evolution.Observation{SchemaVersion: 1, ID: "o-orphan", ProposalID: "p-rejected", EpisodeID: "ep-missing", Phase: "after", Succeeded: true, CreatedAt: evolution.Now()}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureRunOutput(func() error {
+		return runEvolve([]string{"history", "p-rejected", "--project-dir", dir, "--json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var detail struct {
+		ProposalID string `json:"proposal_id"`
+		Status     string `json:"status"`
+		Before     int    `json:"before"`
+		After      int    `json:"after"`
+	}
+	if err := json.Unmarshal([]byte(out), &detail); err != nil {
+		t.Fatalf("invalid JSON: %v: %s", err, out)
+	}
+	if detail.ProposalID != "p-rejected" || detail.Before != 0 || detail.After != 2 {
+		t.Fatalf("unexpected history: %+v", detail)
+	}
+	if detail.Status != "insufficient_evidence" {
+		t.Fatalf("expected insufficient_evidence, got %q", detail.Status)
+	}
+}
+
+func TestEvolveHistoryUnknownProposalFails(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	_, err := captureRunOutput(func() error {
+		return runEvolve([]string{"history", "nope", "--project-dir", dir, "--json"})
+	})
+	if err == nil {
+		t.Fatal("expected unknown proposal error")
+	}
+}

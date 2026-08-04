@@ -1,5 +1,12 @@
 # Changelog
 
+## [v2.0.5] — 2026-08-04
+
+### Added
+- **Evolution 观测报告增强（LP-02）**：`omr evolve report --json` 新增按 Proposal 与 TaskClass 的聚合统计——before/after Episode 数量、成功率/失败率、Prompt/Output Token、耗时（时间跨度）、观察期进度（默认目标 5 个相关 Episode）与 `insufficient_evidence`/`observed`/`rolled_back` 状态。
+- `omr evolve history <proposal-id> --json` 输出单个 Proposal 的详细观察历史：before/after Episode 摘要（脱敏，无 Session ID）、失败分类、Token 与回滚原因。
+- 报告为稳定排序的确定性 JSON，快照测试保证字段形状稳定；报告只输出脱敏聚合统计，不输出 Overlay、Prompt、命令正文、Session ID 或模型输出，也不宣称“提升/显著改善”。
+
 ## [v2.0.4] — 2026-08-04
 
 ### Added
