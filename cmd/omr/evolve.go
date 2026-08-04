@@ -144,12 +144,18 @@ func runEvolve(args []string) error {
 					return errors.New("import --input requires a path")
 				}
 				input = args[i+1]
+				if input == "" {
+					return errors.New("import --input requires a non-empty path")
+				}
 				i++
 			case "--trusted-key":
 				if i+1 >= len(args) {
 					return errors.New("import --trusted-key requires a path")
 				}
 				trustedKeyPath = args[i+1]
+				if trustedKeyPath == "" {
+					return errors.New("import --trusted-key requires a non-empty path")
+				}
 				i++
 			default:
 				// Accept --flag=value forms so a value is never silently

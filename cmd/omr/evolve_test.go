@@ -517,6 +517,11 @@ func TestEvolveImportTrustedKeyEmptyValueFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected empty --trusted-key value rejection")
 	}
+	// Space form with empty value must also error.
+	err = runEvolve([]string{"import", "--input", pkgPath, "--trusted-key", "", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected empty --trusted-key space-form rejection")
+	}
 	// --input= (empty) must also error.
 	err = runEvolve([]string{"import", "--input=", "--project-dir", t.TempDir()})
 	if err == nil {
