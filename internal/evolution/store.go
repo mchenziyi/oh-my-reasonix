@@ -12,7 +12,10 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 )
 
-type Store struct{ Root string }
+type Store struct {
+	Root    string
+	ScopeID string
+}
 
 func NewStore(projectDir string) (Store, error) {
 	root, err := filepath.Abs(projectDir)
@@ -22,7 +25,58 @@ func NewStore(projectDir string) (Store, error) {
 	if resolved, resolveErr := filepath.EvalSymlinks(root); resolveErr == nil {
 		root = resolved
 	}
-	return Store{Root: filepath.Join(root, ".reasonix", "omr", "evolution")}, nil
+	return Store{Root: filepath.Join(root, ".reasonix", "omr", "evolution"), ScopeID: NewID("scope", root)}, nil
+}
+
+type scopeRecord struct {
+	SchemaVersion int    `json:"schema_version"`
+	ScopeID       string `json:"scope_id"`
+}
+
+func (s Store) checkScope() error {
+	p, err := s.safeJoin("scope.json")
+	if err != nil {
+		return err
+	}
+	b, err := os.ReadFile(p)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var record scopeRecord
+	if err := json.Unmarshal(b, &record); err != nil {
+		return fmt.Errorf("invalid evolution scope: %w", err)
+	}
+	if record.SchemaVersion != SchemaVersion || record.ScopeID != s.ScopeID {
+		return fmt.Errorf("evolution store belongs to another project scope")
+	}
+	return nil
+}
+
+func (s Store) ensureScope() error {
+	if err := s.checkScope(); err != nil {
+		return err
+	}
+	p, err := s.safeJoin("scope.json")
+	if err != nil {
+		return err
+	}
+	if _, err := os.Stat(p); err == nil {
+		return nil
+	} else if !os.IsNotExist(err) {
+		return err
+	}
+	b, err := Encode(scopeRecord{SchemaVersion: SchemaVersion, ScopeID: s.ScopeID})
+	if err != nil {
+		return err
+	}
+	b = append(b, '\n')
+	if err := os.MkdirAll(filepath.Dir(p), 0700); err != nil {
+		return err
+	}
+	return fileutil.AtomicWrite(p, b, 0600)
 }
 
 // safeJoin rejects symlink components and traversal below the store root.
@@ -54,6 +108,11 @@ func (s Store) safeJoin(parts ...string) (string, error) {
 }
 
 func (s Store) write(name string, value any) error {
+	if name != "scope.json" {
+		if err := s.ensureScope(); err != nil {
+			return err
+		}
+	}
 	p, err := s.safeJoin(name)
 	if err != nil {
 		return err
@@ -69,6 +128,11 @@ func (s Store) write(name string, value any) error {
 	return fileutil.AtomicWrite(p, b, 0600)
 }
 func (s Store) writeBytes(name string, b []byte) error {
+	if name != "scope.json" {
+		if err := s.ensureScope(); err != nil {
+			return err
+		}
+	}
 	p, err := s.safeJoin(name)
 	if err != nil {
 		return err
@@ -80,6 +144,11 @@ func (s Store) writeBytes(name string, b []byte) error {
 }
 
 func (s Store) read(name string, out any) error {
+	if name != "scope.json" {
+		if err := s.checkScope(); err != nil {
+			return err
+		}
+	}
 	p, err := s.safeJoin(name)
 	if err != nil {
 		return err
@@ -119,6 +188,9 @@ func (s Store) SaveExperiment(e Experiment) error {
 }
 
 func (s Store) WriteOverlay(content string) error {
+	if err := s.checkScope(); err != nil {
+		return err
+	}
 	if len(content) > 65536 {
 		return fmt.Errorf("invalid overlay")
 	}
@@ -153,6 +225,9 @@ func (s Store) SnapshotOverlay(id string) error {
 	return s.writeBytes(filepath.Join("snapshots", id+".md"), []byte(content))
 }
 func (s Store) RestoreOverlay(id string) error {
+	if err := s.checkScope(); err != nil {
+		return err
+	}
 	p, err := s.safeJoin(filepath.Join("snapshots", id+".md"))
 	if err != nil {
 		return err
@@ -170,6 +245,9 @@ func (s Store) LoadProposal(id string) (Proposal, error) {
 }
 
 func (s Store) list(dir string, out func([]byte) error) error {
+	if err := s.checkScope(); err != nil {
+		return err
+	}
 	p, err := s.safeJoin(dir)
 	if err != nil {
 		return err

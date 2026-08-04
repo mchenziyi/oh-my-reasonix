@@ -179,3 +179,15 @@ func TestBuildReportAggregatesWithoutSensitiveContent(t *testing.T) {
 		t.Fatalf("unexpected report: %+v", r)
 	}
 }
+
+func TestStoreRejectsCopiedProjectScope(t *testing.T) {
+	first, _ := NewStore(t.TempDir())
+	if err := first.RecordEpisode(Episode{SchemaVersion: 1, ID: "ep", TaskClass: "build", Succeeded: true, CreatedAt: Now()}); err != nil {
+		t.Fatal(err)
+	}
+	second, _ := NewStore(t.TempDir())
+	second.Root = first.Root
+	if _, err := second.ListEpisodes(); err == nil {
+		t.Fatal("expected scope mismatch")
+	}
+}

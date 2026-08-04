@@ -156,6 +156,8 @@ evidence_count: 3
 └── evolution.lock.yaml
 ```
 
+每个项目的 Evolution Store 还会保存 `scope.json` 项目指纹。读取或写入时若发现 Store 属于另一项目将直接拒绝；跨项目共享不默认开启，也不会通过复制目录隐式共享经验。
+
 Prompt 组合顺序固定为：Reasonix Base → 用户 Prompt → OMR 稳定内置 Prompt → 项目 Evolution Overlay。`omr upgrade` 不得覆盖 Overlay，`doctor` 必须校验其 Manifest、Hash、来源和当前状态。
 
 ## 10. 允许与禁止的进化对象

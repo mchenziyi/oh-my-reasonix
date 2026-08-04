@@ -4,6 +4,7 @@ package evolution
 // deliberately excludes prompts, command text, and model reasoning.
 type Report struct {
 	SchemaVersion  int            `json:"schema_version"`
+	ScopeID        string         `json:"scope_id"`
 	Episodes       int            `json:"episodes"`
 	Successes      int            `json:"successes"`
 	Failures       int            `json:"failures"`
@@ -28,7 +29,7 @@ func BuildReport(store Store) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	report := Report{SchemaVersion: SchemaVersion, Episodes: len(episodes), FailureClasses: map[string]int{}, Proposals: len(proposals), ProposalScores: map[string]int{}}
+	report := Report{SchemaVersion: SchemaVersion, ScopeID: store.ScopeID, Episodes: len(episodes), FailureClasses: map[string]int{}, Proposals: len(proposals), ProposalScores: map[string]int{}}
 	for _, episode := range episodes {
 		report.PromptTokens += episode.PromptTokens
 		report.OutputTokens += episode.OutputTokens

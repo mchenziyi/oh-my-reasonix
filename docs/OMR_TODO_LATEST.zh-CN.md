@@ -11,7 +11,7 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 
 下一阶段优先级：
 
-1. ✅ **v2.0.0 自动自进化 MVP**：EV00～EV10 已完成；批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。后续进入观察指标和报告增强。
+1. ✅ **v2.0.0 自动自进化 MVP**：EV00～EV10 已完成；批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。已增加观察报告、Proposal 质量评分和项目 Scope 隔离；跨项目共享仍需显式设计。
 2. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
 3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
