@@ -141,19 +141,19 @@ func runEvolve(args []string) error {
 			switch args[i] {
 			case "--input":
 				if i+1 >= len(args) {
-					return errors.New("import --input requires a path")
+					return errors.New("import --input requires a non-empty path")
 				}
 				input = args[i+1]
-				if input == "" {
+				if strings.TrimSpace(input) == "" {
 					return errors.New("import --input requires a non-empty path")
 				}
 				i++
 			case "--trusted-key":
 				if i+1 >= len(args) {
-					return errors.New("import --trusted-key requires a path")
+					return errors.New("import --trusted-key requires a non-empty path")
 				}
 				trustedKeyPath = args[i+1]
-				if trustedKeyPath == "" {
+				if strings.TrimSpace(trustedKeyPath) == "" {
 					return errors.New("import --trusted-key requires a non-empty path")
 				}
 				i++
@@ -162,13 +162,13 @@ func runEvolve(args []string) error {
 				// dropped (SEC: a dropped --trusted-key would weaken import).
 				if strings.HasPrefix(args[i], "--input=") {
 					input = strings.TrimPrefix(args[i], "--input=")
-					if input == "" {
-						return errors.New("import --input requires a path")
+					if strings.TrimSpace(input) == "" {
+						return errors.New("import --input requires a non-empty path")
 					}
 				} else if strings.HasPrefix(args[i], "--trusted-key=") {
 					trustedKeyPath = strings.TrimPrefix(args[i], "--trusted-key=")
-					if trustedKeyPath == "" {
-						return errors.New("import --trusted-key requires a path")
+					if strings.TrimSpace(trustedKeyPath) == "" {
+						return errors.New("import --trusted-key requires a non-empty path")
 					}
 				} else if strings.HasPrefix(args[i], "--require-signature=") {
 					v := strings.TrimPrefix(args[i], "--require-signature=")

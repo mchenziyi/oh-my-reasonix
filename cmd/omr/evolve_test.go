@@ -522,6 +522,16 @@ func TestEvolveImportTrustedKeyEmptyValueFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected empty --trusted-key space-form rejection")
 	}
+	// Space form empty --input must also error.
+	err = runEvolve([]string{"import", "--input", "", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected empty --input space-form rejection")
+	}
+	// Whitespace-only value must be rejected as empty (TrimSpace).
+	err = runEvolve([]string{"import", "--input", pkgPath, "--trusted-key", "   ", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected whitespace-only --trusted-key rejection")
+	}
 	// --input= (empty) must also error.
 	err = runEvolve([]string{"import", "--input=", "--project-dir", t.TempDir()})
 	if err == nil {
