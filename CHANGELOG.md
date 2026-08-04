@@ -27,10 +27,6 @@
 ### Safety
 - Promotion Gate 只证明协议完整性和安全约束，不宣称模型质量提升。
 
-### Planned
-- **v2.0.2 观察期指标**：记录 Proposal 生效前后 Episode、成本、失败分类和回滚原因。
-- 设计文档：[`docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)。
-
 ### Added
 - **T14: Comment Checker 运行时 Hook**：默认关闭的提交前注释质量门禁。新增 `omr hook comment-check enable/status/disable/guard` 命令，通过 Reasonix 原生 PreToolUse Hook 在 `git commit` 前自动调用 Comment Checker，存在 blocking finding 时以退出码 2 阻断提交。
 - **internal/commenthook/**：纯合并器（EnableMerge/DisableMerge）、Guard stdin 解析器、事务写入（备份/原子写入/回滚）、路径安全（symlink 越界检测）、所有权标记、冲突检测、幂等保证。

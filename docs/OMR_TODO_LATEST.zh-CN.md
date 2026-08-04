@@ -1,7 +1,7 @@
 # oh-my-reasonix 最新开发 Todo
 
 > 版本：2026-08-04
-> 目标版本：OMR v2.0.0
+> 当前版本：OMR v2.0.3
 > 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。
 > 原则：只实现 OMR 能独立负责的能力；Reasonix 已原生提供或尚未提供公开接口的能力，不在 OMR 中复制。
 
@@ -11,12 +11,12 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 
 下一阶段优先级：
 
-1. ✅ **v2.0.0 自动自进化 MVP**：EV00～EV10 已完成；批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。已增加观察报告、Proposal 质量评分和项目 Scope 隔离；跨项目共享仍需显式设计。
+1. ✅ **v2.0.0～v2.0.3 自动自进化**：EV00～EV10、Promotion Gate、观察期报告、项目 Scope 隔离和经验包导入导出均已完成。批准后的策略进入观察期，连续两次后续失败会自动回滚并重建 Prompt/Manifest。
 2. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
 3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
 
-## v2.0.0：OMR 自动自进化（进行中）
+## v2.0.0～v2.0.3：OMR 自动自进化（已交付）
 
 OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推理、工具、Session、Task 和 Subagent；OMR 作为项目级外置策略大脑，通过进化自己的 Prompt、Profile、编排规则、Review 规则、路由和质量 Fixture，使装载 OMR 的 Reasonix 在项目中持续改善。
 
@@ -24,7 +24,7 @@ OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推�
 
 首个 MVP 只实现“重复 Review/测试失败 → Pattern → Proposal → 配对验证 → 批准 → Overlay → 观察/回滚”这一条完整闭环。PR #6998 可增强 Task 可观测性，但不是 MVP 硬前置。
 
-当前实现进度：EV-MVP-00～09 自动化链路已完成，EV-MVP-10 已在临时项目完成真实联调（重复失败触发 Proposal、批准生效、后续任务执行、Rollback 恢复 Prompt Hash）。v2.0.0 MVP 已交付；后续工作转入观察期与指标增强。
+当前实现进度：EV-MVP-00～10 已完成真实临时项目联调；v2.0.0 MVP、v2.0.1 Promotion Gate、v2.0.2 观察期指标与历史报告、v2.0.3 经验包导入导出均已交付。自进化本地能力无剩余必做项。
 
 常用命令：
 
@@ -132,8 +132,9 @@ Session list/status/show、Hook list/status、后台 Task 查询、Session recov
 ## 7. 推荐开发顺序
 
 1. ✅ T14：Comment Checker 运行时 Hook 安装、诊断与回滚；
-2. Subagent 父子任务树、Desktop/Tmux 和后台结果汇聚等待 Reasonix 官方接口；
-3. 不重复开发已经完成的 T01～T13 与 INT-01～INT-06。
+2. ✅ EV-MVP-00～10、EV-POST-01～03：自进化闭环及后续增强；
+3. Subagent 父子任务树、Desktop/Tmux 和后台结果汇聚等待 Reasonix 官方接口；
+4. 不重复开发已经完成的 T01～T14 与 INT-01～INT-06。
 
 每个任务必须先写回归测试或 Fixture，做最小代码修改，运行 `gofmt`、`git diff --check`、`go test ./...`、`go vet ./...`，更新本文件和差距矩阵，并保留未跟踪的 `omr`、`.reasonix/`。只有真实客户端行为无法通过自动化判断时，才请求用户协助。
 
