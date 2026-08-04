@@ -1,5 +1,13 @@
 # Changelog
 
+## [v2.0.7] — 2026-08-04
+
+### Added
+- **Comment Checker Hook 审计日志（LP-04）**：guard 每次决策（blocking / warning / 放行 / 解析失败）写入项目级 `.reasonix/omr/audit/audit.jsonl`，记录时间、事件、决策、规则计数、退出码、耗时与 OMR 版本。
+- 新增 `omr hook comment-check logs --project-dir . --json` 查询（含按决策的摘要统计）；`--clear --dry-run` 零写入预览，`--clear` 幂等清除。
+- 日志条目数与字节数上限（1000 条 / 256 KiB），超限按时间淘汰最旧；symlink、路径穿越与损坏日志 fail closed。
+- 日志只保存脱敏统计，禁止命令正文、完整 toolArgs、文件内容与凭据；日志写入失败时 guard fail closed（阻断决策保持退出码 2，放行决策降级为显式失败），Doctor 新增 `comment-hook-audit` 检查明确报告日志不可用。
+
 ## [v2.0.6] — 2026-08-04
 
 ### Added

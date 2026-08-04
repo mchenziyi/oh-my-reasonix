@@ -6,6 +6,17 @@ import (
 	"testing"
 )
 
+// appendFileBytes appends raw bytes to a file for test corruption scenarios.
+func appendFileBytes(path string, data []byte) error {
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.Write(data)
+	return err
+}
+
 // makeMockReasonixBinary creates a bash script that returns canned JSON
 // responses based on the CLI args it receives. This keeps hook doctor tests
 // independent of the real Reasonix binary and ~/.reasonix permissions.

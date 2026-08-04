@@ -78,7 +78,7 @@ func runHookDoctor(args []string) error {
 
 func runHookCommentCheck(args []string) error {
 	if len(args) == 0 {
-		return fmt.Errorf("comment-check requires a subcommand: enable|status|disable|guard")
+		return fmt.Errorf("comment-check requires a subcommand: enable|status|disable|guard|logs")
 	}
 
 	switch args[0] {
@@ -90,9 +90,86 @@ func runHookCommentCheck(args []string) error {
 		return runHookCommentCheckDisable(args[1:])
 	case "guard":
 		return runHookCommentCheckGuard(args[1:])
+	case "logs":
+		return runHookCommentCheckLogs(args[1:])
 	default:
-		return fmt.Errorf("unknown comment-check subcommand %q; expected enable|status|disable|guard", args[0])
+		return fmt.Errorf("unknown comment-check subcommand %q; expected enable|status|disable|guard|logs", args[0])
 	}
+}
+
+// --- logs ---
+
+type auditLogsOutput struct {
+	SchemaVersion int                      `json:"schema_version"`
+	ProjectDir    string                   `json:"project_dir"`
+	Entries       int                      `json:"entries"`
+	Summary       map[string]int           `json:"summary"`
+	Logs          []commenthook.AuditEntry `json:"logs,omitempty"`
+	Cleared       bool                     `json:"cleared,omitempty"`
+	DryRun        bool                     `json:"dry_run,omitempty"`
+}
+
+func runHookCommentCheckLogs(args []string) error {
+	flags := flag.NewFlagSet("hook comment-check logs", flag.ContinueOnError)
+	flags.SetOutput(os.Stderr)
+	projectDir := flags.String("project-dir", ".", "project directory")
+	jsonOutput := flags.Bool("json", false, "output as JSON")
+	clear := flags.Bool("clear", false, "clear the audit log")
+	dryRun := flags.Bool("dry-run", false, "preview the clear without writing")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+
+	store, err := commenthook.NewAuditStore(*projectDir)
+	if err != nil {
+		return err
+	}
+
+	out := auditLogsOutput{SchemaVersion: 1, ProjectDir: *projectDir, Summary: map[string]int{}, Logs: []commenthook.AuditEntry{}}
+
+	if *clear {
+		if *dryRun {
+			if _, err := store.Clear(commenthook.DryRun); err != nil {
+				return err
+			}
+			out.DryRun = true
+		} else {
+			if _, err := store.Clear(commenthook.RealClear); err != nil {
+				return err
+			}
+			out.Cleared = true
+		}
+		if *jsonOutput {
+			return writePrettyJSONOutput(out)
+		}
+		if out.Cleared {
+			fmt.Println("Comment Checker audit log cleared.")
+		} else {
+			fmt.Println("DRY-RUN: audit log would be cleared.")
+		}
+		return nil
+	}
+
+	entries, err := store.List()
+	if err != nil {
+		return err
+	}
+	out.Entries = len(entries)
+	out.Logs = entries
+	for _, e := range entries {
+		out.Summary[e.Decision]++
+	}
+	if *jsonOutput {
+		return writePrettyJSONOutput(out)
+	}
+	fmt.Printf("Comment Checker audit log: %d entries\n", out.Entries)
+	for decision, count := range out.Summary {
+		fmt.Printf("  %-14s %d\n", decision, count)
+	}
+	for _, e := range entries {
+		fmt.Printf("  %s %s exit=%d rules=%v\n", e.Time, e.Decision, e.ExitCode, e.RuleCounts)
+	}
+	return nil
 }
 
 // --- enable ---

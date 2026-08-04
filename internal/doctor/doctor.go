@@ -462,5 +462,16 @@ func commentHookDiagnosticWithExecutable(root string, reasonixHooksAvailable boo
 		return Check{Name: "comment-hook", Status: "WARN", Detail: "已启用但 Reasonix hook list 中不可见（可能需重启 Reasonix）"}
 	}
 
+	// Audit log availability: a broken audit trail must be reported so a
+	// non-blocking hook cannot silently pass without evidence.
+	auditStore, auditErr := commenthook.NewAuditStore(root)
+	if auditErr == nil {
+		if _, listErr := auditStore.List(); listErr != nil {
+			return Check{Name: "comment-hook-audit", Status: "ERROR", Detail: "审计日志不可用: " + listErr.Error()}
+		}
+	} else {
+		return Check{Name: "comment-hook-audit", Status: "ERROR", Detail: "审计日志目录不可用: " + auditErr.Error()}
+	}
+
 	return Check{Name: "comment-hook", Status: "PASS", Detail: "已启用，条目规范，omr 可执行路径有效，Reasonix 可见"}
 }
