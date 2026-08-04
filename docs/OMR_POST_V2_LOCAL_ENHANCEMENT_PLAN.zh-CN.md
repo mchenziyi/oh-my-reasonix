@@ -1,5 +1,7 @@
 # OMR v2.0.4～v2.0.9 本地增强开发任务书
 
+> **Archived（已归档）**：本任务书对应的 LP-01～LP-06 已全部交付（v2.0.4～v2.0.9，独立提交 761e9da / 421aa64 / 36e954a / 251c03d / cfa26a1 / 225969d，另有 review 修复提交 0a19ae5 / 5975bec）。本文保留作为审计与追溯依据；当前能力见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
+
 > 用途：交给 Reasonix Agent 在 `oh-my-reasonix` 仓库内执行。
 > 
 > 目标：在不等待 Reasonix 官方接口的前提下，继续提升 OMR 的长期运行、可观测性、质量证明、安全审计和文档一致性。

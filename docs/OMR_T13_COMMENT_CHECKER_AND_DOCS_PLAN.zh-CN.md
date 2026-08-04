@@ -4,7 +4,7 @@
 
 
 > **状态：已完成** — 全部 5 个步骤（T13-01～T13-05）已执行完毕。
-> Comment Checker 离线 CLI 已实现；文档状态已统一；运行时 Hook 由后续 T14 交付（v2.0.1 起已通过 Reasonix v1.18 桌面端验证）。
+> Comment Checker 离线 CLI 已实现；文档状态已统一；运行时 Hook 已由后续 T14 交付（v2.0.1 起已通过 Reasonix v1.18 桌面端验证）。
 
 > 用途：交给 Reasonix Agent 夜间自动执行。
 > 范围：只修改 oh-my-reasonix 仓库；不修改 Reasonix 宿主仓库，不等待人工操作。

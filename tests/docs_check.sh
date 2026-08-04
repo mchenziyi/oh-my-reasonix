@@ -25,6 +25,7 @@ stale=(
   'T13 待实现'
   '尚未实现.*Comment Checker'
   'LP-0[1-6].*进行中'
+  'Hook.*待开发'
 )
 for pat in "${stale[@]}"; do
   # Only scan active docs, not historical/archived reports.
@@ -82,9 +83,10 @@ for f in docs/REASONIX_TASK_MONITOR_DEVELOPMENT_PLAN.zh-CN.md \
 done
 
 # --- 5. zh/en status agreement ---------------------------------------------
-# Compare the highest v2.0.x version each README mentions.
+# Compare the highest v2.0.x version each README mentions (POSIX-safe).
 max_ver() {
-  grep -oE 'v2\.0\.[0-9]+' "$1" | sort -V | tail -1 || true
+  # Extract all v2.0.x matches and keep the numerically largest.
+  grep -oE 'v2\.0\.[0-9]+' "$1" | awk -F. '{ if ($3 > max) max = $3 } END { if (max != "") print "v2.0." max }'
 }
 zh_ver=$(max_ver README.md)
 en_ver=$(max_ver README.en.md)

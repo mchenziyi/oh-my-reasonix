@@ -2,8 +2,6 @@
 
 > **Archived（已归档）**：本计划对应的工作已完成交付；本文保留作为审计与追溯依据，不再作为开发输入。当前能力与剩余宿主依赖见 [当前可用能力矩阵](OMR_CAPABILITY_MATRIX.zh-CN.md)。
 
-
-> 状态：待开发  
 > 目标仓库：`oh-my-reasonix`  
 > 依赖基线：Reasonix v1.18.0+  
 > 状态：✅ 已完成并通过 Reasonix v1.18 桌面端验证。
