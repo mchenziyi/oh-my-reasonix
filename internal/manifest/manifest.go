@@ -55,18 +55,25 @@ type Profile struct {
 }
 
 type Manifest struct {
-	SchemaVersion  int           `json:"schema_version"`
-	Product        string        `json:"product"`
-	Version        string        `json:"version"`
-	ReasonixCommit string        `json:"reasonix_commit"`
-	Prompt         Prompt        `json:"prompt"`
-	Assets         []Asset       `json:"assets"`
-	Config         []ConfigEntry `json:"config"`
-	Profiles       []Profile     `json:"profiles,omitempty"`
-	ProfilePath    string        `json:"profile_path,omitempty"`
-	ProfileSHA256  string        `json:"profile_sha256,omitempty"`
-	BackupPath     string        `json:"backup_path,omitempty"`
-	Hook           *HookRecord   `json:"hook,omitempty"`
+	SchemaVersion  int              `json:"schema_version"`
+	Product        string           `json:"product"`
+	Version        string           `json:"version"`
+	ReasonixCommit string           `json:"reasonix_commit"`
+	Prompt         Prompt           `json:"prompt"`
+	Assets         []Asset          `json:"assets"`
+	Config         []ConfigEntry    `json:"config"`
+	Profiles       []Profile        `json:"profiles,omitempty"`
+	ProfilePath    string           `json:"profile_path,omitempty"`
+	ProfileSHA256  string           `json:"profile_sha256,omitempty"`
+	BackupPath     string           `json:"backup_path,omitempty"`
+	Hook           *HookRecord      `json:"hook,omitempty"`
+	Evolution      *EvolutionRecord `json:"evolution,omitempty"`
+}
+
+type EvolutionRecord struct {
+	Enabled       bool   `json:"enabled"`
+	OverlayPath   string `json:"overlay_path,omitempty"`
+	OverlaySHA256 string `json:"overlay_sha256,omitempty"`
 }
 
 // HookRecord records the OMR-managed Hook state in the Manifest.

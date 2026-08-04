@@ -6,8 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/mchenziyi/oh-my-reasonix/internal/config"
+	"github.com/mchenziyi/oh-my-reasonix/internal/evolution"
 	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
@@ -25,19 +28,75 @@ func runRun(args []string) error {
 		return errors.New("run requires a task prompt")
 	}
 	prompt := flags.Arg(0)
+	store, evolutionEnabled := evolution.Store{}, false
+	if cfgPath := config.FindConfig(*projectDir); cfgPath != "" {
+		if cfg, err := config.Load(cfgPath); err == nil && cfg.Evolution.Enabled && cfg.Evolution.Mode != "disabled" {
+			evolutionEnabled = true
+			store, _ = evolution.NewStore(*projectDir)
+		}
+	}
 
 	runner := reasonix.Runner{Binary: *binary, ProjectDir: *projectDir}
 	ctx := context.Background()
 
+	autoEvents := false
+	if *eventsJSONL == "" && evolutionEnabled {
+		_ = os.MkdirAll(filepath.Join(*projectDir, ".reasonix", "omr", "evolution"), 0700)
+		tmp, err := os.CreateTemp(filepath.Join(*projectDir, ".reasonix", "omr", "evolution"), "events-*.jsonl")
+		if err == nil {
+			*eventsJSONL = tmp.Name()
+			tmp.Close()
+			autoEvents = true
+		}
+	}
 	if *eventsJSONL != "" {
 		result := runner.RunWithEvents(ctx, prompt, *eventsJSONL)
 		// Always parse events (file is saved even on non-zero exit).
 		stream, parseErr := reasonix.ParseEventStream(*eventsJSONL)
 		if parseErr != nil {
+			if autoEvents {
+				_ = os.Remove(*eventsJSONL)
+				fmt.Fprintf(os.Stderr, "evolution: parse events: %v\n", parseErr)
+				if evolutionEnabled {
+					if recordErr := evolution.RecordRun(store, prompt, result, reasonix.EventStream{}); recordErr != nil {
+						fmt.Fprintf(os.Stderr, "evolution: %v\n", recordErr)
+					}
+				}
+				if result.Err != nil {
+					return fmt.Errorf("run failed (exit %d): %w", result.ExitCode, result.Err)
+				}
+				return nil
+			}
 			return fmt.Errorf("parse events: %w", parseErr)
 		}
 		if len(stream.Errors) > 0 {
+			if autoEvents {
+				if evolutionEnabled {
+					if recordErr := evolution.RecordRun(store, prompt, result, stream); recordErr != nil {
+						fmt.Fprintf(os.Stderr, "evolution: %v\n", recordErr)
+					}
+				}
+				fmt.Fprintf(os.Stderr, "evolution: event validation: %s\n", strings.Join(stream.Errors, "; "))
+				if result.Err != nil {
+					return fmt.Errorf("run failed (exit %d): %w", result.ExitCode, result.Err)
+				}
+				return nil
+			}
 			return fmt.Errorf("event stream validation failed: %s", strings.Join(stream.Errors, "; "))
+		}
+		if evolutionEnabled {
+			var recordErr error
+			if autoEvents {
+				recordErr = evolution.RecordRunWithProposer(store, prompt, result, stream, evolution.ReasonixProposer{Runner: runner})
+			} else {
+				recordErr = evolution.RecordRun(store, prompt, result, stream)
+			}
+			if err := recordErr; err != nil {
+				fmt.Fprintf(os.Stderr, "evolution: %v\n", err)
+			}
+		}
+		if autoEvents {
+			_ = os.Remove(*eventsJSONL)
 		}
 		if result.Err != nil {
 			return fmt.Errorf("run failed (exit %d): %w", result.ExitCode, result.Err)

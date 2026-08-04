@@ -76,3 +76,14 @@ func Compose(base, user, orchestrator string) Composition {
 	result := strings.Join(parts, "\n\n") + "\n"
 	return Composition{Content: result, Hash: SHA256String(result), Segments: segments}
 }
+
+func ComposeWithOverlay(base, user, orchestrator, overlay string) Composition {
+	if Canonicalize(overlay) == "" {
+		return Compose(base, user, orchestrator)
+	}
+	result := Compose(base, user, orchestrator)
+	result.Content += "\n\n## OMR Evolution Overlay\n\n" + Canonicalize(overlay) + "\n"
+	result.Hash = SHA256String(result.Content)
+	result.Segments = append(result.Segments, Segment{ID: "omr-evolution-overlay", Content: Canonicalize(overlay), Present: true, Hash: SHA256String(Canonicalize(overlay)), Order: len(result.Segments) + 1})
+	return result
+}

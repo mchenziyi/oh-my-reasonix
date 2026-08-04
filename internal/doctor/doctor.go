@@ -15,6 +15,7 @@ import (
 	"github.com/mchenziyi/oh-my-reasonix/internal/fileutil"
 	"github.com/mchenziyi/oh-my-reasonix/internal/install"
 	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
+	"github.com/mchenziyi/oh-my-reasonix/internal/promptcompose"
 	"github.com/mchenziyi/oh-my-reasonix/internal/reasonix"
 )
 
@@ -139,6 +140,17 @@ func Run(projectDir string, assets install.Assets) (Result, error) {
 		return result, err
 	}
 	result.Checks = append(result.Checks, Check{Name: "manifest", Status: "PASS", Detail: "schema and required fields valid"})
+	if m.Evolution != nil && m.Evolution.OverlaySHA256 != "" {
+		p := filepath.Join(root, m.Evolution.OverlayPath)
+		b, readErr := os.ReadFile(p)
+		if readErr != nil {
+			result.Errors = append(result.Errors, "evolution overlay missing: "+readErr.Error())
+		} else if got := promptcompose.SHA256String(string(b)); got != m.Evolution.OverlaySHA256 {
+			result.Errors = append(result.Errors, "evolution overlay hash drift")
+		} else {
+			result.Checks = append(result.Checks, Check{Name: "evolution.overlay", Status: "PASS", Detail: got})
+		}
+	}
 	commentHookCheck := commentHookDiagnostic(root, reasonixHooksAvailable, hookList, m.Hook)
 	result.Checks = append(result.Checks, commentHookCheck)
 	if commentHookCheck.Status == "ERROR" {

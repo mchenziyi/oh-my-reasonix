@@ -16,13 +16,26 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
 
-## v2.0.0：OMR 自动自进化（待实现）
+## v2.0.0：OMR 自动自进化（进行中）
 
 OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推理、工具、Session、Task 和 Subagent；OMR 作为项目级外置策略大脑，通过进化自己的 Prompt、Profile、编排规则、Review 规则、路由和质量 Fixture，使装载 OMR 的 Reasonix 在项目中持续改善。
 
 开发顺序固定为 EV00 → EV10。第一版默认采用 L2：自动采集、自动分析、自动生成提案、自动配对回放，人工批准后生效；异常自动回滚。未经批准不得修改生效策略，不自动修改 Reasonix、OMR Go 源码、权限、API Key、全局配置或安全 Hook。
 
 首个 MVP 只实现“重复 Review/测试失败 → Pattern → Proposal → 配对验证 → 批准 → Overlay → 观察/回滚”这一条完整闭环。PR #6998 可增强 Task 可观测性，但不是 MVP 硬前置。
+
+当前实现进度：EV-MVP-00～08 自动化链路已完成（Schema、Evolution 存储、`omr run` 自动 Episode 采集、三次同类失败触发、严格 Proposal、离线验证、审批/拒绝/回滚、Overlay、Manifest/Doctor 漂移检查）；EV-MVP-10 尚未开始，必须由用户在临时项目进行真实客户端联调。
+
+常用命令：
+
+```bash
+omr evolve status --project-dir . --json
+omr evolve proposals --project-dir . --json
+omr evolve approve <proposal-id> --project-dir .
+omr evolve reject <proposal-id> --project-dir .
+omr evolve rollback <proposal-id> --project-dir .
+omr evolve doctor --project-dir .
+```
 
 ## 1. 与 oh-my-opencode 的对比结论
 

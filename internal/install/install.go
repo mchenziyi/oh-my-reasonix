@@ -147,7 +147,11 @@ func Init(opts Options) (Report, error) {
 	} else if !os.IsNotExist(configErr) {
 		return Report{Root: root, Errors: []string{fmt.Sprintf("load OMR config: %v", configErr)}}, configErr
 	}
-	composition := promptcompose.Compose(baseText, userPrompt, orchestratorText)
+	overlay := ""
+	if b, err := os.ReadFile(filepath.Join(root, ".reasonix", "omr", "evolution", "overlay.md")); err == nil {
+		overlay = string(b)
+	}
+	composition := promptcompose.ComposeWithOverlay(baseText, userPrompt, orchestratorText, overlay)
 	profiles := profileAssets(opts.Assets)
 
 	report := Report{Root: root, Manifest: existing}
@@ -194,6 +198,12 @@ func Init(opts Options) (Report, error) {
 	}
 	orchestratorSourceHash := promptcompose.SHA256String(promptcompose.Canonicalize(string(opts.Assets.Orchestrator)))
 	newManifest := buildManifest(composition, orchestratorSourceHash, profiles, userSource, userPresent, baseValue, backupRel)
+	for _, segment := range composition.Segments {
+		if segment.ID == "omr-evolution-overlay" {
+			newManifest.Evolution = &manifest.EvolutionRecord{Enabled: true, OverlayPath: ".reasonix/omr/evolution/overlay.md", OverlaySHA256: segment.Hash}
+			break
+		}
+	}
 	if opts.Upgrade {
 		newManifest.Hook = hookPlan.Record
 	} else if hasManifest && existing.Hook != nil {

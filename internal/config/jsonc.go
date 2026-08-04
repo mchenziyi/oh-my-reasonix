@@ -93,12 +93,17 @@ func stripJSONCComments(raw []byte) ([]byte, []int, error) {
 
 // jsoncRawConfig mirrors the JSONC config structure for intermediate unmarshal.
 type jsoncRawConfig struct {
-	Quality  *jsoncQuality         `json:"quality,omitempty"`
-	Runtime  *jsoncRuntime         `json:"runtime,omitempty"`
-	Agent    map[string]jsoncAgent `json:"agent,omitempty"`
-	Routing  map[string]string     `json:"routing,omitempty"`
-	Profiles *jsoncProfiles        `json:"profiles,omitempty"`
-	MCP      map[string]jsoncMCP   `json:"mcp,omitempty"`
+	Quality   *jsoncQuality         `json:"quality,omitempty"`
+	Runtime   *jsoncRuntime         `json:"runtime,omitempty"`
+	Agent     map[string]jsoncAgent `json:"agent,omitempty"`
+	Routing   map[string]string     `json:"routing,omitempty"`
+	Profiles  *jsoncProfiles        `json:"profiles,omitempty"`
+	MCP       map[string]jsoncMCP   `json:"mcp,omitempty"`
+	Evolution *jsoncEvolution       `json:"evolution,omitempty"`
+}
+type jsoncEvolution struct {
+	Enabled *bool  `json:"enabled,omitempty"`
+	Mode    string `json:"mode,omitempty"`
 }
 
 type jsoncMCP struct {
@@ -273,6 +278,15 @@ func loadJSONC(path string) (Config, error) {
 			}
 			cfg.Timeout = d
 			cfg.TimeoutSet = true
+		}
+	}
+	if rawCfg.Evolution != nil {
+		if rawCfg.Evolution.Enabled != nil {
+			cfg.Evolution.Enabled = *rawCfg.Evolution.Enabled
+		}
+		cfg.Evolution.Mode = rawCfg.Evolution.Mode
+		if cfg.Evolution.Mode != "" && cfg.Evolution.Mode != "suggest" && cfg.Evolution.Mode != "disabled" {
+			return Config{}, fmt.Errorf("%s: invalid evolution.mode", path)
 		}
 	}
 

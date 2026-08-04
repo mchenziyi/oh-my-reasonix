@@ -257,8 +257,9 @@ func writeOMRConfigSchema() error {
 					"model": map[string]string{"type": "string"}, "prompt_file": map[string]string{"type": "string"}, "read_only": map[string]any{"type": "boolean"},
 				},
 			}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
-			"routing":  map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
-			"profiles": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
+			"routing":   map[string]any{"type": "object", "additionalProperties": map[string]string{"type": "string"}, "propertyNames": map[string]any{"pattern": "^[a-z][a-z0-9-]*$"}},
+			"profiles":  map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"disabled": map[string]string{"type": "string"}}},
+			"evolution": map[string]any{"type": "object", "additionalProperties": false, "properties": map[string]any{"enabled": map[string]any{"type": "boolean"}, "mode": map[string]any{"type": "string", "enum": []string{"suggest", "disabled"}}}},
 			"mcp": map[string]any{"type": "object", "additionalProperties": map[string]any{
 				"type": "object", "additionalProperties": false, "properties": map[string]any{
 					"transport":    map[string]any{"type": "string", "enum": []string{"stdio", "http", "sse"}},

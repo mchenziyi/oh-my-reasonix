@@ -97,6 +97,8 @@ type EventStream struct {
 	RunDone     bool          `json:"run_done"`
 	TotalTokens int           `json:"total_tokens,omitempty"`
 	Errors      []string      `json:"errors,omitempty"`
+	SessionID   string        `json:"session_id,omitempty"`
+	OK          *bool         `json:"ok,omitempty"`
 }
 
 // ParseEventStream reads a JSONL file, parses each line into an EventRecord,
@@ -151,6 +153,10 @@ func ParseEventStream(path string) (EventStream, error) {
 		// Check for run_done
 		if rec.Event == "run_done" {
 			stream.RunDone = true
+			if raw.SessionID != "" {
+				stream.SessionID = raw.SessionID
+			}
+			stream.OK = raw.Ok
 			if raw.Usage != nil {
 				runDoneTokens = rec.PromptTokens + rec.CompletionTokens
 				runDoneHasUsage = true

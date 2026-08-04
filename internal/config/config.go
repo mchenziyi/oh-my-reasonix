@@ -27,6 +27,12 @@ type Config struct {
 	Categories          map[string]string
 	DisabledProfiles    []string
 	MCPServers          map[string]MCPServerConfig
+	Evolution           EvolutionConfig
+}
+
+type EvolutionConfig struct {
+	Enabled bool
+	Mode    string
 }
 
 type MCPServerConfig struct {
@@ -112,7 +118,7 @@ func loadTOML(path string) (Config, error) {
 		}
 		if strings.HasPrefix(line, "[") && strings.HasSuffix(line, "]") {
 			section = strings.TrimSpace(line[1 : len(line)-1])
-			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && !strings.HasPrefix(section, "agent.") && !strings.HasPrefix(section, "mcp.") {
+			if section != "quality" && section != "runtime" && section != "routing" && section != "profiles" && section != "evolution" && !strings.HasPrefix(section, "agent.") && !strings.HasPrefix(section, "mcp.") {
 				return Config{}, fmt.Errorf("%s:%d: unsupported section %q", path, lineNo, section)
 			}
 			if strings.HasPrefix(section, "agent.") && strings.TrimSpace(strings.TrimPrefix(section, "agent.")) == "" {
@@ -236,6 +242,25 @@ func assign(cfg *Config, section, key, raw string) error {
 			cfg.TimeoutSet = true
 		default:
 			return fmt.Errorf("unsupported runtime key %q", key)
+		}
+		return nil
+	}
+	if section == "evolution" {
+		switch key {
+		case "enabled":
+			v, err := strconv.ParseBool(raw)
+			if err != nil {
+				return fmt.Errorf("invalid evolution.enabled")
+			}
+			cfg.Evolution.Enabled = v
+		case "mode":
+			v := stringValue(raw)
+			if v != "suggest" && v != "disabled" {
+				return fmt.Errorf("invalid evolution.mode")
+			}
+			cfg.Evolution.Mode = v
+		default:
+			return fmt.Errorf("unsupported evolution key %q", key)
 		}
 		return nil
 	}
