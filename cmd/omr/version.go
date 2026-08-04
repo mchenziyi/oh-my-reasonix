@@ -7,9 +7,11 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+
+	"github.com/mchenziyi/oh-my-reasonix/internal/manifest"
 )
 
-var version = "2.0.0"
+var version = manifest.Version
 
 const minimumReasonixVersion = "1.17.20"
 
