@@ -1,5 +1,15 @@
 # Changelog
 
+## [v2.0.6] — 2026-08-04
+
+### Added
+- **Profile/Prompt 效果基准（LP-03）**：新增 `omr benchmark profile`，用离线、可重复的 Fixture 比较 Profile/Prompt 的工程过程表现。
+  - `omr benchmark profile --profile omr-explore --replay`：只评估指定 Profile 的 Fixture；
+  - `omr benchmark profile --matrix --replay`：输出全部 Profile 的矩阵报告。
+- **benchmarks/profile-quality/**：6 个 Fixture 覆盖 Explore 证据完整性、Planner 计划可执行性、Debug 根因与回归测试、Grill Me 假设隔离、Grill with Docs 原子写入、Comment Checker 安全阻断。
+- 指标仅包括验收通过率、证据完整率、越界修改数、人工纠偏数、Token/成本与耗时；支持 Native/OMR 配对 Fixture（`native_replay`/`omr_replay`），报告保留失败证据、不挑选样本。
+- 报告明确声明“process metrics only; not a model quality proof”；无需 API Key，Fake Provider/离线 Replay 即可完整运行。
+
 ## [v2.0.5] — 2026-08-04
 
 ### Added

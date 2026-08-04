@@ -57,13 +57,15 @@ func parseQualityBenchmarkOptions(args []string) (qualityBenchmarkOptions, error
 
 func runBenchmark(args []string) error {
 	if len(args) == 0 {
-		return errors.New("benchmark requires cache or quality")
+		return errors.New("benchmark requires cache, quality, or profile")
 	}
 	switch args[0] {
 	case "cache":
 		return runCacheBenchmark(args[1:])
 	case "quality":
 		return runQualityBenchmark(args[1:])
+	case "profile":
+		return runProfileBenchmark(args[1:])
 	default:
 		return fmt.Errorf("unknown benchmark %q", args[0])
 	}
