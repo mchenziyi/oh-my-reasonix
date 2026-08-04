@@ -368,3 +368,79 @@ func TestEvolveHistoryUnknownProposalFails(t *testing.T) {
 		t.Fatal("expected unknown proposal error")
 	}
 }
+
+func TestEvolveExportSignAndImportRequireSignature(t *testing.T) {
+	dir, s := evolveTestStore(t)
+	// Create a signed key pair as PEM files.
+	privPEM, pubPEM := makeTestKeyPairPEM(t, dir)
+	pkgPath := filepath.Join(t.TempDir(), "signed.json")
+
+	// Unsigned import without --require-signature succeeds with warning.
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.ListProposals(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Signed export.
+	if err := runEvolve([]string{"export", "--sign", "--key", privPEM, "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(pkgPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var pkg struct {
+		SignatureAlgorithm string `json:"signature_algorithm"`
+		Signature          string `json:"signature"`
+		OMRVersion         string `json:"omr_version"`
+	}
+	if err := json.Unmarshal(b, &pkg); err != nil {
+		t.Fatal(err)
+	}
+	if pkg.SignatureAlgorithm != "ed25519" || pkg.Signature == "" || pkg.OMRVersion == "" {
+		t.Fatalf("signed export missing fields: %+v", pkg)
+	}
+
+	// Import into a fresh store with --require-signature --trusted-key.
+	targetDir := t.TempDir()
+	_, err = captureRunOutput(func() error {
+		return runEvolve([]string{"import", "--input", pkgPath, "--require-signature", "--trusted-key", pubPEM, "--project-dir", targetDir})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetStore, _ := evolution.NewStore(targetDir)
+	props, _ := targetStore.ListProposals()
+	if len(props) != 1 || props[0].Status != "pending" {
+		t.Fatalf("import must keep pending: %+v", props)
+	}
+}
+
+func TestEvolveImportRequireSignatureRejectsUnsigned(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	pkgPath := filepath.Join(t.TempDir(), "unsigned.json")
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	targetDir := t.TempDir()
+	_, err := captureRunOutput(func() error {
+		return runEvolve([]string{"import", "--input", pkgPath, "--require-signature", "--project-dir", targetDir})
+	})
+	if err == nil {
+		t.Fatal("expected rejection of unsigned import with --require-signature")
+	}
+	targetStore, _ := evolution.NewStore(targetDir)
+	if props, _ := targetStore.ListProposals(); len(props) != 0 {
+		t.Fatal("failed import must not write")
+	}
+}
+
+func TestEvolveExportSignMissingKeyFails(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	err := runEvolve([]string{"export", "--sign", "--output", filepath.Join(t.TempDir(), "x.json"), "--project-dir", dir})
+	if err == nil {
+		t.Fatal("expected error when --sign lacks --key")
+	}
+}

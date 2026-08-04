@@ -94,36 +94,81 @@ func runEvolve(args []string) error {
 		return emitEvolve(v, *jsonOut)
 	case "export":
 		output := *outputPath
+		sign := false
+		keyPath := ""
 		for i := 1; i+1 < len(args); i++ {
-			if args[i] == "--output" {
+			switch args[i] {
+			case "--output":
 				output = args[i+1]
-				break
+				i++
+			case "--key":
+				keyPath = args[i+1]
+				i++
+			}
+		}
+		for _, arg := range args[1:] {
+			if arg == "--sign" {
+				sign = true
 			}
 		}
 		if output == "" {
 			return errors.New("export requires --output path")
 		}
-		if err := evolution.ExportPackage(s, output); err != nil {
+		options := evolution.ExportOptions{Sign: sign}
+		if sign {
+			if keyPath == "" {
+				return errors.New("export --sign requires --key <private-key-path>")
+			}
+			key, err := evolution.LoadPrivateKey(keyPath)
+			if err != nil {
+				return err
+			}
+			options.PrivateKey = key
+		}
+		if err := evolution.ExportPackageWithOptions(s, output, options); err != nil {
 			return err
 		}
-		return emitEvolve(map[string]any{"exported": true, "path": output}, *jsonOut)
+		out := map[string]any{"exported": true, "path": output, "signed": sign}
+		return emitEvolve(out, *jsonOut)
 	case "import":
 		input := *inputPath
+		requireSignature := false
+		trustedKeyPath := ""
 		for i := 1; i+1 < len(args); i++ {
-			if args[i] == "--input" {
+			switch args[i] {
+			case "--input":
 				input = args[i+1]
-				break
+				i++
+			case "--trusted-key":
+				trustedKeyPath = args[i+1]
+				i++
+			}
+		}
+		for _, arg := range args[1:] {
+			if arg == "--require-signature" {
+				requireSignature = true
 			}
 		}
 		if input == "" {
 			return errors.New("import requires --input path")
 		}
-		result, err := evolution.ImportPackageWithOptions(s, input, evolution.ImportOptions{DryRun: *dryRun})
+		options := evolution.ImportOptions{DryRun: *dryRun, RequireSignature: requireSignature}
+		if trustedKeyPath != "" {
+			pub, err := evolution.LoadPublicKey(trustedKeyPath)
+			if err != nil {
+				return err
+			}
+			options.TrustedKey = pub
+		}
+		result, err := evolution.ImportPackageWithOptions(s, input, options)
 		if err != nil {
 			if *jsonOut {
 				_ = emitEvolve(result, true)
 			}
 			return err
+		}
+		if result.UnsignedWarning {
+			fmt.Fprintln(os.Stderr, "WARNING: experience package is not signed; imported as untrusted content")
 		}
 		return emitEvolve(result, *jsonOut)
 	case "approve":

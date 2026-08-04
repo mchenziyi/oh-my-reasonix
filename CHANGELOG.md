@@ -1,5 +1,13 @@
 # Changelog
 
+## [v2.0.8] — 2026-08-04
+
+### Added
+- **经验包签名与来源可信度（LP-05）**：经验包元数据扩展为 OMR 版本、创建工具版本、来源 Scope、Proposal 数量与签名算法；包格式升级为 `omr-evolution-proposals-v2`（v1 包仍可读取，视为未签名）。
+- `omr evolve export --sign --key <path>`：使用本地 Ed25519 私钥签名（PKCS8 PEM 或原始密钥）；私钥只从用户指定位置读取，不写入项目或包，且拒绝 symlink 与 group/world 可读文件。
+- `omr evolve import --require-signature [--trusted-key <pub.pem>]`：要求签名并可选绑定受信公钥；未签名包默认仍可 dry-run，实际导入时输出明确 warning，`--require-signature` 下拒绝。
+- 签名覆盖元数据 + Proposal + 嵌入公钥的规范 payload（不含 sha256/signature 字段）；内容任意改动、密钥不匹配、未知字段、绝对路径与过大包均 fail closed；冲突批次零部分写入；导入 Proposal 保持 pending，不自动批准。
+
 ## [v2.0.7] — 2026-08-04
 
 ### Added
