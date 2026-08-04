@@ -408,6 +408,7 @@ go run ./cmd/omr version
 
 当前后续事项：
 
+- **v2.0.0 自动自进化**：OMR 将作为 Reasonix 的项目级外置策略大脑，自动收集执行经验、识别重复模式、生成并验证 OMR 策略提案，通过项目级 Overlay 审批生效和回滚；Reasonix 仍负责 Agent 推理与执行。当前为已冻结设计、待实现状态，详见 [v2.0.0 自动自进化开发计划](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)；
 - Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
 - Subagent 父子任务树与 Desktop 映射：等待 Reasonix 提供稳定的父子关联事件和机器接口。
 

@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-var version = "1.2.2"
+var version = "2.0.0"
 
 const minimumReasonixVersion = "1.17.20"
 

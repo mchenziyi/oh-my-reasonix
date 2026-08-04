@@ -1,6 +1,7 @@
 # oh-my-reasonix 最新开发 Todo
 
-> 版本：2026-07-30
+> 版本：2026-08-04
+> 目标版本：OMR v2.0.0
 > 用途：交给 Reasonix Agent，在 oh-my-reasonix 仓库内继续开发。
 > 原则：只实现 OMR 能独立负责的能力；Reasonix 已原生提供或尚未提供公开接口的能力，不在 OMR 中复制。
 
@@ -10,9 +11,18 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 
 下一阶段优先级：
 
-1. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
-2. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
-3. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
+1. **v2.0.0 自动自进化**：按 EV00～EV10 实现 OMR 驱动的自动采集、模式识别、提案、配对回放、审批、生效和回滚。完整冻结方案见 [`OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)。
+2. ✅ **T14：Comment Checker 运行时 Hook**：已完成。默认关闭、显式启用、只管理 OMR 自己的 Hook、失败可诊断、修改可回滚；已通过自动化测试、CLI Smoke 和 Reasonix v1.18 桌面端阻断/放行/禁用验证。
+3. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
+4. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口。
+
+## v2.0.0：OMR 自动自进化（待实现）
+
+OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推理、工具、Session、Task 和 Subagent；OMR 作为项目级外置策略大脑，通过进化自己的 Prompt、Profile、编排规则、Review 规则、路由和质量 Fixture，使装载 OMR 的 Reasonix 在项目中持续改善。
+
+开发顺序固定为 EV00 → EV10。第一版默认采用 L2：自动采集、自动分析、自动生成提案、自动配对回放，人工批准后生效；异常自动回滚。未经批准不得修改生效策略，不自动修改 Reasonix、OMR Go 源码、权限、API Key、全局配置或安全 Hook。
+
+首个 MVP 只实现“重复 Review/测试失败 → Pattern → Proposal → 配对验证 → 批准 → Overlay → 观察/回滚”这一条完整闭环。PR #6998 可增强 Task 可观测性，但不是 MVP 硬前置。
 
 ## 1. 与 oh-my-opencode 的对比结论
 

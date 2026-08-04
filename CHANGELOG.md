@@ -1,6 +1,11 @@
 # Changelog
 
-## [Unreleased]
+## [Unreleased — v2.0.0 target]
+
+### Planned
+- **自动自进化**：将 OMR 定位为 Reasonix 的项目级外置策略大脑。Reasonix 继续负责 Agent 推理和执行，OMR 自动收集任务 Episode、识别重复模式、生成受约束 Proposal、执行 Control/Candidate 配对回放，并通过项目级 Evolution Overlay 完成审批、生效、观察和回滚。
+- **版本主线**：开发版本提升为 `2.0.0`。当前仅冻结设计与路线，尚未创建 `v2.0.0` Tag 或 Release，也不将规划中的自进化能力标记为已交付。
+- 设计文档：[`docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md`](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)。
 
 ### Added
 - **T14: Comment Checker 运行时 Hook**：默认关闭的提交前注释质量门禁。新增 `omr hook comment-check enable/status/disable/guard` 命令，通过 Reasonix 原生 PreToolUse Hook 在 `git commit` 前自动调用 Comment Checker，存在 blocking finding 时以退出码 2 阻断提交。

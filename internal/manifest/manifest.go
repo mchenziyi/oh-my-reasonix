@@ -13,7 +13,7 @@ import (
 const (
 	SchemaVersion  = 1
 	Product        = "oh-my-reasonix"
-	Version        = "1.2.2"
+	Version        = "2.0.0"
 	ReasonixCommit = "464d494"
 )
 
