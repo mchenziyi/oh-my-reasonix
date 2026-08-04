@@ -504,3 +504,22 @@ func TestEvolveImportInvalidRequireSignatureValueFails(t *testing.T) {
 		t.Fatal("expected invalid --require-signature value rejection")
 	}
 }
+
+func TestEvolveImportTrustedKeyEmptyValueFails(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	pkgPath := filepath.Join(t.TempDir(), "unsigned.json")
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	// --trusted-key= (empty) must error, not silently weaken signature
+	// enforcement (SEC).
+	err := runEvolve([]string{"import", "--input", pkgPath, "--trusted-key=", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected empty --trusted-key value rejection")
+	}
+	// --input= (empty) must also error.
+	err = runEvolve([]string{"import", "--input=", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected empty --input value rejection")
+	}
+}

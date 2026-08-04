@@ -156,8 +156,14 @@ func runEvolve(args []string) error {
 				// dropped (SEC: a dropped --trusted-key would weaken import).
 				if strings.HasPrefix(args[i], "--input=") {
 					input = strings.TrimPrefix(args[i], "--input=")
+					if input == "" {
+						return errors.New("import --input requires a path")
+					}
 				} else if strings.HasPrefix(args[i], "--trusted-key=") {
 					trustedKeyPath = strings.TrimPrefix(args[i], "--trusted-key=")
+					if trustedKeyPath == "" {
+						return errors.New("import --trusted-key requires a path")
+					}
 				} else if strings.HasPrefix(args[i], "--require-signature=") {
 					v := strings.TrimPrefix(args[i], "--require-signature=")
 					if v != "true" && v != "false" {

@@ -315,7 +315,8 @@ func IsGitCommit(cmd string) bool {
 
 	// Parse git global options (some take a value) until the subcommand.
 	// Unknown options are skipped (not treated as "not a commit") so a
-	// future git flag cannot silently bypass the guard.
+	// future git flag cannot silently bypass the guard. Value tokens of
+	// unknown options are also scanned past; only the subcommand decides.
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "commit":
@@ -328,11 +329,13 @@ func IsGitCommit(cmd string) bool {
 				continue
 			}
 			if strings.HasPrefix(args[i], "-") {
-				// Value-less or unknown flag: keep scanning for the subcommand.
+				// Unknown flag: keep scanning for the subcommand; its value
+				// (if any) is scanned past by the next iteration.
 				continue
 			}
-			// First non-option token: not a commit.
-			return false
+			// Non-option token: could be an unknown option's value or a
+			// subcommand argument — keep scanning fail-closed.
+			continue
 		}
 	}
 	return false
