@@ -7,3 +7,13 @@ omr
 
 # Reasonix project metadata (user-local, not to be committed)
 .reasonix/
+
+# Local dependency cache
+.pnpm-store/
+
+# Local Reasonix checkout used for upstream PR development
+.worktrees/
+
+# Local A/B test evidence and environment metadata
+artifacts/
+omr-ab-b-meta.json
