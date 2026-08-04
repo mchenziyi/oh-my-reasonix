@@ -83,7 +83,9 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 		for _, episode := range episodes {
 			for _, episodeID := range pattern.EpisodeIDs {
 				if episode.ID == episodeID {
-					_ = store.SaveObservation(Observation{SchemaVersion: SchemaVersion, ID: NewID("observation", proposal.ID+"|"+episode.ID), ProposalID: proposal.ID, EpisodeID: episode.ID, Phase: "before", Succeeded: episode.Succeeded, FailureClass: episode.FailureClass, PromptTokens: episode.PromptTokens, OutputTokens: episode.OutputTokens, CreatedAt: episode.CreatedAt})
+					if err := store.SaveObservation(Observation{SchemaVersion: SchemaVersion, ID: NewID("observation", proposal.ID+"|"+episode.ID), ProposalID: proposal.ID, EpisodeID: episode.ID, Phase: "before", Succeeded: episode.Succeeded, FailureClass: episode.FailureClass, PromptTokens: episode.PromptTokens, OutputTokens: episode.OutputTokens, CreatedAt: episode.CreatedAt}); err != nil {
+						return err
+					}
 				}
 			}
 		}
@@ -120,7 +122,10 @@ func recordObservations(store Store, episode Episode) error {
 			}
 			if matched {
 				o := Observation{SchemaVersion: SchemaVersion, ID: NewID("observation", proposal.ID+"|"+episode.ID), ProposalID: proposal.ID, EpisodeID: episode.ID, Phase: phase, Succeeded: episode.Succeeded, FailureClass: episode.FailureClass, PromptTokens: episode.PromptTokens, OutputTokens: episode.OutputTokens, CreatedAt: episode.CreatedAt}
-				return store.SaveObservation(o)
+				if err := store.SaveObservation(o); err != nil {
+					return err
+				}
+				break
 			}
 		}
 	}
