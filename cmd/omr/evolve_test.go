@@ -470,3 +470,37 @@ func TestEvolveImportTrustedKeyForcesSignatureRequirement(t *testing.T) {
 		t.Fatal("failed import must not write proposals")
 	}
 }
+
+func TestEvolveImportTrustedKeyEqualsFormEnforced(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	pkgPath := filepath.Join(t.TempDir(), "unsigned.json")
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	_, pubPEM := makeTestKeyPairPEM(t, dir)
+	// --trusted-key=<path> equals form must be honored (SEC: value must not
+	// be silently dropped).
+	targetDir := t.TempDir()
+	_, err := captureRunOutput(func() error {
+		return runEvolve([]string{"import", "--input=" + pkgPath, "--trusted-key=" + pubPEM, "--project-dir", targetDir})
+	})
+	if err == nil {
+		t.Fatal("--trusted-key= form without a signed package must fail")
+	}
+	ts, _ := evolution.NewStore(targetDir)
+	if props, _ := ts.ListProposals(); len(props) != 0 {
+		t.Fatal("failed import must not write proposals")
+	}
+}
+
+func TestEvolveImportInvalidRequireSignatureValueFails(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	pkgPath := filepath.Join(t.TempDir(), "p.json")
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	err := runEvolve([]string{"import", "--input", pkgPath, "--require-signature=maybe", "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected invalid --require-signature value rejection")
+	}
+}

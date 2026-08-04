@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/mchenziyi/oh-my-reasonix/internal/config"
 	"github.com/mchenziyi/oh-my-reasonix/internal/evolution"
@@ -142,6 +143,20 @@ func runEvolve(args []string) error {
 			case "--trusted-key":
 				trustedKeyPath = args[i+1]
 				i++
+			default:
+				// Accept --flag=value forms so a value is never silently
+				// dropped (SEC: a dropped --trusted-key would weaken import).
+				if strings.HasPrefix(args[i], "--input=") {
+					input = strings.TrimPrefix(args[i], "--input=")
+				} else if strings.HasPrefix(args[i], "--trusted-key=") {
+					trustedKeyPath = strings.TrimPrefix(args[i], "--trusted-key=")
+				} else if strings.HasPrefix(args[i], "--require-signature=") {
+					v := strings.TrimPrefix(args[i], "--require-signature=")
+					if v != "true" && v != "false" {
+						return fmt.Errorf("invalid --require-signature value %q", v)
+					}
+					requireSignature = v == "true"
+				}
 			}
 		}
 		for _, arg := range args[1:] {
