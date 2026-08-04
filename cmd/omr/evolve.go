@@ -15,12 +15,14 @@ import (
 
 func runEvolve(args []string) error {
 	if len(args) == 0 {
-		return errors.New("evolve requires status, proposals, report, approve, reject, history, rollback, or doctor")
+		return errors.New("evolve requires status, proposals, report, export, import, approve, reject, history, rollback, or doctor")
 	}
 	fs := flag.NewFlagSet("evolve", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	project := fs.String("project-dir", ".", "project directory")
 	jsonOut := fs.Bool("json", false, "JSON output")
+	outputPath := fs.String("output", "", "experience package output path")
+	inputPath := fs.String("input", "", "experience package input path")
 	_ = fs.Parse(args[1:])
 	// Go's flag package stops at the first positional argument. Evolve commands
 	// intentionally accept `approve <id> --project-dir ...`, so recover flags
@@ -80,6 +82,37 @@ func runEvolve(args []string) error {
 			return e
 		}
 		return emitEvolve(v, *jsonOut)
+	case "export":
+		output := *outputPath
+		for i := 1; i+1 < len(args); i++ {
+			if args[i] == "--output" {
+				output = args[i+1]
+				break
+			}
+		}
+		if output == "" {
+			return errors.New("export requires --output path")
+		}
+		if err := evolution.ExportPackage(s, output); err != nil {
+			return err
+		}
+		return emitEvolve(map[string]any{"exported": true, "path": output}, *jsonOut)
+	case "import":
+		input := *inputPath
+		for i := 1; i+1 < len(args); i++ {
+			if args[i] == "--input" {
+				input = args[i+1]
+				break
+			}
+		}
+		if input == "" {
+			return errors.New("import requires --input path")
+		}
+		count, err := evolution.ImportPackage(s, input)
+		if err != nil {
+			return err
+		}
+		return emitEvolve(map[string]any{"imported": count}, *jsonOut)
 	case "approve":
 		if len(args) < 2 {
 			return errors.New("approve requires id")

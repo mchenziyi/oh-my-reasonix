@@ -32,6 +32,8 @@ OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推�
 omr evolve status --project-dir . --json
 omr evolve proposals --project-dir . --json
 omr evolve report --project-dir . --json
+omr evolve export --project-dir . --output /tmp/omr-experience.json
+omr evolve import --project-dir . --input /tmp/omr-experience.json
 omr evolve approve <proposal-id> --project-dir .
 omr evolve reject <proposal-id> --project-dir .
 omr evolve rollback <proposal-id> --project-dir .

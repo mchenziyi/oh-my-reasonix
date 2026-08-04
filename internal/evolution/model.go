@@ -50,6 +50,7 @@ type Proposal struct {
 	UpdatedAt      string `json:"updated_at"`
 	ApprovedAt     string `json:"approved_at,omitempty"`
 	RollbackReason string `json:"rollback_reason,omitempty"`
+	ImportedFrom   string `json:"imported_from,omitempty"`
 }
 
 type Experiment struct {

@@ -219,6 +219,8 @@ v2.0.0 首次交付默认使用 L2。L3 必须在积累足够真实数据后单�
 omr evolve status
 omr evolve proposals
 omr evolve report
+omr evolve export --output /tmp/omr-experience.json
+omr evolve import --input /tmp/omr-experience.json
 omr evolve approve <proposal-id>
 omr evolve reject <proposal-id>
 omr evolve history
@@ -226,7 +228,7 @@ omr evolve rollback <version>
 omr evolve doctor
 ```
 
-这些命令不是日常进化触发器。采集、阈值判断、提案和回放由自动闭环触发。
+这些命令不是日常进化触发器。采集、阈值判断、提案和回放由自动闭环触发。经验包导出/导入必须显式执行；导入 Proposal 强制进入 `pending`，不会自动生效。
 
 ## 15. 开发阶段
 

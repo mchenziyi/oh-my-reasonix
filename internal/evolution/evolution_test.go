@@ -1,6 +1,7 @@
 package evolution
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -189,5 +190,46 @@ func TestStoreRejectsCopiedProjectScope(t *testing.T) {
 	second.Root = first.Root
 	if _, err := second.ListEpisodes(); err == nil {
 		t.Fatal("expected scope mismatch")
+	}
+}
+
+func TestExperiencePackageImportIsPendingAndScoped(t *testing.T) {
+	source, _ := NewStore(t.TempDir())
+	overlay := "Run the smallest regression test after a failure."
+	h := sha256.Sum256([]byte(overlay))
+	if err := source.SaveProposal(Proposal{SchemaVersion: 1, ID: "source", PatternID: "pattern", Title: "Improve", Rationale: "evidence", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "pending", CreatedAt: Now(), UpdatedAt: Now()}); err != nil {
+		t.Fatal(err)
+	}
+	packagePath := filepath.Join(t.TempDir(), "experience.json")
+	if err := ExportPackage(source, packagePath); err != nil {
+		t.Fatal(err)
+	}
+	target, _ := NewStore(t.TempDir())
+	count, err := ImportPackage(target, packagePath)
+	if err != nil || count != 1 {
+		t.Fatalf("count=%d err=%v", count, err)
+	}
+	proposals, err := target.ListProposals()
+	if err != nil || len(proposals) != 1 || proposals[0].Status != "pending" || proposals[0].ImportedFrom == "" {
+		t.Fatalf("proposals=%+v err=%v", proposals, err)
+	}
+}
+
+func TestExperiencePackageRejectsTampering(t *testing.T) {
+	source, _ := NewStore(t.TempDir())
+	path := filepath.Join(t.TempDir(), "experience.json")
+	if err := ExportPackage(source, path); err != nil {
+		t.Fatal(err)
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b = bytes.Replace(b, []byte("scope_"), []byte("other_"), 1)
+	if err := os.WriteFile(path, b, 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ImportPackage(source, path); err == nil {
+		t.Fatal("expected tamper rejection")
 	}
 }
