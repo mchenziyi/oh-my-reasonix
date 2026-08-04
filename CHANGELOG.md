@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Security
+- **Import 签名策略收紧**：`omr evolve import --trusted-key` 现在隐含 `--require-signature`，避免在未校验签名的情况下静默接受未签名经验包。
+- **git commit 检测加固**：`IsGitCommit` 解析 git 全局选项（`-C`/`-c`/`--no-pager`/`--git-dir=` 等），`git --no-pager commit`、`git -c k=v commit` 不再绕过 Comment Checker 守卫；含 shell 链（`&&`/`;`/`|`）且含 git commit 的命令按 fail-closed 处理。
+
 ## [v2.0.9] — 2026-08-04
 
 ### Added

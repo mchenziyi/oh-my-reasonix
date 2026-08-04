@@ -444,3 +444,29 @@ func TestEvolveExportSignMissingKeyFails(t *testing.T) {
 		t.Fatal("expected error when --sign lacks --key")
 	}
 }
+
+func TestEvolveImportTrustedKeyForcesSignatureRequirement(t *testing.T) {
+	dir, _ := evolveTestStore(t)
+	// Export an UNSIGNED package.
+	pkgPath := filepath.Join(t.TempDir(), "unsigned.json")
+	if err := runEvolve([]string{"export", "--output", pkgPath, "--project-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	privPEM, pubPEM := makeTestKeyPairPEM(t, dir)
+	// --trusted-key alone must not silently accept an unsigned package: it
+	// implies signature requirement (SEC).
+	targetDir := t.TempDir()
+	_, err := captureRunOutput(func() error {
+		return runEvolve([]string{"import", "--input", pkgPath, "--trusted-key", pubPEM, "--project-dir", targetDir})
+	})
+	if err == nil {
+		t.Fatal("--trusted-key without a signed package must fail")
+	}
+	_ = privPEM
+	if props, _ := func() ([]evolution.Proposal, error) {
+		ts, _ := evolution.NewStore(targetDir)
+		return ts.ListProposals()
+	}(); len(props) != 0 {
+		t.Fatal("failed import must not write proposals")
+	}
+}

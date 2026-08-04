@@ -154,6 +154,9 @@ func runEvolve(args []string) error {
 		}
 		options := evolution.ImportOptions{DryRun: *dryRun, RequireSignature: requireSignature}
 		if trustedKeyPath != "" {
+			// A trusted key is meaningless without signature enforcement;
+			// providing one implies --require-signature (SEC).
+			options.RequireSignature = true
 			pub, err := evolution.LoadPublicKey(trustedKeyPath)
 			if err != nil {
 				return err

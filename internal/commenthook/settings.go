@@ -282,16 +282,43 @@ func asMerge(err error, target **MergeError) bool {
 }
 
 // IsGitCommit checks if a command string represents a direct git commit.
+// IsGitCommit reports whether cmd is a direct git commit. It parses git's
+// global options (-C dir, -c key=value, --no-pager, --git-dir=..., etc.)
+// before checking the subcommand, so `git --no-pager commit` and
+// `git -c k=v commit` cannot bypass the guard. Shell-chained commands that
+// contain a git commit are treated as commits (fail closed).
 func IsGitCommit(cmd string) bool {
+	if strings.ContainsAny(cmd, "&&;|") {
+		// A chained shell command: if any token sequence starts a git commit,
+		// treat it as a commit so the guard never silently skips it.
+		return strings.Contains(cmd, "git") && strings.Contains(cmd, "commit")
+	}
 	args := strings.Fields(cmd)
 	if len(args) == 0 {
 		return false
 	}
-	if len(args) >= 2 && args[0] == "git" && args[1] == "commit" {
+	if len(args) == 0 || args[0] != "git" {
+		return false
+	}
+	if len(args) >= 2 && args[1] == "commit" {
 		return true
 	}
-	if len(args) >= 4 && args[0] == "git" && args[1] == "-C" && args[3] == "commit" {
-		return true
+
+	// Parse git global options (some take a value) until the subcommand.
+	for i := 1; i < len(args); i++ {
+		switch args[i] {
+		case "commit":
+			return true
+		case "-c", "-C", "--git-dir", "--work-tree", "--exec-path":
+			i++ // skip the option's value
+		case "--no-pager", "--paginate", "--literal-pathspecs", "--no-replace-objects":
+			continue
+		default:
+			if strings.HasPrefix(args[i], "--git-dir=") || strings.HasPrefix(args[i], "--work-tree=") {
+				continue
+			}
+			return false
+		}
 	}
 	return false
 }

@@ -113,6 +113,35 @@ func TestIsGitCommit_ShDashCGitCommit(t *testing.T) {
 	}
 }
 
+func TestIsGitCommit_NoPagerCommit(t *testing.T) {
+	// git --no-pager commit is a direct commit and must be detected (SEC).
+	if !IsGitCommit("git --no-pager commit -m msg") {
+		t.Fatal("'git --no-pager commit' is a direct commit, should be detected")
+	}
+}
+
+func TestIsGitCommit_ConfigFlagCommit(t *testing.T) {
+	// git -c key=value commit is a direct commit and must be detected (SEC).
+	if !IsGitCommit(`git -c user.name=x commit -m msg`) {
+		t.Fatal("'git -c ... commit' is a direct commit, should be detected")
+	}
+}
+
+func TestIsGitCommit_GitDirFlagCommit(t *testing.T) {
+	// git --git-dir=... commit is a direct commit and must be detected (SEC).
+	if !IsGitCommit("git --git-dir=/tmp/repo/.git commit -m msg") {
+		t.Fatal("'git --git-dir=... commit' is a direct commit, should be detected")
+	}
+}
+
+func TestIsGitCommit_ShellChainCommit(t *testing.T) {
+	// A chained command containing a commit must be treated as a commit so the
+	// guard does not silently skip it (fail closed).
+	if !IsGitCommit("git status && git commit -m msg") {
+		t.Fatal("chained git commit must be detected")
+	}
+}
+
 // --- GuardInput.GetCommand ---
 
 func TestGetCommand_ObjectFormat(t *testing.T) {
