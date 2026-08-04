@@ -532,6 +532,17 @@ func TestEvolveImportTrustedKeyEmptyValueFails(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected whitespace-only --trusted-key rejection")
 	}
+	if !strings.Contains(err.Error(), "requires a non-empty path") {
+		t.Fatalf("expected explicit non-empty path error, got: %v", err)
+	}
+	// Whitespace-only --input equals form must also hit the TrimSpace check.
+	err = runEvolve([]string{"import", "--input=" + strings.Repeat(" ", 3), "--project-dir", t.TempDir()})
+	if err == nil {
+		t.Fatal("expected whitespace-only --input rejection")
+	}
+	if !strings.Contains(err.Error(), "requires a non-empty path") {
+		t.Fatalf("expected explicit non-empty path error, got: %v", err)
+	}
 	// --input= (empty) must also error.
 	err = runEvolve([]string{"import", "--input=", "--project-dir", t.TempDir()})
 	if err == nil {
