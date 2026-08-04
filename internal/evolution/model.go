@@ -68,6 +68,20 @@ type Experiment struct {
 	SafetyPassed  bool     `json:"safety_passed"`
 }
 
+// Observation is a sanitized, per-episode measurement associated with a proposal.
+type Observation struct {
+	SchemaVersion int    `json:"schema_version"`
+	ID            string `json:"id"`
+	ProposalID    string `json:"proposal_id"`
+	EpisodeID     string `json:"episode_id"`
+	Phase         string `json:"phase"`
+	Succeeded     bool   `json:"succeeded"`
+	FailureClass  string `json:"failure_class,omitempty"`
+	PromptTokens  int    `json:"prompt_tokens,omitempty"`
+	OutputTokens  int    `json:"output_tokens,omitempty"`
+	CreatedAt     string `json:"created_at"`
+}
+
 func NewID(prefix string, content string) string {
 	h := sha256.Sum256([]byte(content))
 	return prefix + "_" + hex.EncodeToString(h[:])[:16]
@@ -114,6 +128,16 @@ func (e Experiment) Validate() error {
 	}
 	if e.GateStatus != "" && e.GateStatus != "passed" && e.GateStatus != "insufficient_evidence" && e.GateStatus != "quality_below_threshold" && e.GateStatus != "offline_validation_failed" {
 		return fmt.Errorf("invalid experiment gate status")
+	}
+	return nil
+}
+
+func (o Observation) Validate() error {
+	if o.SchemaVersion != SchemaVersion || o.ID == "" || o.ProposalID == "" || o.EpisodeID == "" || o.CreatedAt == "" {
+		return fmt.Errorf("invalid observation")
+	}
+	if o.Phase != "before" && o.Phase != "after" {
+		return fmt.Errorf("invalid observation phase")
 	}
 	return nil
 }

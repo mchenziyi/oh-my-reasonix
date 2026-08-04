@@ -199,6 +199,9 @@ func runEvolve(args []string) error {
 		if _, e := s.ListExperiments(); e != nil {
 			return e
 		}
+		if _, e := s.ListObservations(); e != nil {
+			return e
+		}
 		fmt.Println("Evolution store: PASS")
 		return nil
 	case "rollback":
@@ -222,6 +225,15 @@ func runEvolve(args []string) error {
 		v, e := s.ListProposals()
 		if e != nil {
 			return e
+		}
+		if len(args) > 1 && args[1] != "--json" {
+			filtered := v[:0]
+			for _, proposal := range v {
+				if proposal.ID == args[1] {
+					filtered = append(filtered, proposal)
+				}
+			}
+			v = filtered
 		}
 		return emitEvolve(v, *jsonOut)
 	default:

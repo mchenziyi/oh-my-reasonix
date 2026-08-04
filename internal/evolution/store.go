@@ -187,6 +187,13 @@ func (s Store) SaveExperiment(e Experiment) error {
 	return s.write(filepath.Join("experiments", e.ID+".json"), e)
 }
 
+func (s Store) SaveObservation(o Observation) error {
+	if err := o.Validate(); err != nil {
+		return err
+	}
+	return s.write(filepath.Join("observations", o.ID+".json"), o)
+}
+
 func (s Store) WriteOverlay(content string) error {
 	if err := s.checkScope(); err != nil {
 		return err
@@ -339,6 +346,24 @@ func (s Store) ListExperiments() ([]Experiment, error) {
 			return err
 		}
 		out = append(out, e)
+		return nil
+	})
+	return out, err
+}
+
+func (s Store) ListObservations() ([]Observation, error) {
+	var out []Observation
+	err := s.list("observations", func(b []byte) error {
+		var o Observation
+		dec := json.NewDecoder(bytes.NewReader(b))
+		dec.DisallowUnknownFields()
+		if err := dec.Decode(&o); err != nil {
+			return err
+		}
+		if err := o.Validate(); err != nil {
+			return err
+		}
+		out = append(out, o)
 		return nil
 	})
 	return out, err

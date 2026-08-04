@@ -181,6 +181,23 @@ func TestBuildReportAggregatesWithoutSensitiveContent(t *testing.T) {
 	}
 }
 
+func TestObservationReportTracksInsufficientEvidence(t *testing.T) {
+	s, _ := NewStore(t.TempDir())
+	for i, phase := range []string{"before", "after"} {
+		if err := s.SaveObservation(Observation{SchemaVersion: 1, ID: fmt.Sprintf("o%d", i), ProposalID: "p1", EpisodeID: fmt.Sprintf("e%d", i), Phase: phase, Succeeded: phase == "after", CreatedAt: Now()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	r, err := BuildReport(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := r.Observations["p1"]
+	if got.Before != 1 || got.After != 1 || got.AfterSuccesses != 1 || got.Status != "insufficient_evidence" {
+		t.Fatalf("unexpected observation summary: %+v", got)
+	}
+}
+
 func TestStoreRejectsCopiedProjectScope(t *testing.T) {
 	first, _ := NewStore(t.TempDir())
 	if err := first.RecordEpisode(Episode{SchemaVersion: 1, ID: "ep", TaskClass: "build", Succeeded: true, CreatedAt: Now()}); err != nil {

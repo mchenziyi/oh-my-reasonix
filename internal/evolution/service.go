@@ -43,6 +43,9 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 	if err := store.RecordEpisode(e); err != nil {
 		return err
 	}
+	if err := recordObservations(store, e); err != nil {
+		return err
+	}
 	episodes, err := store.ListEpisodes()
 	if err != nil {
 		return err
@@ -74,6 +77,51 @@ func recordRun(store Store, prompt string, result reasonix.Result, stream reason
 		}
 		if err := store.SaveProposal(proposal); err != nil {
 			return err
+		}
+		// Preserve the control window by associating the triggering episodes as
+		// pre-approval observations once the proposal is created.
+		for _, episode := range episodes {
+			for _, episodeID := range pattern.EpisodeIDs {
+				if episode.ID == episodeID {
+					_ = store.SaveObservation(Observation{SchemaVersion: SchemaVersion, ID: NewID("observation", proposal.ID+"|"+episode.ID), ProposalID: proposal.ID, EpisodeID: episode.ID, Phase: "before", Succeeded: episode.Succeeded, FailureClass: episode.FailureClass, PromptTokens: episode.PromptTokens, OutputTokens: episode.OutputTokens, CreatedAt: episode.CreatedAt})
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func recordObservations(store Store, episode Episode) error {
+	proposals, err := store.ListProposals()
+	if err != nil {
+		return err
+	}
+	patterns, err := store.ListPatterns()
+	if err != nil {
+		return err
+	}
+	for _, proposal := range proposals {
+		if proposal.Status != "approved" && proposal.Status != "rolled_back" {
+			continue
+		}
+		phase := "after"
+		if proposal.ApprovedAt == "" || episode.CreatedAt <= proposal.ApprovedAt {
+			phase = "before"
+		}
+		for _, pattern := range patterns {
+			if pattern.ID != proposal.PatternID {
+				continue
+			}
+			matched := phase == "after" && episode.TaskClass == pattern.TaskClass
+			for _, id := range pattern.EpisodeIDs {
+				if id == episode.ID {
+					matched = true
+				}
+			}
+			if matched {
+				o := Observation{SchemaVersion: SchemaVersion, ID: NewID("observation", proposal.ID+"|"+episode.ID), ProposalID: proposal.ID, EpisodeID: episode.ID, Phase: phase, Succeeded: episode.Succeeded, FailureClass: episode.FailureClass, PromptTokens: episode.PromptTokens, OutputTokens: episode.OutputTokens, CreatedAt: episode.CreatedAt}
+				return store.SaveObservation(o)
+			}
 		}
 	}
 	return nil

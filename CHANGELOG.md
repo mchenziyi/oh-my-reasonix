@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+## [v2.0.2] — 2026-08-04
+
+### Added
+- **观察期报告**：记录 Proposal 生效前后 Episode 的成功、失败分类、Token 与观察进度。
+- `evolve report` 输出按 Proposal 的统计摘要；观察期不足 5 个相关 Episode 时标记 `insufficient_evidence`。
+- `evolve history <proposal-id>` 支持按 Proposal 查询，Doctor 会校验观察记录。
+
 ## [v2.0.1] — 2026-08-04
 
 ### Added
