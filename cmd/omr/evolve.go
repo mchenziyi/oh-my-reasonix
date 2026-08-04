@@ -35,6 +35,8 @@ func runEvolve(args []string) error {
 		if args[i] == "--project-dir" && i+1 < len(args) {
 			*project = args[i+1]
 			i++
+		} else if strings.HasPrefix(args[i], "--project-dir=") {
+			*project = strings.TrimPrefix(args[i], "--project-dir=")
 		} else if args[i] == "--json" {
 			*jsonOut = true
 		} else if args[i] == "--dry-run" {
@@ -135,12 +137,18 @@ func runEvolve(args []string) error {
 		input := *inputPath
 		requireSignature := false
 		trustedKeyPath := ""
-		for i := 1; i+1 < len(args); i++ {
+		for i := 1; i < len(args); i++ {
 			switch args[i] {
 			case "--input":
+				if i+1 >= len(args) {
+					return errors.New("import --input requires a path")
+				}
 				input = args[i+1]
 				i++
 			case "--trusted-key":
+				if i+1 >= len(args) {
+					return errors.New("import --trusted-key requires a path")
+				}
 				trustedKeyPath = args[i+1]
 				i++
 			default:

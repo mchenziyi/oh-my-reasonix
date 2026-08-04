@@ -142,6 +142,47 @@ func TestIsGitCommit_ShellChainCommit(t *testing.T) {
 	}
 }
 
+func TestIsGitCommit_NewlineChainCommit(t *testing.T) {
+	// Newline-separated command containing a commit (fail closed).
+	if !IsGitCommit("git status\ncommit -m msg") {
+		t.Fatal("newline-chained git commit must be detected")
+	}
+}
+
+func TestIsGitCommit_CommandSubstitutionCommit(t *testing.T) {
+	// Command substitution containing a git commit (fail closed).
+	if !IsGitCommit(`$(git commit -m msg)`) {
+		t.Fatal("command substitution git commit must be detected")
+	}
+	if !IsGitCommit("`git commit -m msg`") {
+		t.Fatal("backtick git commit must be detected")
+	}
+}
+
+func TestIsGitCommit_AbsoluteGitPathCommit(t *testing.T) {
+	// Absolute git binary path with a commit subcommand.
+	if !IsGitCommit("/usr/bin/git commit -m msg") {
+		t.Fatal("absolute git path commit must be detected")
+	}
+}
+
+func TestIsGitCommit_UnknownGlobalFlagCommit(t *testing.T) {
+	// A future/unknown git global flag must not silently disable detection.
+	if !IsGitCommit("git --no-optional-locks commit -m msg") {
+		t.Fatal("unknown git global flag commit must be detected")
+	}
+	if !IsGitCommit(`git --config-env=user.name=ENV commit -m msg`) {
+		t.Fatal("--config-env= commit must be detected")
+	}
+}
+
+func TestIsGitCommit_EnvPrefixCommit(t *testing.T) {
+	// VAR=x git commit is still a real commit; treat as commit (fail closed).
+	if !IsGitCommit("EDITOR=code git commit -m msg") {
+		t.Fatal("env-prefixed git commit must be detected")
+	}
+}
+
 // --- GuardInput.GetCommand ---
 
 func TestGetCommand_ObjectFormat(t *testing.T) {

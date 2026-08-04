@@ -281,23 +281,32 @@ func asMerge(err error, target **MergeError) bool {
 	return ok
 }
 
-// IsGitCommit checks if a command string represents a direct git commit.
 // IsGitCommit reports whether cmd is a direct git commit. It parses git's
 // global options (-C dir, -c key=value, --no-pager, --git-dir=..., etc.)
 // before checking the subcommand, so `git --no-pager commit` and
-// `git -c k=v commit` cannot bypass the guard. Shell-chained commands that
-// contain a git commit are treated as commits (fail closed).
+// `git -c k=v commit` cannot bypass the guard. Shell-chained or
+// substitution-wrapped commands that contain a git commit are treated as
+// commits (fail closed): `a && git commit`, `git status\ncommit`,
+// `$(git commit)`, and backtick forms all trigger the guard.
 func IsGitCommit(cmd string) bool {
-	if strings.ContainsAny(cmd, "&&;|") {
-		// A chained shell command: if any token sequence starts a git commit,
-		// treat it as a commit so the guard never silently skips it.
+	if strings.ContainsAny(cmd, "&&;|\n`$") {
+		// Chained, newline-separated, or substitution-wrapped command: if any
+		// segment looks like a git commit, treat the whole command as a commit
+		// so the guard never silently skips it.
 		return strings.Contains(cmd, "git") && strings.Contains(cmd, "commit")
 	}
 	args := strings.Fields(cmd)
 	if len(args) == 0 {
 		return false
 	}
-	if len(args) == 0 || args[0] != "git" {
+	// Skip env-prefix tokens (VAR=x ...) before the git binary.
+	for len(args) > 0 && strings.Contains(args[0], "=") && !strings.HasPrefix(args[0], "-") {
+		args = args[1:]
+	}
+	if len(args) == 0 {
+		return false
+	}
+	if args[0] != "git" && !strings.HasSuffix(args[0], "/git") {
 		return false
 	}
 	if len(args) >= 2 && args[1] == "commit" {
@@ -305,18 +314,24 @@ func IsGitCommit(cmd string) bool {
 	}
 
 	// Parse git global options (some take a value) until the subcommand.
+	// Unknown options are skipped (not treated as "not a commit") so a
+	// future git flag cannot silently bypass the guard.
 	for i := 1; i < len(args); i++ {
 		switch args[i] {
 		case "commit":
 			return true
-		case "-c", "-C", "--git-dir", "--work-tree", "--exec-path":
+		case "-c", "-C", "--git-dir", "--work-tree", "--exec-path", "--config-env":
 			i++ // skip the option's value
-		case "--no-pager", "--paginate", "--literal-pathspecs", "--no-replace-objects":
-			continue
 		default:
-			if strings.HasPrefix(args[i], "--git-dir=") || strings.HasPrefix(args[i], "--work-tree=") {
+			if strings.HasPrefix(args[i], "--git-dir=") || strings.HasPrefix(args[i], "--work-tree=") ||
+				strings.HasPrefix(args[i], "--config-env=") {
 				continue
 			}
+			if strings.HasPrefix(args[i], "-") {
+				// Value-less or unknown flag: keep scanning for the subcommand.
+				continue
+			}
+			// First non-option token: not a commit.
 			return false
 		}
 	}
