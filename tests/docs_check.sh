@@ -28,8 +28,14 @@ stale=(
   'Hook.*待开发'
 )
 for pat in "${stale[@]}"; do
-  # Only scan active docs, not historical/archived reports.
-  if grep -rEn "$pat" README.md README.en.md docs/OMR_TODO_LATEST.zh-CN.md docs/OMR_VS_OMO_GAP_MATRIX.zh-CN.md 2>/dev/null | grep -v 'Archived\|已归档\|历史'; then
+  # Scan active docs plus the T13/T14/POST-V2 task books (which are archived
+  # but may drift); historical execution reports are excluded.
+  if grep -rEn "$pat" README.md README.en.md \
+      docs/OMR_TODO_LATEST.zh-CN.md docs/OMR_VS_OMO_GAP_MATRIX.zh-CN.md \
+      docs/OMR_CAPABILITY_MATRIX.zh-CN.md \
+      docs/OMR_T13_COMMENT_CHECKER_AND_DOCS_PLAN.zh-CN.md \
+      docs/OMR_T14_COMMENT_CHECKER_RUNTIME_HOOK_PLAN.zh-CN.md \
+      docs/OMR_POST_V2_LOCAL_ENHANCEMENT_PLAN.zh-CN.md 2>/dev/null | grep -v 'Archived\|已归档\|历史\|不再出现'; then
     fail "stale phrase '$pat' found"
   fi
 done
@@ -85,8 +91,8 @@ done
 # --- 5. zh/en status agreement ---------------------------------------------
 # Compare the highest v2.0.x version each README mentions (POSIX-safe).
 max_ver() {
-  # Extract all v2.0.x matches and keep the numerically largest.
-  grep -oE 'v2\.0\.[0-9]+' "$1" | awk -F. '{ if ($3 > max) max = $3 } END { if (max != "") print "v2.0." max }'
+  # Extract all v2.0.x matches and keep the numerically largest (POSIX-safe).
+  grep -oE 'v2\.0\.[0-9]+' "$1" | awk -F. '{ v = $3 + 0; if (v > max) max = v } END { if (max != "") print "v2.0." max }'
 }
 zh_ver=$(max_ver README.md)
 en_ver=$(max_ver README.en.md)
