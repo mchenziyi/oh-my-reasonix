@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+## [v2.0.3] — 2026-08-04
+
+### Added
+- **经验包导入导出**：`evolve export` 仅导出经过校验的 Proposal 元数据；`evolve import --dry-run` 支持预览、幂等跳过和冲突拒绝。
+- 导入包限制大小与条目数，未知字段、Hash 不匹配、非法内容和冲突均 fail closed，失败时零写入。
+
 ## [v2.0.2] — 2026-08-04
 
 ### Added

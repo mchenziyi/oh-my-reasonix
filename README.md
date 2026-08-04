@@ -408,7 +408,7 @@ go run ./cmd/omr version
 
 当前后续事项：
 
-- **v2.0.0 自动自进化 MVP** 已交付；v2.0.1 Promotion Gate 与 v2.0.2 观察期报告已交付。下一阶段为 v2.0.3 经验包导入导出，详见 [v2.0.0 自动自进化开发计划](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)；
+- **v2.0.0 自动自进化 MVP**、v2.0.1 Promotion Gate、v2.0.2 观察期报告与 v2.0.3 经验包导入导出均已交付。经验共享仍需显式导入且不会自动批准，详见 [v2.0.0 自动自进化开发计划](docs/OMR_V2_AUTONOMOUS_EVOLUTION_PLAN.zh-CN.md)；
 - Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，OMR 不复制 UI/后台状态机；
 - Subagent 父子任务树与 Desktop 映射：等待 Reasonix 提供稳定的父子关联事件和机器接口。
 

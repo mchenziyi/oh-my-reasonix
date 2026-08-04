@@ -250,3 +250,58 @@ func TestExperiencePackageRejectsTampering(t *testing.T) {
 		t.Fatal("expected tamper rejection")
 	}
 }
+
+func TestExperiencePackageImportDryRunAndIdempotent(t *testing.T) {
+	source, _ := NewStore(t.TempDir())
+	overlay := "Run a focused regression test."
+	h := sha256.Sum256([]byte(overlay))
+	if err := source.SaveProposal(Proposal{SchemaVersion: 1, ID: "source", PatternID: "pattern", Title: "Improve", Rationale: "evidence", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "pending", CreatedAt: Now(), UpdatedAt: Now()}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "experience.json")
+	if err := ExportPackage(source, path); err != nil {
+		t.Fatal(err)
+	}
+	target, _ := NewStore(t.TempDir())
+	preview, err := ImportPackageWithOptions(target, path, ImportOptions{DryRun: true})
+	if err != nil || preview.Imported != 1 {
+		t.Fatalf("preview=%+v err=%v", preview, err)
+	}
+	if proposals, _ := target.ListProposals(); len(proposals) != 0 {
+		t.Fatal("dry-run wrote proposals")
+	}
+	if _, err := ImportPackageWithOptions(target, path, ImportOptions{}); err != nil {
+		t.Fatal(err)
+	}
+	repeat, err := ImportPackageWithOptions(target, path, ImportOptions{DryRun: true})
+	if err != nil || repeat.Skipped != 1 {
+		t.Fatalf("repeat=%+v err=%v", repeat, err)
+	}
+}
+
+func TestExperiencePackageImportConflictFailsClosed(t *testing.T) {
+	source, _ := NewStore(t.TempDir())
+	overlay := "Run a focused regression test."
+	h := sha256.Sum256([]byte(overlay))
+	if err := source.SaveProposal(Proposal{SchemaVersion: 1, ID: "source", PatternID: "pattern", Title: "Improve", Rationale: "evidence", Overlay: overlay, ContentSHA256: hex.EncodeToString(h[:]), Status: "pending", CreatedAt: Now(), UpdatedAt: Now()}); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "experience.json")
+	if err := ExportPackage(source, path); err != nil {
+		t.Fatal(err)
+	}
+	target, _ := NewStore(t.TempDir())
+	if _, err := ImportPackage(target, path); err != nil {
+		t.Fatal(err)
+	}
+	proposals, _ := target.ListProposals()
+	proposals[0].Overlay = "different safe rule"
+	h2 := sha256.Sum256([]byte(proposals[0].Overlay))
+	proposals[0].ContentSHA256 = hex.EncodeToString(h2[:])
+	if err := target.SaveProposal(proposals[0]); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ImportPackage(target, path); err == nil {
+		t.Fatal("expected import conflict")
+	}
+}

@@ -23,6 +23,7 @@ func runEvolve(args []string) error {
 	jsonOut := fs.Bool("json", false, "JSON output")
 	outputPath := fs.String("output", "", "experience package output path")
 	inputPath := fs.String("input", "", "experience package input path")
+	dryRun := fs.Bool("dry-run", false, "preview import without writing")
 	_ = fs.Parse(args[1:])
 	// Go's flag package stops at the first positional argument. Evolve commands
 	// intentionally accept `approve <id> --project-dir ...`, so recover flags
@@ -33,6 +34,8 @@ func runEvolve(args []string) error {
 			i++
 		} else if args[i] == "--json" {
 			*jsonOut = true
+		} else if args[i] == "--dry-run" {
+			*dryRun = true
 		}
 	}
 	s, err := evolution.NewStore(*project)
@@ -108,11 +111,14 @@ func runEvolve(args []string) error {
 		if input == "" {
 			return errors.New("import requires --input path")
 		}
-		count, err := evolution.ImportPackage(s, input)
+		result, err := evolution.ImportPackageWithOptions(s, input, evolution.ImportOptions{DryRun: *dryRun})
 		if err != nil {
+			if *jsonOut {
+				_ = emitEvolve(result, true)
+			}
 			return err
 		}
-		return emitEvolve(map[string]any{"imported": count}, *jsonOut)
+		return emitEvolve(result, *jsonOut)
 	case "approve":
 		if len(args) < 2 {
 			return errors.New("approve requires id")
