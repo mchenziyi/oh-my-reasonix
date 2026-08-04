@@ -85,7 +85,7 @@ Selected `.claude/rules`, `skills`, `agents`, `commands`, MCP, and hook configur
 
 The offline checker is deterministic and does not call a model or network service. Run `omr comment-check --project-dir . --json`, optionally add `--path internal/foo.go` or `--allow-tags "TODO(admin),TODO(future)"`.
 
-It checks temporary markers, empty comments, comment/code similarity, suspected credentials, and path safety. By default, paths are restricted to the project root; relative paths use `--project-dir`, and symlink escapes are rejected. Runtime hook enforcement requires a stable Reasonix hook interface and is intentionally not implemented in OMR.
+It checks temporary markers, empty comments, comment/code similarity, suspected credentials, and path safety. By default, paths are restricted to the project root; relative paths use `--project-dir`, and symlink escapes are rejected. Runtime hook enforcement is delivered as an opt-in PreToolUse hook (`omr hook comment-check enable`), verified against Reasonix v1.18 desktop blocking/allow/disable flows; hook decisions are recorded in sanitized audit logs (`.reasonix/omr/audit/`, `omr hook comment-check logs`).
 
 ## Quality benchmarks
 

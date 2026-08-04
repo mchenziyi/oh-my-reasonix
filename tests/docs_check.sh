@@ -68,6 +68,18 @@ grep -q 'CLI' "$matrix" || fail "matrix missing CLI scope"
 grep -q 'Desktop' "$matrix" || fail "matrix missing Desktop scope"
 grep -q 'Reasonix 官方' "$matrix" || fail "matrix missing official-interface scope"
 
+# --- 4b. no contradictory archive banners ------------------------------------
+# Host-interface docs must carry exactly one BLOCKED banner and never a
+# "已完成交付" banner alongside it.
+for f in docs/REASONIX_TASK_MONITOR_DEVELOPMENT_PLAN.zh-CN.md \
+         docs/REASONIX_TASK_MONITOR_TM04_PLAN.zh-CN.md \
+         docs/REASONIX_TASK_MONITOR_TM05_PLAN.zh-CN.md \
+         docs/REASONIX_INTEGRATION_PLAN.zh-CN.md; do
+  if grep -q '已完成交付' "$f" && grep -q 'BLOCKED' "$f"; then
+    fail "contradictory archive banners in $f"
+  fi
+done
+
 # --- 5. zh/en status agreement ---------------------------------------------
 # Compare the highest v2.0.x version each README mentions.
 max_ver() {
