@@ -3,6 +3,7 @@
 > 版本：2026-08-07 正式实现规格
 > 目标版本：OMR v2.1.x～v2.2.0
 > 状态：正式实现规格；MEM-01 尚未开始
+> 架构版本：Architecture v1 — Frozen
 > 正式名称：OMR Mnemosyne
 > 中文描述：OMR 长期记忆与经验进化系统
 > 核心决定：Mnemosyne 使用本地文件、OKF 风格知识组织和渐进式披露构建长期记忆；永久不引入向量数据库或 Embedding 检索。
@@ -65,6 +66,13 @@ Mnemosyne 是 OMR 面向 Reasonix 的长期记忆与经验进化系统。它负�
 16. 记忆排序先由 Librarian 判断语义相关性，再按适用条件、Scope、Lifecycle、Health 和与 Usage Policy 匹配的当前 Revision/Context 证据强度排序；完全同级时使用可复现的确定性随机。
 17. Memory Revision 是知识内容规范事实，Memory Mutation 是追加式审计，Generation 和 OKF Wiki 都是可重建派生状态。
 18. Lifecycle、Health、Usage Statistics、所有索引和 Web 视图不得成为第二事实源，必须能从规范事实确定性重建。
+19. 检索系统必须评估漏召回，而不只评估已经命中的记忆；线上 Critic 判断不是 Oracle，必须保留判断来源和固定候选世界。
+20. Episode 必须拥有独立、受控、脱敏的 Episodic Recall 路径；Episode Card 和 Episodic Index 都是可重建派生表示。
+21. Context Signature 只表示确定性身份；跨 Context 适用性由正式 Context Applicability Judgment 记录，不把 Hash 相等当作适用性结论。
+22. 记忆支持独立于 Lifecycle/Health 的 Freshness 与 Revalidation；事实永久保存不等于永久参与正常认知。
+23. Evidence 必须记录来源、获取方式、验证状态和 Provenance；Trust Policy 属于安全根，不允许由记忆自进化修改。
+24. Index 必须支持确定性 Fan-out 和自动分片；这限制单个索引尺寸，不构成 Librarian 的固定读取预算。
+25. 稳定发布必须同时通过 Retrieval、Reading/Adoption 和 Downstream Task Quality Benchmark；工程一致性通过不等于记忆有效。
 
 ## 3. 产品定位
 
@@ -201,7 +209,9 @@ Pattern 识别与经验归纳
 │   ├── experiments/
 │   ├── observations/
 │   ├── memory-usage/
+│   ├── retrieval-evaluations/
 │   ├── judgments/
+│   ├── policies/
 │   ├── context-descriptors/
 │   ├── memory-mutations/
 │   ├── memory-revisions/
@@ -248,7 +258,9 @@ Pattern 识别与经验归纳
 ├── facts/
 │   ├── promotion-evidence/
 │   ├── memory-usage/
+│   ├── retrieval-evaluations/
 │   ├── judgments/
+│   ├── policies/
 │   ├── context-descriptors/
 │   ├── memory-mutations/
 │   ├── memory-revisions/
@@ -276,7 +288,9 @@ JSON 保存不可由模型自由改写的事实：
 - Experiment 与 Gate 结果；
 - Observation；
 - MemoryUsage；
+- Retrieval Evaluation；
 - Judgment Fact；
+- 不可变 Policy Fact；
 - Context Descriptor；
 - Memory Mutation；
 - Memory Revision；
@@ -305,7 +319,9 @@ JSON 保存不可由模型自由改写的事实：
 facts/memory-revisions/  = 某版知识内容的规范事实源
 facts/memory-evidence-generations/ = 某版知识证据集合的规范事实源
 facts/governance-events/ = 人工治理操作的追加式规范事实源
+facts/retrieval-evaluations/ = 某次检索审计及其固定候选世界的规范事实源
 facts/judgments/ = Confirmation、Attribution Override 与 Analyst/Critic 判断的规范事实源
+facts/policies/ = Freshness、Trust、Content Classifier、Index、Benchmark 等版本化策略的规范事实源
 facts/generation-input-manifests/ = 历史 Generation 精确重建输入的规范事实源
 facts/memory-mutations/  = 发生过什么的追加式审计事实
 memory/generations/      = 某一时刻供读取的派生快照
@@ -344,7 +360,9 @@ Markdown 保存模型可直接理解和维护的知识：
 | 数据 | 规范事实源 | 是否可删除后重建 | 是否允许作为第二事实源 |
 |---|---|:---:|:---:|
 | Episode、Observation、MemoryUsage、Outcome | `facts/` 对应不可变记录 | 否 | ❌ |
+| Retrieval Evaluation | `facts/retrieval-evaluations/` | 否 | ❌ |
 | Judgment Fact | `facts/judgments/` | 否 | ❌ |
+| Policy Fact | `facts/policies/` | 否 | ❌ |
 | Memory Revision 内容 | `facts/memory-revisions/` | 否 | ❌ |
 | Memory Evidence Generation | `facts/memory-evidence-generations/` | 否 | ❌ |
 | Governance Event | `facts/governance-events/` | 否 | ❌ |
@@ -356,6 +374,8 @@ Markdown 保存模型可直接理解和维护的知识：
 | Usage Statistics | 由 MemoryUsage、Outcome 和独立 Episode 规则派生 | ✅ | ❌ |
 | Relation Index | 由 Revision Relation Record 和事实引用派生 | ✅ | ❌ |
 | Root/Local Index | 由当前有效 Revision、Lifecycle、Health 和 Scope 派生 | ✅ | ❌ |
+| Episode Card、Episodic Index | 由 Episode、Evidence、固定 Generation 与编译器版本派生 | ✅ | ❌ |
+| Freshness、Evidence Trust Gate 结果 | 由版本化 Policy、Judgment 和规范 Evidence 派生 | ✅ | ❌ |
 | Generation | 由 Generation Input Manifest 指定的规范事实和编译器版本派生 | ✅ | ❌ |
 | OKF Wiki | Generation 内的模型阅读表示 | ✅ | ❌ |
 | Web 列表、图谱、统计和缓存 | 由固定 Generation 与规范事实派生 | ✅ | ❌ |
@@ -403,10 +423,19 @@ aliases:
   - orchestrator prompt drift
 
 applies_when:
-  - manifest exists
-  - asset source is known
+  - condition_id: condition_manifest_exists
+    subject: project
+    subject_ref: null
+    field: manifest_exists
+    operator: equals
+    value: true
 does_not_apply_when:
-  - user-authored prompt conflict
+  - condition_id: condition_user_prompt_conflict
+    subject: project
+    subject_ref: null
+    field: user_prompt_conflict
+    operator: equals
+    value: true
 
 evidence:
   - scope: project
@@ -498,8 +527,17 @@ Memory Type 对 Usage Policy 的允许矩阵：
   "confirmation_source_ref": null,
   "title": "Verify Before Upgrade Retry",
   "summary": "...",
-  "applies_when": ["..."],
-  "does_not_apply_when": ["..."],
+  "applies_when": [
+    {
+      "condition_id": "condition_sqlite_driver",
+      "subject": "environment",
+      "subject_ref": null,
+      "field": "sqlite_driver",
+      "operator": "equals",
+      "value": "modernc.org/sqlite"
+    }
+  ],
+  "does_not_apply_when": [],
   "failure_concept_refs": [],
   "relations": [],
   "aliases": [],
@@ -598,7 +636,7 @@ Attribution Override 示例：
 }
 ```
 
-本节正式冻结 `confirmation` 和 `attribution_override` 两种必须支持的 Judgment subtype 及其 payload。Analyst/Critic 产生的其他 Judgment 同样复用基础 Envelope 与 JudgmentRef，并由对应协议定义固定 subtype payload；实现不得接受未注册的自由 `judgment_type`。每种 subtype 使用带判别字段的严格联合 Schema，选择一种类型时，其他 subtype payload 必须缺失。Judgment Fact 未知字段拒绝、永久不可变、写入前脱敏，`content_sha256` 由程序对排除 Hash 字段自身的规范内容计算。撤销确认或修正 Override 必须创建新 Judgment，并通过 `supersedes_judgment_ref` 保留完整链路，不能原地覆盖。
+本节正式冻结 `confirmation` 和 `attribution_override` 两种基础 Judgment subtype；6.2.3 进一步冻结 `retrieval_relevance`、`context_applicability`、`content_classification`、`evidence_trust` 和 `freshness_evaluation`。Attribution、Generalization Critic 和 MemoryUsage 回执等 Judgment 同样复用基础 Envelope 与 JudgmentRef，并由对应协议定义固定 subtype payload；实现不得接受未注册的自由 `judgment_type`。每种 subtype 使用带判别字段的严格联合 Schema，选择一种类型时，其他 subtype payload 必须缺失。Judgment Fact 未知字段拒绝、永久不可变、写入前脱敏，`content_sha256` 由程序对排除 Hash 字段自身的规范内容计算。撤销确认或修正 Override 必须创建新 Judgment，并通过 `supersedes_judgment_ref` 保留完整链路，不能原地覆盖。
 
 正式引用模型：
 
@@ -619,6 +657,199 @@ ConfirmationSourceRef:
 `ConfirmationSourceRef` 是受约束的 JudgmentRef，其 `judgment_type` 必须为 `confirmation`。引用的 Scope、ID、类型和 Hash 必须与目标 Judgment Fact 完全一致。
 
 任何 `usage_policy=explicit_confirmation` 的 MemoryRevision 都必须携带合法 `confirmation_source_ref`，不只限于 Decision；Preference 以及未来允许该 Policy 的类型同样适用。其他 Usage Policy 不得借用 Confirmation Source 代替自身证据协议。
+
+### 6.2.2 ApplicabilityCondition Schema
+
+`applies_when` 和 `does_not_apply_when` 使用同一个严格、可程序读取的条件结构，禁止再使用自由文本字符串作为机器条件：
+
+```yaml
+ApplicabilityCondition:
+  condition_id: condition_sqlite_driver
+  subject: environment
+  subject_ref: null
+  field: sqlite_driver
+  operator: equals
+  value: modernc.org/sqlite
+```
+
+约束固定为：
+
+- `condition_id` 在同一 Revision 内唯一且稳定；
+- `subject` 固定为 `environment | project | toolchain | component`；
+- `subject=component` 时必须携带合法 Component MemoryRef，其他类型的 `subject_ref` 必须为 `null`；
+- `field` 使用受 Schema 约束的标识符，不携带绝对路径或自由指令；
+- `operator` 固定为 `equals | not_equals | contains | exists | version_satisfies`；
+- `value` 只允许字符串、布尔值、数字或这些标量的有界数组；
+- 人类解释由 OKF 编译器从条件生成，不能反向覆盖条件事实；
+- 条件结构无法表达时，Memory 保持 `probation` 或生成新 Context/Component Fact，不能退回自由文本机器条件。
+
+### 6.2.3 Memory Intelligence Fact、Judgment 与 Policy Schema
+
+#### RetrievalEvaluation
+
+`facts/retrieval-evaluations/<evaluation-id>.json` 记录某次检索审计及其固定候选世界：
+
+```json
+{
+  "schema_version": 1,
+  "evaluation_id": "retrieval_eval_01K...",
+  "scope": "project",
+  "retrieval_id": "retrieval_123",
+  "memory_context": {
+    "project_generation_ref": {
+      "scope": "project",
+      "generation_id": "gen_project_000010",
+      "input_manifest_sha256": "sha256_..."
+    },
+    "global_generation_ref": {
+      "scope": "global",
+      "generation_id": "gen_global_000020",
+      "input_manifest_sha256": "sha256_..."
+    }
+  },
+  "evaluation_scope": "generation_full_scan",
+  "judgment_ref": {
+    "scope": "project",
+    "judgment_type": "retrieval_relevance",
+    "judgment_id": "judgment_01K...",
+    "content_sha256": "sha256_..."
+  },
+  "content_sha256": "sha256_...",
+  "created_at": "..."
+}
+```
+
+`evaluation_scope` 固定为 `fixture | generation_full_scan | expanded_index_scan | sampled_audit`。Evaluation 必须复用原 Retrieval 固定的 Project/Global Generation Pair，不允许读取更新后的 `CURRENT` 评价历史检索。某个 Scope 当时没有 Memory 时，对应 Generation Ref 显式为 `null`。Generation 已清理时只能根据永久 Generation Input Manifest 精确重建；无法重建时 Judgment 返回 `unavailable`，不能猜测。
+
+`authority` 不在 RetrievalEvaluation 重复保存。判断来源只存在于 Judgment Fact 的 `source` 中，固定为 `fixture_oracle | retrieval_critic | user_review`。只有 `fixture_oracle` 可以作为 Benchmark 真值；生产 Critic 的 `no_relevant_memory` 仍是可修订判断，不是“全库绝对不存在”的客观事实。
+
+Retrieval Relevance Judgment 使用正式 Judgment Envelope，payload 固定为：
+
+```yaml
+judgment_type: retrieval_relevance
+retrieval_relevance:
+  result: missed_relevant
+  expected_memory_refs: []
+  retrieved_memory_refs: []
+  evidence_refs: []
+```
+
+`result` 固定为 `hit_relevant | hit_irrelevant | missed_relevant | no_relevant_memory | unknown | unavailable`。它只能触发 Alias、Relation、Index 或 Query 路由的候选修复，不能直接修改 Memory Revision 内容。
+
+#### Context Applicability Judgment
+
+Context Applicability 判断“某个 Memory Revision 对目标 Context 是否适用”，不建立 Context 间本体关系：
+
+```yaml
+judgment_type: context_applicability
+subject:
+  memory_ref: {}
+  target_context_ref: context_target_01K...
+basis_context_refs:
+  - context_a
+  - context_b
+context_applicability:
+  result: conditionally_applicable
+  required_condition_ids:
+    - condition_sqlite_driver
+  evidence_refs: []
+```
+
+`result` 固定为 `exact | applicable | conditionally_applicable | not_applicable | unknown`。`conditionally_applicable` 必须引用目标 Memory Revision 中存在的 `ApplicabilityCondition.condition_id`；`unknown` 不得强制采用或进入正负计分。Context Signature 继续负责确定性身份和精确统计，Applicability Judgment 只负责可审计的跨 Context 判断。
+
+#### Evidence Provenance 与 Trust Judgment
+
+每个长期 Evidence Fact 必须包含以下独立维度：
+
+```yaml
+evidence_origin: official
+acquisition_method: model_extracted
+verification_status: inferred
+provenance_refs: []
+```
+
+- `evidence_origin` 固定为 `runtime | user | official | project | external`；
+- `acquisition_method` 固定为 `direct | tool_observed | model_extracted | imported`；
+- `verification_status` 固定为 `verified | confirmed | inferred | unverified`；
+- 模型摘要官方文档时，Origin 仍是 `official`，模型只体现在 Acquisition Method；
+- Provenance 链必须闭合到原始 EvidenceRef，摘要或转换不能提高原始来源可信度。
+
+Evidence Trust 使用正式 Judgment Envelope：
+
+Content Classification 也使用正式 Judgment Envelope，并由独立分类协议生成：
+
+```yaml
+judgment_type: content_classification
+content_classification:
+  evidence_ref: {}
+  contains_instructional_content: true
+  contains_sensitive_content: false
+  classifier_policy_ref:
+    policy_id: content_classifier_policy_v1
+    policy_type: content_classifier
+    content_sha256: sha256_...
+```
+
+正式 `ContentClassificationRef` 是指向该 Judgment 的受约束 JudgmentRef，必须携带 Scope、`judgment_type=content_classification`、Judgment ID 和内容 Hash。
+
+```yaml
+judgment_type: evidence_trust
+evidence_trust:
+  evidence_ref: {}
+  content_classification_ref:
+    scope: project
+    judgment_type: content_classification
+    judgment_id: judgment_classification_01K...
+    content_sha256: sha256_...
+  trust_policy_ref:
+    policy_id: trust_policy_v1
+    policy_type: trust
+    content_sha256: sha256_...
+  evaluated_at: "..."
+  instructional_content_allowed: false
+  promotion_eligible: false
+```
+
+`instructional_content_allowed` 和 `promotion_eligible` 由 Trust Policy 计算，Evidence 来源或模型不得自行设置。外部网页、README、Issue 评论和未知 Tool 输出默认是数据而非指令；单独的 `external + unverified` 不能推动高影响操作策略晋升。Trust Policy 属于安全根，不能由 Mnemosyne 自进化修改。
+
+#### Freshness Evaluation
+
+Freshness 独立于 Lifecycle、Health 和有效性：
+
+```yaml
+judgment_type: freshness_evaluation
+freshness_evaluation:
+  memory_ref: {}
+  result: aging
+  evaluated_at: "..."
+  freshness_policy_ref:
+    policy_id: freshness_policy_v1
+    policy_type: freshness
+    content_sha256: sha256_...
+  basis_refs: []
+```
+
+`result` 固定为 `fresh | aging | needs_revalidation`。时间流逝不能单独产生 `frozen`、`superseded`、`archived` 或“无效”结论：`aging` 只降低同级排序，`needs_revalidation` 只进入观察候选并触发 Revalidation。有效性仍由 Revision、Evidence、Contradiction、Health 和 Lifecycle 协议决定。
+
+#### Policy Fact 与历史可解释性
+
+Freshness、Trust、Content Classifier、Index 和 Benchmark Policy 保存在 `facts/policies/<policy-id>.json`，至少包含 Policy ID、Policy Type、Schema Version、规范配置、`content_sha256` 和创建时间。`policy_type` 固定为 `freshness | trust | content_classifier | index | benchmark`。Policy 更新创建新 Fact，不覆盖旧版本；旧 Evaluation/Judgment 永久保留。
+
+```yaml
+schema_version: 1
+policy_id: freshness_policy_v1
+policy_type: freshness
+policy_version: 1
+config: {}
+content_sha256: sha256_...
+created_at: "..."
+```
+
+Policy Fact 使用按 `policy_type` 判别的严格 `config` 联合 Schema，未知字段拒绝。对应历史 Policy Evaluator 必须随 OMR 保留；只有 JSON 存在但 Evaluator 不可用时，Doctor 阻断历史重建，不能用当前 Policy 代替。
+
+正式 `PolicyRef` 固定包含 `policy_id + policy_type + content_sha256`，三者必须与目标 Policy Fact 完全一致。任何 Evaluation/Judgment 不得使用裸 Policy ID、文件路径或“当前最新策略”作为不可审计引用。
+
+Generation Input Manifest 必须记录当时采用的 Policy ID/Hash、Content Classification、Evaluation/Judgment 和 `evaluated_at`。当前派生状态使用当前适用 Policy 的最新合法结果，历史 Generation 继续使用当时固定的判断，保证可解释、可重建。
 
 ## 6.3 记忆身份模型
 
@@ -801,10 +1032,20 @@ evidence:
 changes:
   applies_when:
     add:
-      - manifest exists
+      - condition_id: condition_manifest_exists
+        subject: project
+        subject_ref: null
+        field: manifest_exists
+        operator: equals
+        value: true
   does_not_apply_when:
     add:
-      - first-time installation
+      - condition_id: condition_first_install
+        subject: project
+        subject_ref: null
+        field: first_time_installation
+        operator: equals
+        value: true
 expected_result:
   revision: 3
 ```
@@ -1203,9 +1444,70 @@ frozen_pages_used: []
 
 父 Agent 必须亲自读取其决定采用的页面，不能只依据 Librarian 摘要执行高影响操作。
 
+#### 8.8.1 Episodic Recall
+
+Librarian 必须同时支持两条受控读取路径：
+
+```text
+Semantic / Procedural Recall
+→ Pattern / Strategy / Decision / Playbook
+
+Episodic Recall
+→ Episodic Index
+→ 脱敏 Episode Card
+→ 必要时按 EvidenceRef 核验规范事实
+```
+
+Episodic Recall 用于回答“过去是否发生过相似但尚未形成稳定 Pattern 的事件”。它可以按 Component、Operation、Task Class、Failure Concept、Environment、时间范围、Outcome 和文本字段导航，不依赖 Embedding。
+
+Episode、Evidence 和 Context Descriptor 是规范事实；Episode Card 与 Episodic Index 是 Generation 内的派生读取表示：
+
+```yaml
+EpisodeCard:
+  episode_ref: episode_01K...
+  episode_content_sha256: sha256_...
+  evidence_set_sha256: sha256_...
+  context_descriptor_ref: context_01K...
+  compiler_version: episode_card_compiler_v1
+  generation_ref: gen_project_000013
+  card_sha256: sha256_...
+```
+
+硬约束：
+
+- Card 只能由脱敏 Episode、Evidence 和 Context Descriptor 编译，不能独立编辑；
+- Card 摘要不能反向覆盖 Episode，也不能获得比原始 Evidence 更高的权威；
+- Card 默认只显示组件、操作、任务类、Failure Concept、环境摘要、时间、Outcome 和 EvidenceRef；
+- 完整命令、完整模型输出、凭据和无必要轨迹不得进入 Card；
+- 删除全部 Card 和 Episodic Index 后必须能从规范事实确定性重建；
+- Card 的输入 Hash、编译器版本或输出 Hash 漂移时 Doctor 报错；
+- Episodic Recall 命中只记录 `retrieved/read`，不能直接计为 Memory 的 help/harm。
+
+#### 8.8.2 Retrieval Miss Evaluation
+
+以下任一条件可以触发 Retrieval Audit：
+
+- 任务失败；
+- Librarian 返回空候选；
+- 父 Agent 明确报告缺少历史经验；
+- 固定比例的采样审计；
+- 用户主动 Review；
+- Benchmark Fixture 要求 Oracle 比较。
+
+Retrieval Critic 必须在原 Retrieval 固定的 Project/Global Generation Pair 中复查候选，不得读取未来 `CURRENT`。输出通过 6.2.3 的 RetrievalEvaluation 和 Retrieval Relevance Judgment 保存。
+
+```text
+missed_relevant
+→ 生成 Alias / Relation / Index / Query 路由修复候选
+→ 编译新 Generation
+→ 使用同一 Fixture 或固定候选世界回放
+```
+
+线上 Critic 不是 Oracle。`retrieval_critic` 的 `no_relevant_memory` 只表示在指定范围和证据下未发现相关记忆，不能证明全库绝对不存在；不确定时必须输出 `unknown`，候选世界不可重建时必须输出 `unavailable`。Retrieval Audit 自身失败不得惩罚任何 Memory，也不得改变原任务退出码。
+
 ### 8.9 不设置固定读取预算
 
-Mnemosyne 不设置固定页面数量、固定 Token 数量或固定索引层数限制。复杂任务可以根据需要继续展开记忆，避免在接近正确知识时因硬预算被迫停止。
+Mnemosyne 不设置一次 Retrieval 的固定总页面数量、固定总 Token 数量或固定总导航层数。复杂任务可以根据需要跨多个确定性分片继续展开记忆，避免在接近正确知识时因硬预算被迫停止。Index Policy 的 `max_shard_depth` 只约束单棵派生索引树的编译拓扑，不限制 Librarian 在多个索引和证据路径中的总读取深度。
 
 使用行为停止条件：
 
@@ -1239,6 +1541,7 @@ Librarian 输出检索结果，证明“找到了哪些记忆”；父 Agent 输
       "memory_id": "mem_abc",
       "revision": 2,
       "stage": "affected",
+      "observation_source": "agent_reported",
       "application": "用于决定先检查资产来源再执行升级恢复"
     }
   ]
@@ -1252,6 +1555,8 @@ Prompt 必须明确：
 - 回执不能包含完整模型思考、凭据或无必要的命令正文；
 - 缺少合法回执时只能记录为 `read` 或 `unknown`，不能参与成功和失败计分；
 - 后续方案 C 即使增加宿主事件，也继续兼容相同 Schema。
+
+Prompt 回执只是输入协议。OMR 捕获该回执所在的 Reasonix Event 后，必须把 `observation_source` 规范化为 12.2 的完整 `observation_provenance` 并附加 EvidenceRef；无法绑定事件时不得把 `affected` 写成可计分事实。
 
 ### 8.11 记忆优先级与同级排序
 
@@ -1273,12 +1578,13 @@ OMR 根据结构化状态与客观使用证据确定同类候选顺序
 3. applies_when / does_not_apply_when 是否匹配
 4. Scope、Pinned 和 Lifecycle 层级
 5. Health 层级
-6. 当前 Revision + Context 中与 Usage Policy 匹配的证据强度
-7. 对应证据覆盖的独立 Episode、Evidence 来源或 Project Family 数
-8. 确定性随机 Tie Break
+6. Freshness 层级
+7. 当前 Revision + Context 中与 Usage Policy 匹配的证据强度
+8. 对应证据覆盖的独立 Episode、Evidence 来源或 Project Family 数
+9. 确定性随机 Tie Break
 ```
 
-第 6～7 层按 Usage Policy 分流：
+第 7～8 层按 Usage Policy 分流：
 
 | Usage Policy | 证据强度 | 覆盖广度 |
 |---|---|---|
@@ -1302,7 +1608,7 @@ OMR 根据结构化状态与客观使用证据确定同类候选顺序
 全局 probation
 ```
 
-Health 顺序固定为 `healthy > degraded`；`frozen` 已在候选过滤阶段排除。Pinned 只是人工优先提示，不能绕过用户本次要求、适用条件、项目冲突、安全规则或冻结协议，也不能使 Frozen Memory 重新进入正常索引。第一版不增加任意数字型人工优先级。
+Health 顺序固定为 `healthy > degraded`；Freshness 顺序固定为 `fresh > aging > needs_revalidation`，其中 `needs_revalidation` 只能进入观察候选；`frozen` 已在候选过滤阶段排除。Pinned 只是人工优先提示，不能绕过用户本次要求、适用条件、项目冲突、安全规则或冻结协议，也不能使 Frozen Memory 重新进入正常索引。第一版不增加任意数字型人工优先级。
 
 对 `outcome_attributed`，只有完成以下完整链路的使用才增加 `counted_help_count` 排序权重：
 
@@ -1352,6 +1658,7 @@ revision: 2
 context_signature: ctx_go_macos
 lifecycle: active
 health: healthy
+freshness: fresh
 pinned: false
 usage_policy: outcome_attributed
 policy_evidence_strength: 8
@@ -1549,6 +1856,22 @@ health: degraded
 | `healthy` | 当前 Context 没有达到降级条件 |
 | `degraded` | 存在经过验证的负面使用证据，但未达到冻结条件 |
 
+#### 11.2.1 Freshness 与 Revalidation
+
+Freshness 是独立派生维度，不替代 Lifecycle、Health 或有效性判断：
+
+```yaml
+freshness: aging
+```
+
+| Freshness | 正常读取行为 | 含义 |
+|---|---|---|
+| `fresh` | 正常候选 | 已按当前 Freshness Policy 和相关依赖完成近期验证 |
+| `aging` | 同级降权 | 距离上次验证较久，但没有失效证据 |
+| `needs_revalidation` | 仅观察候选 | 依赖、版本、来源或环境变化，需要重新验证 |
+
+Freshness 由版本化 Freshness Policy、Freshness Evaluation Judgment、Dependency/Version Evidence 和当前评估时间派生。仅因时间流逝不得自动 Freeze、Supersede、Archive 或删除；Revalidation 产生新 Evidence Generation、Judgment 或 Revision，并继续使用既有生命周期协议。
+
 ### 11.3 人工优先标记
 
 ```yaml
@@ -1638,12 +1961,24 @@ evaluated  → 最终结果完成归因
   "context_signature": "sha256_...",
   "context_descriptor_ref": "context_01K...",
   "stage": "affected",
+  "observation_provenance": {
+    "source": "agent_reported",
+    "evidence_ref": {
+      "scope": "project",
+      "evidence_type": "reasonix_event",
+      "evidence_id": "event_01K...",
+      "content_sha256": "sha256_..."
+    },
+    "judgment_ref": null
+  },
   "application": "用于决定先检查资产来源再执行升级恢复",
   "created_at": "2026-08-07T00:00:00Z"
 }
 ```
 
 `retrieved` 和 `read` 只能用于衡量检索质量，不能用于记忆正确性判定。缺少合法回执时，结果不得自动提升为 `adopted` 或 `affected`。
+
+`observation_provenance.source` 固定为 `agent_reported | runtime_observed | user_confirmed`。第一阶段 Prompt 回执必须标记为 `agent_reported` 并引用承载该结构化回执的 Reasonix Event EvidenceRef，不能伪装成 Runtime 客观事件；`runtime_observed` 必须引用 Reasonix 公开事件 EvidenceRef；`user_confirmed` 必须引用 Confirmation JudgmentRef。前两类的 `judgment_ref` 必须为 `null`，后一类的 `evidence_ref` 可以作为支持证据但不能替代 Judgment。没有与来源匹配的 Provenance 时，最多保留为 `read/unknown`，不得进入正负计分。
 
 ## 13. 结果归因与生命周期计算
 
@@ -2161,6 +2496,38 @@ OMR 不仅进化知识内容，也需要进化“如何找到知识”。
 
 索引修改必须可从 Wiki 页面重新构建和校验。
 
+### 16.1 确定性 Fan-out 与自动分片
+
+任何根索引、局部索引或 Episodic Index 都不能无限增长。版本化 Index Policy 至少定义：
+
+```yaml
+schema_version: 1
+policy_id: index_policy_v1
+policy_type: index
+max_entries_per_index: 200
+max_bytes_per_index: 65536
+max_shard_depth: 4
+shard_order:
+  - component
+  - operation
+  - memory_type
+  - stable_id_prefix
+content_sha256: sha256_...
+```
+
+具体阈值属于可版本化 Policy 配置，以上是首版默认值；更改阈值创建新 Policy Fact，不修改历史 Generation。任一上限达到时，编译器必须按 `component → operation → memory_type → stable_id_prefix` 的固定顺序选择第一个能产生有效分片的维度；条目缺少该维度时进入稳定的 `_other` 分片，仍超限时继续按下一维递归分片。
+
+分片必须满足：
+
+- 相同 Fact 集合、Policy、Compiler Version 得到相同目录、顺序和 Hash；
+- `max_bytes_per_index` 按规范 UTF-8 渲染后的字节数计算；
+- 根索引只保存分片摘要、路由条件、条目数和链接；
+- 分片不能改变 Memory ID、Scope、Lifecycle、排序和正常检索资格；
+- 分片重排只生成新派生 Generation，不增加知识 Revision；
+- Index Policy 和分片输出进入 Generation Input Manifest；
+- 单索引尺寸限制不等于 Librarian 总页面或 Token 读取预算；
+- 无法在最大层数内满足 Policy 时编译失败并由 Doctor 报错，不生成截断索引。
+
 ## 17. 事务一致性与崩溃恢复
 
 Mnemosyne 的一次记忆变更可能同时影响事实记录、记忆正文、关系、局部索引、根索引、生命周期状态和审计记录。单个文件的原子写入不能保证这些文件作为一个整体一致，因此禁止直接在当前 Wiki 上逐文件原地修改。
@@ -2257,7 +2624,7 @@ facts/generation-input-manifests/<generation-id>.json
 }
 ```
 
-`inputs` 必须完整列出该 Generation 实际采用的 MemoryRevision、MemoryEvidenceGeneration、Governance Event、MemoryUsage、Outcome、Judgment、Relation/Promotion 事实及其他规范输入。Confirmation 和 Attribution Override 都通过 Judgment Fact 纳入，不再使用无 ID/Hash 的旁路对象。条目按 `fact_type + fact_id` 去重并确定性排序，Hash 由程序读取规范事实后计算。
+`inputs` 必须完整列出该 Generation 实际采用的 Episode、Evidence、Context Descriptor、MemoryRevision、MemoryEvidenceGeneration、Governance Event、MemoryUsage、Outcome、RetrievalEvaluation、Judgment、Policy、Relation/Promotion 事实及其他规范输入。Confirmation、Attribution Override、Retrieval Relevance、Context Applicability、Content Classification、Evidence Trust 和 Freshness Evaluation 都通过 Judgment Fact 纳入，不再使用无 ID/Hash 的旁路对象。条目按 `fact_type + fact_id` 去重并确定性排序，Hash 由程序读取规范事实后计算。
 
 Manifest 不保存绝对路径、Prompt、模型思考、凭据或自由文本事实副本。它只保存稳定 Fact ID、类型、Schema Version 和内容 Hash。`input_manifest_sha256` 覆盖规范化后的完整输入条目与版本字段；`output_sha256` 必须和目标 Generation 的输出 Hash 一致。
 
@@ -2423,6 +2790,11 @@ omr memory list
 omr memory show <id>
 omr memory history <id>
 omr memory usage <id>
+omr memory episode list
+omr memory episode show <episode-id>
+omr memory retrieval audit <retrieval-id>
+omr memory revalidate <id>
+omr memory benchmark --manifest <path>
 
 omr memory freeze <id>
 omr memory unfreeze <id>
@@ -2507,7 +2879,7 @@ Health 使用独立 Badge：`healthy` 不额外强调，`degraded` 使用橙色 
 
 - 按类型、组件、失败分类和状态过滤；
 - 搜索标题、摘要和 alias；
-- 查看 Policy Evidence、Lifecycle、Health 和最近使用时间；
+- 查看 Policy Evidence、Lifecycle、Health、Freshness、Trust Decision 和最近使用时间；
 - 查看高价值、高风险和待 Review 记忆。
 
 ### 19.3 记忆详情
@@ -2557,6 +2929,12 @@ Web 页面不能绕过库级验证、Scope、安全检查和审计流程。
 - Memory Evidence Generation 是否单调、不可变，EvidenceRef 与集合 Hash 是否匹配；
 - Judgment Fact 的类型联合、Scope、Subject、来源、Hash 和 supersedes 链是否有效；
 - JudgmentRef/ConfirmationSourceRef 的 ID、类型、Scope 和 Hash 是否与事实一致；
+- RetrievalEvaluation 是否固定原 Retrieval 的 Project/Global Generation Pair 和对应 Input Manifest Hash；
+- Retrieval Relevance Judgment 的来源、范围、结果和引用是否有效，是否把线上 Critic 伪装成 Fixture Oracle；
+- Context Applicability Judgment 是否引用合法目标 Context、Memory Revision 和结构化 Condition ID；
+- Evidence Origin、Acquisition Method、Verification Status 和 Provenance 是否完整，Trust Judgment 是否引用可用 Policy ID/Hash；
+- Freshness Evaluation 的 `evaluated_at`、Policy ID/Hash 和 basis_refs 是否完整，是否错误改写 Lifecycle/Health；
+- Policy Fact 是否严格、不可变、Hash 匹配，历史 Generation 所需 Policy 版本是否仍可用；
 - 所有 `usage_policy=explicit_confirmation` 的 Revision 是否携带合法 `confirmation_source_ref`；
 - OKF Page 是否严格由 MemoryRevision、当前 MemoryEvidenceGeneration 和 DerivedMemoryState 组合编译；
 - Governance Event 的操作、目标 Revision、来源和 basis_refs 是否有效；
@@ -2590,11 +2968,29 @@ Web 页面不能绕过库级验证、Scope、安全检查和审计流程。
 - Pinned、Archived 和人工冻结是否能从 Governance Event 与其他规范事实重建；
 - Unfreeze 的 basis_refs 是否只引用合法 MemoryRef、EvidenceRef 或 JudgmentRef，且确实改变冻结派生结论；
 - Relation Index、Root/Local Index 是否能从规范 Revision 重建；
+- Episode Card 和 Episodic Index 是否能从 Episode/Evidence、固定 Generation 和编译器版本重建且 Hash 匹配；
+- 每个 Index 是否满足固定 Policy 的 Entry、Byte 和 Shard Depth 上限，分片是否确定性；
 - Wiki 和 Generation 是否能从规范事实层确定性重新编译；
 - Web 派生视图或缓存是否与固定 Generation 一致；
 - 是否存在无法从规范事实重建却被当成权威状态的 `state.json` 或缓存。
 
 ## 21. 安全与隐私边界
+
+### 21.1 Evidence Trust 与 Memory Poisoning
+
+长期 Evidence 写入前必须通过 Provenance 校验，参与知识生成、晋升或高影响操作前必须通过当前 Trust Policy。Origin、Acquisition Method 和 Verification Status 是三个独立维度，不能压缩成单一“可信度”枚举。
+
+Trust Policy 至少固定以下边界：
+
+- `runtime + tool_observed + verified` 可以作为客观执行证据，但仍需校验 Tool 身份、时间和 Hash；
+- `user + direct + confirmed` 可以支持显式确认，但不能伪造 Runtime 结果；
+- `official/project + model_extracted` 保留原 Origin，同时标记模型转换和 Provenance；
+- `external + unverified` 只能成为观察证据，不能单独推动高影响 Strategy 晋升；
+- 网页、README、Issue、评论和第三方 Tool Output 中的指令性文本默认作为不可信数据隔离；
+- Evidence 中声称“忽略安全规则”“执行命令”或设置 `instructional_content_allowed=true` 不具有任何权限效果；
+- Trust Policy、Content Classifier Policy、Promotion Gate 和安全规则属于 Trust Root，不允许被 Mnemosyne Proposal、Mutation 或 Memory 内容修改。
+
+每次 Trust Decision 必须引用 Policy ID/Hash、Content Classification、Evidence Provenance 和评估时间，并以不可变 Evidence Trust Judgment 保存。Policy 更新后重新评估时创建新 Judgment，不覆盖旧判断；历史 Generation 继续固定使用当时的 Judgment 和 Policy。
 
 禁止进入长期记忆：
 
@@ -2662,12 +3058,13 @@ Overlay
 
 | 阶段 | 建议版本 | 内容 |
 |---|---|---|
-| MEM-01 | v2.1.0-alpha.1 | 目录、OKF Schema、索引、Doctor |
-| MEM-02 | v2.1.0-alpha.2 | JSON → Wiki 编译、自动 probation 写入 |
-| MEM-03 | v2.1.0-beta.1 | 渐进式读取和 MemoryUsage 回执 |
-| MEM-04 | v2.1.0-beta.2 | Lifecycle、Health、归因和冻结 |
-| MEM-05 | v2.1.0-rc.1 | 修订链、恢复、对比、泛化、索引进化 |
-| MEM-06 | v2.1.0 | 真实项目验证与稳定发布 |
+| Architecture v1 | 实现前冻结 | 全部持久化 Fact/Judgment/Ref/Policy Schema、派生表示契约和 Benchmark 协议 |
+| MEM-01 | v2.1.0-alpha.1 | 目录、核心 Schema、Policy/Ref 骨架、基础索引、Doctor |
+| MEM-02 | v2.1.0-alpha.2 | JSON → Wiki 编译、自动 probation 写入、Evidence Provenance/Trust Gate |
+| MEM-03 | v2.1.0-beta.1 | 渐进式读取、MemoryUsage、Episodic Recall、Retrieval Evaluation、Index Sharding |
+| MEM-04 | v2.1.0-beta.2 | Lifecycle、Health、归因、Context Applicability、Freshness 和冻结 |
+| MEM-05 | v2.1.0-rc.1 | 修订链、Revalidation、恢复、对比、泛化、索引进化 |
+| MEM-06 | v2.1.0 | Memory Quality Benchmark、真实项目验证与稳定发布 |
 | WEB-01 | v2.2.0-alpha.1 | 本地只读列表、详情和图谱 |
 | WEB-02 | v2.2.0-beta.1 | 管理操作、审计、Snapshot 和回滚 |
 | WEB-03 | v2.2.0 | 完整本地记忆管理页面 |
@@ -2675,6 +3072,8 @@ Overlay
 版本号只是建议，实施前可以根据现有 Tag 状态重新冻结。
 
 ## 25. 自动化验收标准
+
+### 25.1 协议与工程验收
 
 实现时至少覆盖：
 
@@ -2719,6 +3118,11 @@ Overlay
 - 唯一 help/harm 协议在 Gate、统计、排序、晋升和冻结中保持一致；
 - adopted、likely、未 affected 或未 evaluated 的 Usage 永不进入正负计分；
 - Context Signature 可以从版本化 Context Descriptor 确定性重算；
+- Context Applicability Judgment 对 `unknown` 不强制采用，`conditionally_applicable` 只引用 Revision 中合法的结构化 Condition ID；
+- 同一历史 Retrieval 只能在其固定 Project/Global Generation Pair 中审计，不能使用未来 `CURRENT`；
+- 线上 Retrieval Critic 与 Fixture Oracle 身份明确分离，Critic 不确定时产生 `unknown/unavailable`；
+- 已存在相关 Memory 但 Librarian 漏召回时能够生成可审计 RetrievalEvaluation，并通过固定候选世界回放索引修复；
+- MemoryUsage 的 `agent_reported/runtime_observed/user_confirmed` 来源可区分且引用证据完整；
 - 同一 Root Task 的 retry 不会重复贡献独立 Episode；
 - 第三方或基础设施失败在记忆影响为 neutral/unknown 时不计入负面结果；
 - helped 会参与负面比例计算，但不会删除历史失败证据；
@@ -2742,6 +3146,13 @@ Overlay
 - 仍满足冻结条件时 `unfreeze` 被拒绝且零写入；只有 Attribution Override、新 Evidence Generation 或新 Revision 改变派生结论后才能恢复；
 - 多条记忆可以生成 generalized memory；
 - 根索引和局部索引可确定性重建；
+- Episode Card 和 Episodic Index 可从 Episode/Evidence 重建，不能反向覆盖规范事实；
+- 尚未归纳成 Memory 的罕见 Episode 可以通过受控 Episodic Recall 找到；
+- Index 达到 Entry/Byte 上限时按版本化 Policy 确定性分片，超过最大深度时拒绝截断输出；
+- Freshness 的时间变化不会自动产生冻结、归档或无效结论，Revalidation 创建新事实而不覆盖历史；
+- Evidence Origin、Acquisition Method、Verification Status 和 Provenance 独立保存；
+- 不可信外部内容不能自行取得指令权限，也不能单独推动高影响 Strategy 晋升；
+- Trust/Freshness/Index Policy 更新保留旧版本，历史 Generation 继续使用当时 Policy 和 Judgment 精确重建；
 - Wiki 可以从 JSON 事实层重建；
 - 每个 Generation 的 Input Manifest 永久记录实际采用的 Fact ID、Hash、Schema Version、Compiler Version 和 Canonicalization Version；
 - 后续追加 Episode、Usage 或 Governance Event 不改变历史 Generation 的精确重建输入集合；
@@ -2781,6 +3192,66 @@ Overlay
 - Web 操作不能绕过库级约束；
 - 不存在向量数据库或 Embedding 依赖。
 
+### 25.2 Memory Quality Benchmark
+
+工程门禁只能证明存储、协议和重建正确，不能证明 Agent 找得到、读得懂、用得对或任务表现更好。MEM-06 稳定发布前必须冻结任务集、模型、Reasonix/OMR 版本、温度、重复次数和评分器，执行同一任务的配对对照：
+
+```text
+Reasonix + Mnemosyne
+vs
+Reasonix without Mnemosyne
+```
+
+Benchmark 分三层：
+
+| 层 | 必须报告的指标 |
+|---|---|
+| Retrieval | Recall@K、Precision@K、Missed Relevant Memory Rate、Irrelevant Hit Rate、Revalidation-Due Primary Recall Rate、Latency、Token Cost |
+| Reading / Adoption | Applicable Memory Selection Rate、Wrong Memory Adoption Rate、Abstention Accuracy、Episode/Memory 引用正确率 |
+| Downstream Task | Task Success、测试通过率、误修改率、人工纠偏、失败分类、Token、成本、耗时、回滚率 |
+
+每轮正式 Benchmark 必须在执行前冻结机器可读 Manifest：
+
+```yaml
+schema_version: 1
+benchmark_id: mnemosyne_quality_v1
+fixture_set_sha256: sha256_...
+environment_ref: env_...
+reasonix_version: v...
+omr_version: v...
+model_ref: ...
+temperature: 0
+repetitions: 3
+retrieval_k: 5
+primary_metrics:
+  - retrieval_recall_at_k
+  - wrong_memory_adoption_rate
+  - downstream_task_success
+gates:
+  - metric: retrieval_recall_at_k
+    operator: greater_than_or_equal
+    threshold: 0.80
+  - metric: wrong_memory_adoption_rate
+    operator: less_than_or_equal
+    threshold: 0.05
+  - metric: downstream_task_success_delta
+    operator: greater_than_or_equal
+    threshold: 0
+manifest_sha256: sha256_...
+```
+
+首版默认阈值如上；正式运行可以通过版本化 Benchmark Policy 调整，但必须在看到结果前冻结并记录 Hash，不能事后修改成功标准。稳定发布至少要求所有预注册 Gate 通过、无安全/治理回归，并公开未通过指标；通过 Gate 只支持该 Fixture/模型/版本范围内的结论，不外推为通用模型能力提升。
+
+要求：
+
+- Retrieval Fixture 必须有人工冻结或确定性生成的 Oracle Relevant Set；线上 Retrieval Critic 结果不能冒充 Oracle；
+- Fixture 覆盖信息提取、跨 Episode 推理、时间变化、知识更新、冲突、Needs-Revalidation Memory、无相关记忆时 Abstention 和 Memory Poisoning；
+- 同一任务至少运行预先冻结的重复次数，A/B 两组使用相同项目快照、模型、Prompt 之外的环境和验收器；
+- 分别报告 Indexing、Retrieval、Reading/Adoption 和最终执行，不能用任务成功掩盖漏召回或错误采用；
+- 观察期不足、样本不足或无法配对时标记 `insufficient_evidence`，不得宣称 Mnemosyne 提升模型质量；
+- 稳定发布必须公开机器可读汇总和脱敏报告，不提交完整模型思考、凭据、绝对路径或用户私有内容；
+- Benchmark 失败可以触发 Architecture Amendment；单次线上 Critic 判断不能修改 Benchmark Oracle。
+
 ## 26. Specification Convergence Docs Gate
 
 Mnemosyne 进入 MEM-01 前，本文必须作为正式实现规格通过以下 Gate：
@@ -2803,6 +3274,18 @@ Docs Gate 还必须执行面向本文的确定性静态检查，至少拒绝：
 - `usage_policy=explicit_confirmation` 的 Revision 缺少合法 `confirmation_source_ref`；
 - Confirmation Source 或 Attribution Override 没有不可变 Judgment Fact、正式 Ref、Scope 和 Hash；
 - JudgmentRef/ConfirmationSourceRef 与目标 Judgment 的 ID、类型、Scope 或 Hash 不一致；
+- RetrievalEvaluation 未固定原 Retrieval 的 Project/Global Generation Pair，或用未来 `CURRENT` 评价历史检索；
+- 在 RetrievalEvaluation 与 Judgment 中重复保存可能不一致的 Authority；
+- 把线上 Retrieval Critic 的结果伪装成 Fixture Oracle 或客观全库真相；
+- Episode Card、Episodic Index、Freshness、Trust Gate 或 Index Shard 被当作第二事实源；
+- Episode Card 可独立编辑、反向覆盖 Episode，或缺少输入 Hash、Generation Ref 和 Compiler Version；
+- Context Applicability 缺少 `unknown`，使用含糊方向关系，或 `conditionally_applicable` 引用自由文本条件；
+- `applies_when/does_not_apply_when` 使用自由文本机器条件而不是唯一 ApplicabilityCondition Schema；
+- Freshness 混入“无效”结论，或仅因时间流逝自动 Freeze/Archive；
+- Evidence Trust 把 Origin、Acquisition Method 和 Verification Status 混成单一枚举；
+- Evidence 或模型能够自行设置指令权限，或 Trust Policy 能被 Memory Mutation 修改；
+- Trust/Freshness/Index 派生结果缺少 Policy ID/Hash、评估时间或历史固定版本；
+- 单个 Index 可以无限增长，或分片不由版本化 Policy 确定性重建；
 - MemoryRevision 包含可变 EvidenceRef 集合，或 `append_evidence` 原地修改既有 Revision/Evidence Generation；
 - OKF Page 未按 `MemoryRevision + 当前 MemoryEvidenceGeneration + DerivedMemoryState` 编译；
 - 未携带版本和 Descriptor Ref 的 Context Signature；
@@ -2838,6 +3321,17 @@ Docs Gate 还必须执行面向本文的确定性静态检查，至少拒绝：
 5. Docs Gate 通过；
 6. 文档状态标记为“正式实现规格”；
 7. 后续 Review 默认检查代码是否违反规格，不继续扩张架构。
+8. Retrieval Miss、Episodic Recall、Evidence Trust、Context Applicability、Freshness、Index Sharding 和 Memory Quality Benchmark 的持久化 Schema 与派生契约全部冻结。
+
+Architecture v1 冻结后，只有以下证据可以触发 Architecture Amendment：
+
+- Implementation Failure；
+- Fixture Failure；
+- Benchmark Failure；
+- Security Finding；
+- 无法满足的明确 Reasonix 宿主约束。
+
+新的理论能力设想只能进入未来候选列表，不能直接修改 Architecture v1。Amendment 必须包含失败证据、受影响契约、迁移策略、回归测试和 Docs Gate 更新。
 
 ## 27. 明确非目标
 
@@ -2879,6 +3373,12 @@ Revision 事实、Mutation 审计与可重建派生状态
         +
 相关性优先、Policy Evidence 增强、确定性随机探索
         +
+Retrieval Miss Audit 与受控 Episodic Recall
+        +
+Context Applicability、Freshness/Revalidation 与 Evidence Trust
+        +
+确定性 Index Sharding 与 Memory Quality Benchmark
+        +
 CLI 与本地 Web 图谱人工管理
 ```
 
@@ -2892,4 +3392,4 @@ OMR 记忆采用 `project + global + portable` 三层 Scope。原始事实默认
 
 > OMR Mnemosyne 是基于 OKF 和渐进式披露构建的长期记忆与经验进化系统。它不使用向量数据库，通过结构化索引和显式知识关系，让 Reasonix 自动积累、使用、修订、冻结和泛化工程经验，同时为用户提供完整的人工管理与图谱观察能力。
 
-本文自 Docs Gate 通过起作为 Mnemosyne 的正式实现契约。MEM-01 及后续 Review 默认检查代码、Schema、Fixture 和 CLI 是否符合本文；除非真实实现证据证明契约存在阻塞性缺陷，不再继续扩张架构范围。
+本文自 Docs Gate 通过起作为 Mnemosyne Architecture v1 的正式实现契约。MEM-01 及后续 Review 默认检查代码、Schema、Fixture 和 CLI 是否符合本文；除非 Implementation Failure、Fixture Failure、Benchmark Failure、Security Finding 或明确宿主约束提供可复现证据，不再继续扩张架构范围。

@@ -59,7 +59,9 @@ mnemosyne_required=(
   'facts/memory-revisions/'
   'facts/memory-evidence-generations/'
   'facts/governance-events/'
+  'facts/retrieval-evaluations/'
   'facts/judgments/'
+  'facts/policies/'
   'Judgment Fact 未知字段拒绝、永久不可变'
   '撤销确认或修正 Override 必须创建新 Judgment'
   'facts/generation-input-manifests/'
@@ -76,6 +78,23 @@ mnemosyne_required=(
   '任何 `usage_policy=explicit_confirmation` 的 MemoryRevision 都必须携带合法 `confirmation_source_ref`'
   'Merge 主 ID 只按证据链完整度、创建时间和 memory_id 确定性选择'
   '任何派生状态都必须能够从规范事实源确定性重建'
+  'Architecture v1 — Frozen'
+  'RetrievalEvaluation'
+  'retrieval_relevance'
+  'Episodic Recall'
+  'Episode Card 与 Episodic Index 是 Generation 内的派生读取表示'
+  'context_applicability'
+  'ApplicabilityCondition'
+  'Evidence Provenance 与 Trust Judgment'
+  'ContentClassificationRef'
+  'PolicyRef'
+  'freshness_evaluation'
+  'observation_provenance'
+  '确定性 Fan-out 与自动分片'
+  'Memory Quality Benchmark'
+  'benchmark_id: mnemosyne_quality_v1'
+  'Implementation Failure'
+  'Benchmark Failure'
 )
 for required in "${mnemosyne_required[@]}"; do
   grep -q "$required" "$mnemosyne" || fail "Mnemosyne spec missing required contract '$required'"
@@ -95,6 +114,9 @@ mnemosyne_forbidden_active=(
   '查看 confirmed help/harm'
   '三次可归因失败后冻结'
   '成功采用次数更多'
+  '^[[:space:]]*freshness:[[:space:]]*invalidated'
+  '^[[:space:]]*source_context_ref:'
+  '^[[:space:]]*instructional_content_allowed:[[:space:]]*true'
 )
 for pat in "${mnemosyne_forbidden_active[@]}"; do
   if grep -En "$pat" "$mnemosyne"; then
