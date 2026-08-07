@@ -40,6 +40,81 @@ for pat in "${stale[@]}"; do
   fi
 done
 
+# --- 1b. Mnemosyne specification convergence -------------------------------
+mnemosyne="docs/OMR_EVOLUTION_MEMORY_OKF_ARCHITECTURE.zh-CN.md"
+[ -f "$mnemosyne" ] || fail "missing $mnemosyne"
+
+grep -q '状态：正式实现规格' "$mnemosyne" || fail "Mnemosyne spec is not formally frozen"
+
+mnemosyne_required=(
+  'project_generation'
+  'global_generation'
+  'MemoryRef'
+  'EvidenceRef'
+  'JudgmentRef'
+  'ConfirmationSourceRef'
+  'usage_policy'
+  'context_signature_version'
+  'context_descriptor_ref'
+  'facts/memory-revisions/'
+  'facts/memory-evidence-generations/'
+  'facts/governance-events/'
+  'facts/judgments/'
+  'Judgment Fact 未知字段拒绝、永久不可变'
+  '撤销确认或修正 Override 必须创建新 Judgment'
+  'facts/generation-input-manifests/'
+  'facts/memory-mutations/'
+  'GlobalPromotionCandidate'
+  'Global Promotion × Usage Policy'
+  'OKF Page = MemoryRevision + 当前 MemoryEvidenceGeneration + DerivedMemoryState'
+  'CURRENT.*切换前，构建目标 Generation 所需的全部规范事实必须已经安全落盘'
+  'prepared manifest'
+  'input_manifest_sha256'
+  'memory_compiler_version_unavailable'
+  'Generation Input Manifest 必须在 staging 验证完成后、`CURRENT` 切换前安全落盘'
+  'child specializes parent'
+  '任何 `usage_policy=explicit_confirmation` 的 MemoryRevision 都必须携带合法 `confirmation_source_ref`'
+  'Merge 主 ID 只按证据链完整度、创建时间和 memory_id 确定性选择'
+  '任何派生状态都必须能够从规范事实源确定性重建'
+)
+for required in "${mnemosyne_required[@]}"; do
+  grep -q "$required" "$mnemosyne" || fail "Mnemosyne spec missing required contract '$required'"
+done
+
+# Legacy forms may be named in the gate/migration prose, but must not appear
+# as active commands, paths, or Schema fields.
+mnemosyne_forbidden_active=(
+  '^[[:space:]]*omr evolve memory'
+  '^[[:space:]]*\.reasonix/omr/evolution/wiki/'
+  '^[[:space:]]*not_for:'
+  '^[[:space:]]*failure_classes:'
+  '^[[:space:]]*confidence:'
+  '^[[:space:]]*(success_count|failure_count|helped_count|harmed_count):'
+  '^[[:space:]]*"(success_count|failure_count|helped_count|harmed_count)"[[:space:]]*:'
+  '原样恢复：`frozen → probation`'
+  '查看 confirmed help/harm'
+  '三次可归因失败后冻结'
+  '成功采用次数更多'
+)
+for pat in "${mnemosyne_forbidden_active[@]}"; do
+  if grep -En "$pat" "$mnemosyne"; then
+    fail "Mnemosyne spec contains active legacy form '$pat'"
+  fi
+done
+
+mutation_plan=$(sed -n '/^## 6\.8 MemoryMutationPlan/,/^## 6\.9 /p' "$mnemosyne")
+if printf '%s\n' "$mutation_plan" | grep -Eq 'before_content_sha256|after_content_sha256|content_sha256:[[:space:]]*sha256_(old|new)'; then
+  fail "Mnemosyne MemoryMutationPlan lets the model supply trusted before/after hashes"
+fi
+
+line_10_1=$(grep -n '^### 10\.1 ' "$mnemosyne" | cut -d: -f1)
+line_10_2=$(grep -n '^### 10\.2 ' "$mnemosyne" | cut -d: -f1)
+line_10_3=$(grep -n '^### 10\.3 ' "$mnemosyne" | cut -d: -f1)
+if [ -z "$line_10_1" ] || [ -z "$line_10_2" ] || [ -z "$line_10_3" ] || \
+   [ "$line_10_1" -ge "$line_10_2" ] || [ "$line_10_2" -ge "$line_10_3" ]; then
+  fail "Mnemosyne section 10 order is inconsistent"
+fi
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"
