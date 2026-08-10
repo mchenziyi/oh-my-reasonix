@@ -28,6 +28,20 @@ const (
 	CodeImmutableConflict Code = "memory_store_immutable_conflict"
 	CodeLockTimeout       Code = "memory_store_lock_timeout"
 	CodeCorruptFile       Code = "memory_store_corrupt_file"
+	// Generation transaction codes (MEM-01D).
+	CodeGenerationTxConflict          Code = "memory_generation_transaction_conflict"
+	CodeGenerationIdempotency         Code = "memory_generation_idempotency_conflict"
+	CodeGenerationCurrentCAS          Code = "memory_generation_current_cas_conflict"
+	CodeGenerationManifestMismatch    Code = "memory_generation_manifest_mismatch"
+	CodeGenerationStagingInvalid      Code = "memory_generation_staging_invalid"
+	CodeGenerationCompilerUnavailable Code = "memory_generation_compiler_unavailable"
+	CodeGenerationRecoveryBlocked     Code = "memory_generation_recovery_blocked"
+	CodeGenerationAlreadyCommitted    Code = "memory_generation_already_committed"
+	CodeGenerationRecoveryPending     Code = "memory_generation_recovery_pending"
+	CodeGenerationAbortFailed         Code = "memory_generation_abort_failed"
+	// OKF compiler codes (MEM-01E).
+	CodeOKFInvalidInput Code = "memory_okf_invalid_input"
+	CodeOKFCompileError Code = "memory_okf_compile_error"
 )
 
 // Resource limits. These are implementation safety bounds, centralized here

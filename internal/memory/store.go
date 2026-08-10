@@ -21,6 +21,7 @@ const (
 	FactKindJudgment                 FactKind = "judgments"
 	FactKindPolicy                   FactKind = "policies"
 	FactKindGovernanceEvent          FactKind = "governance-events"
+	FactKindGenerationInputManifest  FactKind = "generation-input-manifests"
 )
 
 var allKinds = []FactKind{
@@ -29,6 +30,7 @@ var allKinds = []FactKind{
 	FactKindJudgment,
 	FactKindPolicy,
 	FactKindGovernanceEvent,
+	FactKindGenerationInputManifest,
 }
 
 func (k FactKind) valid() bool {
@@ -221,6 +223,19 @@ func (s *FactStore) ensureDir(rel []string) error {
 // immutable fact file. Identical identity+hash is a NOOP; identical identity
 // with a different hash fails closed with zero writes.
 func (s *FactStore) Put(ctx context.Context, fact Fact) (WriteResult, error) {
+	unlock, err := s.acquireWriteLock(ctx)
+	if err != nil {
+		return WriteResult{}, err
+	}
+	defer unlock()
+	return s.putLocked(ctx, fact)
+}
+
+// putLocked is Put with the assumption that the caller already holds the
+// store write lock. It is used by the generation transaction layer, which
+// holds the scope lock for the whole transaction lifetime and must never
+// re-acquire it (that would deadlock on the in-process guard).
+func (s *FactStore) putLocked(ctx context.Context, fact Fact) (WriteResult, error) {
 	if err := ctx.Err(); err != nil {
 		return WriteResult{}, storeError(CodeLockTimeout, "write cancelled")
 	}
@@ -253,12 +268,6 @@ func (s *FactStore) Put(ctx context.Context, fact Fact) (WriteResult, error) {
 		// refused, not truncated.
 		return WriteResult{}, storeError(CodeSchemaInvalid, "fact exceeds size limit")
 	}
-
-	unlock, err := s.acquireWriteLock(ctx)
-	if err != nil {
-		return WriteResult{}, err
-	}
-	defer unlock()
 
 	path, err := secureJoin(s.root, factPathComps(kind, comps), true, true)
 	if err != nil {
@@ -514,6 +523,8 @@ func factKey(f Fact) (FactKind, string, error) {
 		return FactKindPolicy, fmt.Sprintf("%s/%d", v.PolicyID, v.PolicyVersion), nil
 	case GovernanceEvent:
 		return FactKindGovernanceEvent, v.EventID, nil
+	case GenerationInputManifest:
+		return FactKindGenerationInputManifest, v.GenerationID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -528,6 +539,8 @@ func factScope(f Fact) (Scope, bool) {
 	case JudgmentFact:
 		return v.Scope, true
 	case GovernanceEvent:
+		return v.Scope, true
+	case GenerationInputManifest:
 		return v.Scope, true
 	default:
 		return "", false
@@ -567,6 +580,8 @@ func decodeKind(kind FactKind, data []byte) (Fact, error) {
 		return DecodeStrict[PolicyFact](data)
 	case FactKindGovernanceEvent:
 		return DecodeStrict[GovernanceEvent](data)
+	case FactKindGenerationInputManifest:
+		return DecodeStrict[GenerationInputManifest](data)
 	default:
 		return nil, storeError(CodePathUnsafe, "unknown fact kind")
 	}

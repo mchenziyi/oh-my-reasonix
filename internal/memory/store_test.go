@@ -20,7 +20,106 @@ func TestMain(m *testing.M) {
 		runStoreHelper()
 		os.Exit(0)
 	}
+	if os.Getenv("MEM_GEN_HELPER") == "1" {
+		runGenerationHelper()
+		os.Exit(0)
+	}
+	if os.Getenv("MEM_OKF_HELPER") == "1" {
+		runOKFHelper()
+		os.Exit(0)
+	}
 	os.Exit(m.Run())
+}
+
+// runOKFHelper compiles a fixed input set and commits it inside a child
+// process (multi-process OKF compilation tests).
+func runOKFHelper() {
+	root := os.Getenv("MEM_GEN_ROOT")
+	s, err := OpenProject(root, Options{})
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	gs := NewGenerationStore(s)
+	rev := validRevision()
+	ev := validEvidenceGeneration()
+	if _, err := s.Put(context.Background(), rev); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if _, err := s.Put(context.Background(), ev); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	res, err := CompileOKF(context.Background(), s, okfRequest(rev, ev))
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	tx, err := gs.Begin(context.Background(), beginReq("mp_"+os.Getenv("MEM_GEN_KEY"), nil))
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if err := gs.PrepareManifest(context.Background(), tx, manifestFor(tx, res.Inputs)); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if err := gs.WriteCompiledOutput(context.Background(), tx, res.Outputs); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	cres, err := gs.Commit(context.Background(), tx)
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if cres.Status == CommitCommitted {
+		fmt.Println("status=committed")
+	} else {
+		fmt.Println("status=already_committed")
+	}
+}
+
+// runGenerationHelper executes one generation commit inside a child process
+// (multi-process concurrency tests) and prints a machine-readable status.
+func runGenerationHelper() {
+	root := os.Getenv("MEM_GEN_ROOT")
+	base := os.Getenv("MEM_GEN_BASE")
+	s, err := OpenProject(root, Options{})
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	gs := NewGenerationStore(s)
+	var basePtr *string
+	if base != "" {
+		basePtr = &base
+	}
+	tx, err := gs.Begin(context.Background(), beginReq("mp_"+os.Getenv("MEM_GEN_KEY"), basePtr))
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	gov := validGovernanceEvent()
+	if err := gs.PrepareFact(context.Background(), tx, gov); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if err := gs.PrepareManifest(context.Background(), tx, manifestFor(tx, []ManifestInput{inputFor(gov)})); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	res, err := gs.Commit(context.Background(), tx)
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	if res.Status == CommitCommitted {
+		fmt.Println("status=committed")
+	} else {
+		fmt.Println("status=already_committed")
+	}
 }
 
 // runStoreHelper is executed inside child processes for multi-process
