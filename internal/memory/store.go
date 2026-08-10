@@ -499,7 +499,9 @@ func factPathComps(kind FactKind, comps []string) []string {
 	return append(dirs, comps[len(comps)-1]+".json")
 }
 
-// factKey derives the stable identity key of a fact.
+// factKey derives the stable identity key of a fact. Policies are keyed by
+// policy_id + policy_version (MEM-01C): a policy update creates a new
+// immutable version fact instead of overwriting the previous one.
 func factKey(f Fact) (FactKind, string, error) {
 	switch v := f.(type) {
 	case MemoryRevision:
@@ -509,7 +511,7 @@ func factKey(f Fact) (FactKind, string, error) {
 	case JudgmentFact:
 		return FactKindJudgment, v.JudgmentID, nil
 	case PolicyFact:
-		return FactKindPolicy, v.PolicyID, nil
+		return FactKindPolicy, fmt.Sprintf("%s/%d", v.PolicyID, v.PolicyVersion), nil
 	case GovernanceEvent:
 		return FactKindGovernanceEvent, v.EventID, nil
 	default:

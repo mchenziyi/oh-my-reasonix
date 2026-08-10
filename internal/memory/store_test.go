@@ -169,7 +169,7 @@ func TestPutGetRoundTripAndRouting(t *testing.T) {
 		"rev": "facts/memory-revisions/mem_01K7A9X2/2.json",
 		"ev":  "facts/memory-evidence-generations/mem_01K7A9X2/2/3.json",
 		"jud": "facts/judgments/judgment_01K.json",
-		"pol": "facts/policies/freshness_policy_v1.json",
+		"pol": "facts/policies/freshness_policy_v1/1.json",
 		"gov": "facts/governance-events/governance_01K.json",
 	}
 	for name, r := range rel {
@@ -657,14 +657,15 @@ func TestPutSizeLimit(t *testing.T) {
 func TestPutToCorruptExistingFileFailsClosed(t *testing.T) {
 	root := tempRoot(t)
 	s := openProject(t, root, Options{})
-	target := filepath.Join(s.root, "facts", "policies", "p1.json")
-	if err := writeFileForTest(root, "facts/policies/p1.json", []byte("{corrupt")); err != nil {
+	target := filepath.Join(s.root, "facts", "policies", "p1", "1.json")
+	if err := writeFileForTest(root, "facts/policies/p1/1.json", []byte("{corrupt")); err != nil {
 		t.Fatal(err)
 	}
 	before, _ := os.ReadFile(target)
 
-	policy := validPolicy()
+	policy := policyOf(PolicyTypeFreshness)
 	policy.PolicyID = "p1"
+	policy.PolicyVersion = 1
 	policy = fillPolicyHash(policy)
 	if _, err := s.Put(context.Background(), policy); err == nil {
 		t.Error("put onto corrupt existing fact must fail closed")

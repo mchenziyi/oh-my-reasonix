@@ -55,11 +55,21 @@ Store 必须由显式 Scope 构造，调用方不能通过当前工作目录隐�
 │   ├── memory-revisions/<memory-id>/<revision>.json
 │   ├── memory-evidence-generations/<memory-id>/<revision>/<generation-id>.json
 │   ├── judgments/<judgment-id>.json
-│   ├── policies/<policy-id>.json
+│   ├── policies/<policy-id>/<policy-version>.json
 │   └── governance-events/<event-id>.json
 ├── locks/store.lock
 └── diagnostics/
 ```
+
+> **MEM-01C 布局演进**：Policy Fact 从 MEM-01B 的单文件布局
+> `policies/<policy-id>.json` 演进为版本化布局
+> `policies/<policy-id>/<policy-version>.json`。原因是 Policy 更新必须
+> 创建新的不可变 Fact（`policy_id + policy_type + policy_version` 是稳定
+> 身份），同一 `policy_id` 的不同版本需要共存并由 `PolicyRef`
+> （`policy_id + policy_type + content_sha256`）精确加载历史版本。旧
+> Policy Fact 不覆盖、不删除：同身份同 Hash 写入为 NOOP，同身份不同
+> Hash 写入 fail closed 返回冲突。该演进仅改变 internal/memory 的存储
+> 布局，不修改 Architecture v1。
 
 ### Global Store
 

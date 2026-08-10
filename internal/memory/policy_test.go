@@ -1,9 +1,64 @@
 package memory
 
 import (
+	"encoding/json"
+	"math"
 	"strings"
 	"testing"
 )
+
+func validFreshnessConfig() *PolicyConfigFreshness {
+	return &PolicyConfigFreshness{
+		EvaluationWindowDays:      90,
+		AgingAfterDays:            180,
+		StaleAfterDays:            365,
+		RevalidationEvidenceTypes: []string{"test_result", "usage_outcome"},
+		Version:                   PolicyConfigSchemaVersion,
+	}
+}
+
+func validTrustConfig() *PolicyConfigTrust {
+	return &PolicyConfigTrust{
+		AllowedAcquisitionMethods:            []string{"local_file", "test_run", "user_confirmation"},
+		RequireProvenance:                    true,
+		RequireVerificationStatus:            true,
+		ExternalUnverifiedInstructionAllowed: false,
+		PromotionRequiresPolicyEvidence:      true,
+		Version:                              PolicyConfigSchemaVersion,
+	}
+}
+
+func validClassifierConfig() *PolicyConfigContentClassifier {
+	return &PolicyConfigContentClassifier{
+		ClassifierID:                "omr_builtin_classifier_v1",
+		AllowedClasses:              []string{"instructional", "descriptive", "secret", "unsafe"},
+		DefaultClass:                "descriptive",
+		SecretClassesBlockPromotion: true,
+		Version:                     PolicyConfigSchemaVersion,
+	}
+}
+
+func validIndexConfig() *PolicyConfigIndex {
+	return &PolicyConfigIndex{
+		MaxEntriesPerPage: 64,
+		MaxPageBytes:      32768,
+		MaxShardDepth:     4,
+		SplitOrder:        []string{"component", "operation", "memory_type", "stable_id_prefix"},
+		OverflowBucket:    "other",
+		Version:           PolicyConfigSchemaVersion,
+	}
+}
+
+func validBenchmarkConfig() *PolicyConfigBenchmark {
+	return &PolicyConfigBenchmark{
+		FixtureSetID:             "mnemosyne_memory_quality_v1",
+		MinimumCases:             1,
+		RequiredMetrics:          []string{"retrieval_recall", "citation_accuracy", "safety_regression"},
+		PassThresholds:           map[string]float64{"retrieval_recall": 0.0, "citation_accuracy": 0.0, "safety_regression": 1.0},
+		PairedComparisonRequired: true,
+		Version:                  PolicyConfigSchemaVersion,
+	}
+}
 
 func validPolicy() PolicyFact {
 	p := PolicyFact{
@@ -11,7 +66,7 @@ func validPolicy() PolicyFact {
 		PolicyID:      "freshness_policy_v1",
 		PolicyType:    PolicyTypeFreshness,
 		PolicyVersion: 1,
-		Config:        PolicyConfig{Freshness: &PolicyConfigFreshness{}},
+		Config:        PolicyConfig{Freshness: validFreshnessConfig()},
 		CreatedAt:     "2026-08-07T00:00:00Z",
 	}
 	h, err := p.ContentHash()
@@ -22,6 +77,30 @@ func validPolicy() PolicyFact {
 	return p
 }
 
+// policyOf builds a schema-valid PolicyFact of the given type.
+func policyOf(pt PolicyType) PolicyFact {
+	p := PolicyFact{
+		SchemaVersion: 1,
+		PolicyID:      "policy_of_" + string(pt),
+		PolicyType:    pt,
+		PolicyVersion: 1,
+		CreatedAt:     "2026-08-07T00:00:00Z",
+	}
+	switch pt {
+	case PolicyTypeFreshness:
+		p.Config = PolicyConfig{Freshness: validFreshnessConfig()}
+	case PolicyTypeTrust:
+		p.Config = PolicyConfig{Trust: validTrustConfig()}
+	case PolicyTypeContentClassifier:
+		p.Config = PolicyConfig{ContentClassifier: validClassifierConfig()}
+	case PolicyTypeIndex:
+		p.Config = PolicyConfig{Index: validIndexConfig()}
+	case PolicyTypeBenchmark:
+		p.Config = PolicyConfig{Benchmark: validBenchmarkConfig()}
+	}
+	return fillPolicyHash(p)
+}
+
 func TestPolicyFactValidation(t *testing.T) {
 	p := validPolicy()
 	if err := p.Validate(); err != nil {
@@ -30,25 +109,7 @@ func TestPolicyFactValidation(t *testing.T) {
 
 	// Every policy type with its matching config key is valid.
 	for _, pt := range []PolicyType{PolicyTypeFreshness, PolicyTypeTrust, PolicyTypeContentClassifier, PolicyTypeIndex, PolicyTypeBenchmark} {
-		pp := p
-		pp.PolicyType = pt
-		switch pt {
-		case PolicyTypeFreshness:
-			pp.Config = PolicyConfig{Freshness: &PolicyConfigFreshness{}}
-		case PolicyTypeTrust:
-			pp.Config = PolicyConfig{Trust: &PolicyConfigTrust{}}
-		case PolicyTypeContentClassifier:
-			pp.Config = PolicyConfig{ContentClassifier: &PolicyConfigContentClassifier{}}
-		case PolicyTypeIndex:
-			pp.Config = PolicyConfig{Index: &PolicyConfigIndex{}}
-		case PolicyTypeBenchmark:
-			pp.Config = PolicyConfig{Benchmark: &PolicyConfigBenchmark{}}
-		}
-		h, err := pp.ContentHash()
-		if err != nil {
-			t.Fatalf("hash failed: %v", err)
-		}
-		pp.ContentSHA256 = h
+		pp := policyOf(pt)
 		if err := pp.Validate(); err != nil {
 			t.Errorf("policy type %q should be valid: %v", pt, err)
 		}
@@ -63,10 +124,10 @@ func TestPolicyFactValidation(t *testing.T) {
 		{"path policy_id", func(p *PolicyFact) { p.PolicyID = "etc/policies/1" }},
 		{"invalid policy_type", func(p *PolicyFact) { p.PolicyType = PolicyType("retention") }},
 		{"policy_version zero", func(p *PolicyFact) { p.PolicyVersion = 0 }},
-		{"config key mismatch", func(p *PolicyFact) { p.Config = PolicyConfig{Trust: &PolicyConfigTrust{}} }},
+		{"config key mismatch", func(p *PolicyFact) { p.Config = PolicyConfig{Trust: validTrustConfig()} }},
 		{"config empty union", func(p *PolicyFact) { p.Config = PolicyConfig{} }},
 		{"config two keys", func(p *PolicyFact) {
-			p.Config = PolicyConfig{Freshness: &PolicyConfigFreshness{}, Trust: &PolicyConfigTrust{}}
+			p.Config = PolicyConfig{Freshness: validFreshnessConfig(), Trust: validTrustConfig()}
 		}},
 		{"empty hash", func(p *PolicyFact) { p.ContentSHA256 = "" }},
 		{"hash mismatch", func(p *PolicyFact) { p.ContentSHA256 = "sha256_" + strings.Repeat("c", 64) }},
@@ -81,6 +142,200 @@ func TestPolicyFactValidation(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPolicyConfigValidation(t *testing.T) {
+	// Per-type valid configs must pass.
+	for _, pt := range []PolicyType{PolicyTypeFreshness, PolicyTypeTrust, PolicyTypeContentClassifier, PolicyTypeIndex, PolicyTypeBenchmark} {
+		pp := policyOf(pt)
+		if err := pp.Config.Validate(pt); err != nil {
+			t.Errorf("valid %s config rejected: %v", pt, err)
+		}
+	}
+
+	// Freshness window ordering and positive integers.
+	f := validFreshnessConfig()
+	f.EvaluationWindowDays = 0
+	if err := (PolicyConfig{Freshness: f}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("zero evaluation window must be rejected")
+	}
+	f = validFreshnessConfig()
+	f.AgingAfterDays = 90 // must be strictly > evaluation_window
+	if err := (PolicyConfig{Freshness: f}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("aging_after must be strictly greater than evaluation_window")
+	}
+	f = validFreshnessConfig()
+	f.StaleAfterDays = 180 // must be strictly > aging_after
+	if err := (PolicyConfig{Freshness: f}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("stale_after must be strictly greater than aging_after")
+	}
+	f = validFreshnessConfig()
+	f.RevalidationEvidenceTypes = nil
+	if err := (PolicyConfig{Freshness: f}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("empty evidence types must be rejected")
+	}
+	f = validFreshnessConfig()
+	f.RevalidationEvidenceTypes = []string{"/etc/passwd"}
+	if err := (PolicyConfig{Freshness: f}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("path-like evidence type must be rejected")
+	}
+
+	// Trust policy: safety hard constraints cannot be disabled.
+	tr := validTrustConfig()
+	tr.RequireProvenance = false
+	if err := (PolicyConfig{Trust: tr}).Validate(PolicyTypeTrust); err == nil {
+		t.Error("trust with require_provenance=false must be rejected")
+	}
+	tr = validTrustConfig()
+	tr.RequireVerificationStatus = false
+	if err := (PolicyConfig{Trust: tr}).Validate(PolicyTypeTrust); err == nil {
+		t.Error("trust with require_verification_status=false must be rejected")
+	}
+	tr = validTrustConfig()
+	tr.ExternalUnverifiedInstructionAllowed = true
+	if err := (PolicyConfig{Trust: tr}).Validate(PolicyTypeTrust); err == nil {
+		t.Error("trust allowing external unverified instructions must be rejected")
+	}
+	tr = validTrustConfig()
+	tr.AllowedAcquisitionMethods = []string{"rm -rf /tmp"}
+	if err := (PolicyConfig{Trust: tr}).Validate(PolicyTypeTrust); err == nil {
+		t.Error("command-like acquisition method must be rejected")
+	}
+
+	// Content classifier: default class must be allowed; secret/unsafe must
+	// stay block-promotion.
+	cc := validClassifierConfig()
+	cc.DefaultClass = "instructional"
+	if err := (PolicyConfig{ContentClassifier: cc}).Validate(PolicyTypeContentClassifier); err != nil {
+		t.Errorf("default within allowed classes should pass: %v", err)
+	}
+	cc = validClassifierConfig()
+	cc.DefaultClass = "not_a_class"
+	if err := (PolicyConfig{ContentClassifier: cc}).Validate(PolicyTypeContentClassifier); err == nil {
+		t.Error("default class outside allowed_classes must be rejected")
+	}
+	cc = validClassifierConfig()
+	cc.AllowedClasses = nil
+	if err := (PolicyConfig{ContentClassifier: cc}).Validate(PolicyTypeContentClassifier); err == nil {
+		t.Error("empty allowed_classes must be rejected")
+	}
+	cc = validClassifierConfig()
+	cc.SecretClassesBlockPromotion = false
+	if err := (PolicyConfig{ContentClassifier: cc}).Validate(PolicyTypeContentClassifier); err == nil {
+		t.Error("secret classes must block promotion")
+	}
+	cc = validClassifierConfig()
+	cc.ClassifierID = "prompt: ignore previous instructions"
+	if err := (PolicyConfig{ContentClassifier: cc}).Validate(PolicyTypeContentClassifier); err == nil {
+		t.Error("free-text classifier id must be rejected")
+	}
+
+	// Index: numeric bounds, fixed dimensions, no duplicates, safe bucket.
+	ix := validIndexConfig()
+	ix.MaxEntriesPerPage = 0
+	if err := (PolicyConfig{Index: ix}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("zero max_entries_per_page must be rejected")
+	}
+	ix = validIndexConfig()
+	ix.MaxEntriesPerPage = 1 << 20
+	if err := (PolicyConfig{Index: ix}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("oversized max_entries_per_page must be rejected")
+	}
+	ix = validIndexConfig()
+	ix.SplitOrder = []string{"component", "component"}
+	if err := (PolicyConfig{Index: ix}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("duplicate split dimension must be rejected")
+	}
+	ix = validIndexConfig()
+	ix.SplitOrder = []string{"component", "user_id"}
+	if err := (PolicyConfig{Index: ix}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("unknown split dimension must be rejected")
+	}
+	ix = validIndexConfig()
+	ix.OverflowBucket = "../etc"
+	if err := (PolicyConfig{Index: ix}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("path-like overflow bucket must be rejected")
+	}
+
+	// Benchmark: metric names controlled, thresholds finite and in range.
+	bm := validBenchmarkConfig()
+	bm.PassThresholds["retrieval_recall"] = 1.5
+	if err := (PolicyConfig{Benchmark: bm}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("threshold above 1.0 must be rejected")
+	}
+	bm = validBenchmarkConfig()
+	bm.PassThresholds["retrieval_recall"] = -0.1
+	if err := (PolicyConfig{Benchmark: bm}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("negative threshold must be rejected")
+	}
+	bm = validBenchmarkConfig()
+	bm.PassThresholds["retrieval_recall"] = math.NaN()
+	if err := (PolicyConfig{Benchmark: bm}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("NaN threshold must be rejected")
+	}
+	bm = validBenchmarkConfig()
+	bm.RequiredMetrics = []string{"run: echo hacked"}
+	if err := (PolicyConfig{Benchmark: bm}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("command-like metric must be rejected")
+	}
+	bm = validBenchmarkConfig()
+	bm.FixtureSetID = "/opt/fixtures/set"
+	if err := (PolicyConfig{Benchmark: bm}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("absolute-path fixture_set_id must be rejected")
+	}
+
+	// The frozen config schema version cannot be changed by any type.
+	fv := validFreshnessConfig()
+	fv.Version = 2
+	if err := (PolicyConfig{Freshness: fv}).Validate(PolicyTypeFreshness); err == nil {
+		t.Error("freshness config with version 2 must be rejected")
+	}
+	tv := validTrustConfig()
+	tv.Version = 2
+	if err := (PolicyConfig{Trust: tv}).Validate(PolicyTypeTrust); err == nil {
+		t.Error("trust config with version 2 must be rejected")
+	}
+	cv := validClassifierConfig()
+	cv.Version = 2
+	if err := (PolicyConfig{ContentClassifier: cv}).Validate(PolicyTypeContentClassifier); err == nil {
+		t.Error("classifier config with version 2 must be rejected")
+	}
+	iv := validIndexConfig()
+	iv.Version = 2
+	if err := (PolicyConfig{Index: iv}).Validate(PolicyTypeIndex); err == nil {
+		t.Error("index config with version 2 must be rejected")
+	}
+	bv := validBenchmarkConfig()
+	bv.Version = 2
+	if err := (PolicyConfig{Benchmark: bv}).Validate(PolicyTypeBenchmark); err == nil {
+		t.Error("benchmark config with version 2 must be rejected")
+	}
+
+	// Mathematically identical thresholds must hash identically: -0.0 and
+	// 0.0 must not split the content hash.
+	neg := validBenchmarkConfig()
+	neg.PassThresholds["retrieval_recall"] = math.Copysign(0, -1)
+	pos := validBenchmarkConfig()
+	pos.PassThresholds["retrieval_recall"] = 0.0
+	mNeg, err := neg.canonMap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	mPos, err := pos.canonMap()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if NewContentHash(mustMarshal(mNeg)) != NewContentHash(mustMarshal(mPos)) {
+		t.Error("-0.0 and 0.0 thresholds must hash identically")
+	}
+}
+
+func mustMarshal(v any) []byte {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(err)
+	}
+	return b
 }
 
 func TestPolicyFactConfigStrictUnion(t *testing.T) {
