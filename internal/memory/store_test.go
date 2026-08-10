@@ -28,7 +28,34 @@ func TestMain(m *testing.M) {
 		runOKFHelper()
 		os.Exit(0)
 	}
+	if os.Getenv("MEM_DERIVE_HELPER") == "1" {
+		runDeriveHelper()
+		os.Exit(0)
+	}
 	os.Exit(m.Run())
+}
+
+// runDeriveHelper derives the scope from a fixed root and prints the
+// deterministic serialization, so a parent process can compare bytes across
+// process boundaries (multi-process isolation and determinism).
+func runDeriveHelper() {
+	root := os.Getenv("MEM_DERIVE_ROOT")
+	s, err := OpenProject(root, Options{})
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	res, err := DeriveState(context.Background(), s, DerivedStateRequest{Scope: ScopeProject, Now: deriveNow})
+	if err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
+	b, err := json.Marshal(res)
+	if err != nil {
+		fmt.Println("status=error:encode")
+		return
+	}
+	fmt.Printf("status=ok\n%s\n", b)
 }
 
 // runOKFHelper compiles a fixed input set and commits it inside a child
@@ -957,4 +984,80 @@ func TestWriteFailureLeavesNoHalfFile(t *testing.T) {
 		}
 		return nil
 	})
+}
+
+// ---- FactStore.List (derived-state enumeration) ----
+
+func TestFactStoreList(t *testing.T) {
+	root := tempRoot(t)
+	s := openProject(t, root, Options{})
+
+	rev := validRevision()
+	put(t, s, rev)
+	ev := validEvidenceGeneration()
+	put(t, s, ev)
+	u := validUsage()
+	put(t, s, u)
+	o := validOutcome()
+	put(t, s, o)
+
+	revs, err := s.List(context.Background(), FactKindMemoryRevision)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(revs) != 1 || revs[0] != "mem_01K7A9X2/2" {
+		t.Errorf("revision list mismatch: %v", revs)
+	}
+	evs, err := s.List(context.Background(), FactKindMemoryEvidenceGeneration)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(evs) != 1 || evs[0] != "mem_01K7A9X2/2/3" {
+		t.Errorf("evidence list mismatch: %v", evs)
+	}
+	us, err := s.List(context.Background(), FactKindMemoryUsage)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(us) != 1 || us[0] != "usage_01K" {
+		t.Errorf("usage list mismatch: %v", us)
+	}
+	os, err := s.List(context.Background(), FactKindOutcome)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(os) != 1 || os[0] != "outcome_01K" {
+		t.Errorf("outcome list mismatch: %v", os)
+	}
+	// Empty kinds list cleanly.
+	empty, err := s.List(context.Background(), FactKindJudgment)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(empty) != 0 {
+		t.Errorf("empty kind must list nothing, got %v", empty)
+	}
+}
+
+func TestFactStoreListRejectsUnsafeEntries(t *testing.T) {
+	root := tempRoot(t)
+	s := openProject(t, root, Options{})
+	// A symlink inside the kind directory must be rejected, never followed.
+	kindDir := filepath.Join(root, "facts", "judgments")
+	if err := os.MkdirAll(kindDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(kindDir, "linked.json")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.List(context.Background(), FactKindJudgment); ErrorCode(err) != CodeSymlinkRejected {
+		t.Fatalf("symlink in kind dir must fail closed, got %v", err)
+	}
+}
+
+func put(t *testing.T, s *FactStore, f Fact) {
+	t.Helper()
+	if _, err := s.Put(context.Background(), f); err != nil {
+		t.Fatalf("put: %v", err)
+	}
 }

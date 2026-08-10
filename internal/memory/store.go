@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -22,6 +23,8 @@ const (
 	FactKindPolicy                   FactKind = "policies"
 	FactKindGovernanceEvent          FactKind = "governance-events"
 	FactKindGenerationInputManifest  FactKind = "generation-input-manifests"
+	FactKindMemoryUsage              FactKind = "memory-usages"
+	FactKindOutcome                  FactKind = "outcomes"
 )
 
 var allKinds = []FactKind{
@@ -31,6 +34,8 @@ var allKinds = []FactKind{
 	FactKindPolicy,
 	FactKindGovernanceEvent,
 	FactKindGenerationInputManifest,
+	FactKindMemoryUsage,
+	FactKindOutcome,
 }
 
 func (k FactKind) valid() bool {
@@ -394,6 +399,63 @@ func (s *FactStore) Exists(ctx context.Context, kind FactKind, key string) (bool
 	return true, nil
 }
 
+// List enumerates the stable identity keys of one fact kind, for derived
+// layers that must reduce over the whole fact set (e.g. MEM-01F). The store
+// is scope-bound, so a Project store only ever lists project facts. The walk
+// rejects symlinks anywhere under the kind directory (never follows them),
+// and every listed key is re-validated with the same identifier rules used
+// by Put/Get, so a tampered directory can only surface as an error, never as
+// a path escape or a plausible key. A missing kind directory is treated as
+// an empty list (no facts of that kind exist yet). Keys are sorted for
+// determinism.
+func (s *FactStore) List(ctx context.Context, kind FactKind) ([]string, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, storeError(CodeLockTimeout, "read cancelled")
+	}
+	if !kind.valid() {
+		return nil, storeError(CodePathUnsafe, "unknown fact kind")
+	}
+	base, err := secureJoin(s.root, []string{"facts", string(kind)}, false, false)
+	if err != nil {
+		if ErrorCode(err) == CodeNotFound {
+			return nil, nil
+		}
+		return nil, err
+	}
+	var keys []string
+	err = filepath.Walk(base, func(p string, info os.FileInfo, werr error) error {
+		if werr != nil {
+			return werr
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return storeError(CodeSymlinkRejected, "fact kind directory contains a symbolic link")
+		}
+		if info.IsDir() {
+			return nil
+		}
+		if !strings.HasSuffix(p, ".json") {
+			// Non-fact files (temp files, stray documents) are ignored; they
+			// never become plausible fact identities.
+			return nil
+		}
+		rel, rerr := filepath.Rel(base, p)
+		if rerr != nil {
+			return rerr
+		}
+		key := strings.TrimSuffix(filepath.ToSlash(rel), ".json")
+		if _, kerr := validateFactKey(key); kerr != nil {
+			return storeError(CodePathUnsafe, "fact kind directory contains an unsafe entry")
+		}
+		keys = append(keys, key)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.Strings(keys)
+	return keys, nil
+}
+
 // readVerified implements the fixed read chain. It returns the raw stored
 // bytes and the decoded fact.
 func (s *FactStore) readVerified(ctx context.Context, kind FactKind, comps []string) ([]byte, Fact, error) {
@@ -525,6 +587,10 @@ func factKey(f Fact) (FactKind, string, error) {
 		return FactKindGovernanceEvent, v.EventID, nil
 	case GenerationInputManifest:
 		return FactKindGenerationInputManifest, v.GenerationID, nil
+	case MemoryUsage:
+		return FactKindMemoryUsage, v.UsageID, nil
+	case Outcome:
+		return FactKindOutcome, v.OutcomeID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -541,6 +607,10 @@ func factScope(f Fact) (Scope, bool) {
 	case GovernanceEvent:
 		return v.Scope, true
 	case GenerationInputManifest:
+		return v.Scope, true
+	case MemoryUsage:
+		return v.Scope, true
+	case Outcome:
 		return v.Scope, true
 	default:
 		return "", false
@@ -582,6 +652,10 @@ func decodeKind(kind FactKind, data []byte) (Fact, error) {
 		return DecodeStrict[GovernanceEvent](data)
 	case FactKindGenerationInputManifest:
 		return DecodeStrict[GenerationInputManifest](data)
+	case FactKindMemoryUsage:
+		return DecodeStrict[MemoryUsage](data)
+	case FactKindOutcome:
+		return DecodeStrict[Outcome](data)
 	default:
 		return nil, storeError(CodePathUnsafe, "unknown fact kind")
 	}

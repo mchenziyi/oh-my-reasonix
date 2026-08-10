@@ -369,6 +369,7 @@ type MemoryEvidenceGeneration struct {
 	Revision                   int           `json:"revision"`
 	EvidenceGeneration         int           `json:"evidence_generation"`
 	EvidenceRefs               []EvidenceRef `json:"evidence_refs"`
+	RootTaskRefs               []string      `json:"root_task_refs"`
 	EvidenceSetSHA256          string        `json:"evidence_set_sha256"`
 	PreviousEvidenceGeneration *int          `json:"previous_evidence_generation"`
 	TransactionID              string        `json:"transaction_id"`
@@ -404,6 +405,20 @@ func (e MemoryEvidenceGeneration) Validate() error {
 			return fmt.Errorf("memory evidence generation: %w", err)
 		}
 	}
+	// root_task_refs names the independent Root Tasks / formal sources this
+	// evidence generation covers (the evidence_validated source-independence
+	// signal). Entries are controlled identifiers and must be unique; the
+	// derived layer counts distinct entries, never a repeated one.
+	seenTask := map[string]bool{}
+	for _, t := range e.RootTaskRefs {
+		if err := validateID(t, "root_task_ref"); err != nil {
+			return fmt.Errorf("memory evidence generation: %w", err)
+		}
+		if seenTask[t] {
+			return fmt.Errorf("memory evidence generation: root_task_refs must not repeat %q", t)
+		}
+		seenTask[t] = true
+	}
 	if err := validateID(e.TransactionID, "transaction_id"); err != nil {
 		return fmt.Errorf("memory evidence generation: %w", err)
 	}
@@ -428,6 +443,13 @@ func (e MemoryEvidenceGeneration) canonMap() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
+	taskRefs := make([]string, len(e.RootTaskRefs))
+	copy(taskRefs, e.RootTaskRefs)
+	sort.Strings(taskRefs) // set semantics: order must not change the hash
+	taskRefsAny := make([]any, 0, len(taskRefs))
+	for _, t := range taskRefs {
+		taskRefsAny = append(taskRefsAny, t)
+	}
 	created, err := normalizeTime(e.CreatedAt)
 	if err != nil {
 		return nil, err
@@ -442,6 +464,7 @@ func (e MemoryEvidenceGeneration) canonMap() (map[string]any, error) {
 		"revision":                     e.Revision,
 		"evidence_generation":          e.EvidenceGeneration,
 		"evidence_refs":                refs,
+		"root_task_refs":               taskRefsAny,
 		"previous_evidence_generation": previous,
 		"transaction_id":               e.TransactionID,
 		"created_at":                   created,
