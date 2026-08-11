@@ -354,3 +354,65 @@ func TestPolicyStoreErrorMessagesRedacted(t *testing.T) {
 		}
 	}
 }
+
+func TestPolicyStoreRejectsPathBodyIdentityMismatch(t *testing.T) {
+	for _, pt := range []PolicyType{PolicyTypeTrust, PolicyTypeContentClassifier} {
+		t.Run(string(pt), func(t *testing.T) {
+			root := tempRoot(t)
+			s := openProject(t, root, Options{})
+			ps := NewPolicyStore(s)
+			body := policyOf(pt)
+			body.PolicyID = "body_policy"
+			body = fillPolicyHash(body)
+			raw, err := body.EncodeCanonical()
+			if err != nil {
+				t.Fatal(err)
+			}
+			aliasID := "alias_policy"
+			comps, err := validateFactKey(aliasID + "/1")
+			if err != nil {
+				t.Fatal(err)
+			}
+			path, err := secureJoin(s.root, factPathComps(FactKindPolicy, comps), true, true)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, raw, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := ps.GetPolicyVersion(context.Background(), aliasID, 1); err == nil {
+				t.Fatal("policy path and body policy_id mismatch must fail closed")
+			}
+			ref := PolicyRef{PolicyID: aliasID, PolicyType: pt, ContentSHA256: body.ContentSHA256}
+			if _, err := ps.GetPolicy(context.Background(), ref); err == nil {
+				t.Fatal("GetPolicy must not accept a policy stored under another policy_id")
+			}
+		})
+	}
+
+	t.Run("version", func(t *testing.T) {
+		root := tempRoot(t)
+		s := openProject(t, root, Options{})
+		ps := NewPolicyStore(s)
+		body := policyOf(PolicyTypeTrust)
+		body = fillPolicyHash(body)
+		raw, err := body.EncodeCanonical()
+		if err != nil {
+			t.Fatal(err)
+		}
+		comps, err := validateFactKey(body.PolicyID + "/2")
+		if err != nil {
+			t.Fatal(err)
+		}
+		path, err := secureJoin(s.root, factPathComps(FactKindPolicy, comps), true, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := ps.GetPolicyVersion(context.Background(), body.PolicyID, 2); err == nil {
+			t.Fatal("policy path and body policy_version mismatch must fail closed")
+		}
+	})
+}

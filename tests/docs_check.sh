@@ -197,6 +197,18 @@ pe_audit="docs/OMR_MNEMOSYNE_MEM-02_SCHEMA_GATE_AUDIT.zh-CN.md"
 grep -q '历史归档' "$pe_audit" || fail "Schema Gate audit must be marked as archived history"
 grep -q '不作为当前协议输入' "$pe_audit" || fail "Schema Gate audit must state it is not protocol input"
 
+# --- 1d. Mnemosyne MEM-02C delivery status and Legacy boundary ------------
+mem02_doc="docs/OMR_MNEMOSYNE_MEM-02_PLAN.zh-CN.md"
+mem02c_doc="docs/OMR_MNEMOSYNE_MEM-02C_EVIDENCE_TRUST_PLAN.zh-CN.md"
+[ -f "$mem02_doc" ] || fail "missing $mem02_doc"
+[ -f "$mem02c_doc" ] || fail "missing $mem02c_doc"
+grep -Fq 'MEM-02C Evidence Provenance + Trust Gate 已完成并签收' "$mem02_doc" || fail "MEM-02 plan does not mark MEM-02C signed off"
+if grep -Fq 'MEM-02C 待实现' "$mem02_doc"; then
+  fail "MEM-02 plan still marks MEM-02C pending implementation"
+fi
+grep -Fq 'Legacy 完成这些验证后受控短路为 `unavailable`' "$mem02c_doc" || fail "MEM-02C plan missing the Legacy controlled short-circuit rule"
+grep -Fq 'Generation 路径与正文身份' "$mem02c_doc" || fail "MEM-02C plan missing exact Generation identity validation"
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"

@@ -375,6 +375,17 @@ type MemoryEvidenceGeneration struct {
 	PreviousEvidenceGeneration *int          `json:"previous_evidence_generation"`
 	TransactionID              string        `json:"transaction_id"`
 	CreatedAt                  string        `json:"created_at"`
+	// MEM-02C: Evidence Provenance (Architecture v1 6.2.3). All six fields
+	// must be present together (Enriched) or all absent (Legacy); partial
+	// presence is rejected. nil vs [] distinguishes an absent provenance set
+	// from an explicit empty root set, and *bool distinguishes an explicit
+	// false from a missing boolean.
+	EvidenceOrigin               string        `json:"evidence_origin,omitempty"`
+	AcquisitionMethod            string        `json:"acquisition_method,omitempty"`
+	VerificationStatus           string        `json:"verification_status,omitempty"`
+	ProvenanceRefs               []EvidenceRef `json:"provenance_refs,omitempty"`
+	ContainsInstructionalContent *bool         `json:"contains_instructional_content,omitempty"`
+	ContainsSensitiveContent     *bool         `json:"contains_sensitive_content,omitempty"`
 }
 
 func (e MemoryEvidenceGeneration) Validate() error {
@@ -429,6 +440,9 @@ func (e MemoryEvidenceGeneration) Validate() error {
 	if err := validateHash(e.EvidenceSetSHA256, "evidence_set_sha256"); err != nil {
 		return fmt.Errorf("memory evidence generation: %w", err)
 	}
+	if err := e.validateProvenance(); err != nil {
+		return err
+	}
 	h, err := e.ContentHash()
 	if err != nil {
 		return fmt.Errorf("memory evidence generation: %w", err)
@@ -437,6 +451,101 @@ func (e MemoryEvidenceGeneration) Validate() error {
 		return errors.New("memory evidence generation: evidence_set_sha256 mismatch")
 	}
 	return nil
+}
+
+// provenancePresent reports whether any of the six MEM-02C fields is set.
+func (e MemoryEvidenceGeneration) provenancePresent() bool {
+	return e.EvidenceOrigin != "" || e.AcquisitionMethod != "" || e.VerificationStatus != "" ||
+		e.ProvenanceRefs != nil || e.ContainsInstructionalContent != nil || e.ContainsSensitiveContent != nil
+}
+
+// provenanceComplete reports whether all six MEM-02C fields are present
+// (the Enriched form).
+func (e MemoryEvidenceGeneration) provenanceComplete() bool {
+	return e.EvidenceOrigin != "" && e.AcquisitionMethod != "" && e.VerificationStatus != "" &&
+		e.ProvenanceRefs != nil && e.ContainsInstructionalContent != nil && e.ContainsSensitiveContent != nil
+}
+
+// validateProvenance enforces the MEM-02C two-form contract: Legacy (all six
+// absent, byte-compatible with MEM-01B) or Enriched (all six present with
+// frozen Architecture v1 enums, closed provenance refs). Partial presence
+// fails closed; nothing is defaulted.
+func (e MemoryEvidenceGeneration) validateProvenance() error {
+	if !e.provenancePresent() {
+		return nil // Legacy
+	}
+	if !e.provenanceComplete() {
+		return errors.New("memory evidence generation: provenance fields must be all present or all absent")
+	}
+	if err := validEvidenceOrigin(e.EvidenceOrigin); err != nil {
+		return fmt.Errorf("memory evidence generation: %w", err)
+	}
+	if err := validAcquisitionMethod(e.AcquisitionMethod); err != nil {
+		return fmt.Errorf("memory evidence generation: %w", err)
+	}
+	if err := validVerificationStatus(e.VerificationStatus); err != nil {
+		return fmt.Errorf("memory evidence generation: %w", err)
+	}
+	if len(e.ProvenanceRefs) > maxRefs {
+		return fmt.Errorf("memory evidence generation: provenance_refs exceeds %d refs", maxRefs)
+	}
+	members := make(map[string]bool, len(e.EvidenceRefs))
+	for _, r := range e.EvidenceRefs {
+		members[evidenceRefKey(r)] = true
+	}
+	seen := make(map[string]bool, len(e.ProvenanceRefs))
+	for _, r := range e.ProvenanceRefs {
+		if err := r.Validate(); err != nil {
+			return fmt.Errorf("memory evidence generation: %w", err)
+		}
+		k := evidenceRefKey(r)
+		if seen[k] {
+			return errors.New("memory evidence generation: provenance_refs must not repeat")
+		}
+		seen[k] = true
+		if !members[k] {
+			return errors.New("memory evidence generation: provenance ref must be a member of evidence_refs")
+		}
+	}
+	if e.AcquisitionMethod != "direct" && len(e.ProvenanceRefs) == 0 {
+		return errors.New("memory evidence generation: non-direct acquisition requires at least one provenance ref")
+	}
+	return nil
+}
+
+// validEvidenceOrigin enforces the frozen Architecture v1 6.2.3 enum.
+func validEvidenceOrigin(s string) error {
+	switch s {
+	case "runtime", "user", "official", "project", "external":
+		return nil
+	default:
+		return errors.New("evidence_origin must be one of runtime|user|official|project|external")
+	}
+}
+
+// validAcquisitionMethod enforces the frozen Architecture v1 6.2.3 enum.
+func validAcquisitionMethod(s string) error {
+	switch s {
+	case "direct", "tool_observed", "model_extracted", "imported":
+		return nil
+	default:
+		return errors.New("acquisition_method must be one of direct|tool_observed|model_extracted|imported")
+	}
+}
+
+// validVerificationStatus enforces the frozen Architecture v1 6.2.3 enum.
+func validVerificationStatus(s string) error {
+	switch s {
+	case "verified", "confirmed", "inferred", "unverified":
+		return nil
+	default:
+		return errors.New("verification_status must be one of verified|confirmed|inferred|unverified")
+	}
+}
+
+// evidenceRefKey is the deterministic identity of an EvidenceRef.
+func evidenceRefKey(r EvidenceRef) string {
+	return string(r.Scope) + "|" + r.EvidenceType + "|" + r.EvidenceID + "|" + r.ContentSHA256
 }
 
 func (e MemoryEvidenceGeneration) canonMap() (map[string]any, error) {
@@ -459,7 +568,7 @@ func (e MemoryEvidenceGeneration) canonMap() (map[string]any, error) {
 	if e.PreviousEvidenceGeneration != nil {
 		previous = *e.PreviousEvidenceGeneration
 	}
-	return map[string]any{
+	m := map[string]any{
 		"schema_version":               e.SchemaVersion,
 		"memory_id":                    e.MemoryID,
 		"revision":                     e.Revision,
@@ -469,7 +578,29 @@ func (e MemoryEvidenceGeneration) canonMap() (map[string]any, error) {
 		"previous_evidence_generation": previous,
 		"transaction_id":               e.TransactionID,
 		"created_at":                   created,
-	}, nil
+	}
+	// Enriched form: all six provenance fields enter the canonical bytes and
+	// the content hash. Legacy keeps the pre-MEM-02C key set unchanged.
+	// The booleans are guarded so a partial (invalid) form returns an error
+	// instead of panicking when canonMap is called before Validate.
+	if e.EvidenceOrigin != "" || e.AcquisitionMethod != "" || e.VerificationStatus != "" ||
+		e.ProvenanceRefs != nil || e.ContainsInstructionalContent != nil || e.ContainsSensitiveContent != nil {
+		if e.EvidenceOrigin == "" || e.AcquisitionMethod == "" || e.VerificationStatus == "" ||
+			e.ProvenanceRefs == nil || e.ContainsInstructionalContent == nil || e.ContainsSensitiveContent == nil {
+			return nil, errors.New("memory evidence generation: provenance fields must be all present or all absent")
+		}
+		provRefs, err := canonSlice(e.ProvenanceRefs)
+		if err != nil {
+			return nil, err
+		}
+		m["evidence_origin"] = e.EvidenceOrigin
+		m["acquisition_method"] = e.AcquisitionMethod
+		m["verification_status"] = e.VerificationStatus
+		m["provenance_refs"] = provRefs
+		m["contains_instructional_content"] = *e.ContainsInstructionalContent
+		m["contains_sensitive_content"] = *e.ContainsSensitiveContent
+	}
+	return m, nil
 }
 
 func (e MemoryEvidenceGeneration) CanonicalBytes() ([]byte, error) {

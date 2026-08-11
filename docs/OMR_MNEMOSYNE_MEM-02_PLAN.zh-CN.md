@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：夜间执行完成（MEM-02-01 EvaluationContext/Generation Pin 完整实现；MEM-02-02 Critic 只读验证器与 MEM-02-06 Revalidation 只读评估器已交付；MEM-02-07 一致性 Doctor 与 MEM-02-08 离线 Benchmark 完整实现；MEM-02-03/04/05 因 Schema 未冻结阻塞于第六章提案，未实现 Trust/Retrieval/Context 扩展；未进入 MEM-03，未提交、未推送）
+- 状态：进行中（MEM-02-01/06/07/08 已完成；MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；Retrieval/Context/Conflict 尚未实现；未进入 MEM-03）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -71,6 +71,8 @@
 验收：缺 Critic 不 active；错误 subtype/unknown field/错误 Generation/跨 Scope 均拒绝；合法 passed 才能满足 Critic 条件。
 
 ### MEM-02-03：Evidence Trust 与 Provenance
+
+状态：✅ 已实现（2026-08-11，MEM-02C）——Provenance 六字段（Legacy/Enriched 双形态，Legacy golden 锁定）+ EvaluateEvidenceTrust 只读评估器（trusted/restricted/unverified/blocked/unavailable + instructional_content_allowed/promotion_eligible），安全根不可关闭、旧自由 identifier Policy fail closed、零写入。
 
 目标：实现 Evidence 来源可信度的确定性验证，不把 Trust 等同于 Critic。
 
@@ -215,7 +217,7 @@ Pair（`ExpectedMemoryContext` + 显式 `Now` + Project/Global Store）上的完
 精确匹配、supersede 链逐节点一致性/环/并列冲突处理、passed 仅令
 `Satisfied=true`（Conflict Fact 未冻结，`evidence_validated` 恒 probation）。
 
-### 6.2 MEM-02-03：Evidence Provenance 维度 + Trust 状态枚举（阻塞点）
+### 6.2 MEM-02-03：Evidence Provenance 维度 + Trust 状态枚举（✅ MEM-02C 已实现并签收）
 
 现状核对：架构 6.2.3 要求每个长期 Evidence Fact 包含 `evidence_origin |
 acquisition_method | verification_status | provenance_refs` 四个独立维度，且
@@ -241,7 +243,7 @@ acquisition_method | verification_status | provenance_refs` 四个独立维度�
    - 未验证外部内容不得成为 instructional content；
    - Trust 结果只作派生输入，不直接晋升 Lifecycle。
 
-未冻结前 MEM-02-03 阻塞，不实现 Trust 派生。
+Schema Convergence 已完成并通过 Gate；实现边界、Legacy 兼容、状态矩阵与安全规则见 `OMR_MNEMOSYNE_MEM-02C_EVIDENCE_TRUST_PLAN.zh-CN.md`。
 
 ### 6.3 MEM-02-04：Retrieval Evaluation 字段（阻塞点）
 

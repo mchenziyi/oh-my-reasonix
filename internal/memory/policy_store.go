@@ -66,6 +66,9 @@ func (ps *policyStore) GetPolicyVersion(ctx context.Context, policyID string, ve
 		// JSON, unknown fields) so callers never see raw validator text.
 		return PolicyFact{}, classifyDecodeError(err)
 	}
+	if fact.PolicyID != policyID || fact.PolicyVersion != version {
+		return PolicyFact{}, storeError(CodeSchemaInvalid, "policy identity does not match its storage key")
+	}
 	return fact, nil
 }
 
@@ -91,7 +94,7 @@ func (ps *policyStore) GetPolicy(ctx context.Context, ref PolicyRef) (PolicyFact
 			// silently skipped or substituted.
 			return PolicyFact{}, err
 		}
-		if fact.PolicyType == ref.PolicyType && fact.ContentSHA256 == ref.ContentSHA256 {
+		if fact.PolicyID == ref.PolicyID && fact.PolicyType == ref.PolicyType && fact.ContentSHA256 == ref.ContentSHA256 {
 			return fact, nil
 		}
 	}
