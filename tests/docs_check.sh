@@ -137,6 +137,66 @@ if [ -z "$line_10_1" ] || [ -z "$line_10_2" ] || [ -z "$line_10_3" ] || \
   fail "Mnemosyne section 10 order is inconsistent"
 fi
 
+# --- 1c. Mnemosyne Protocol Extension convergence --------------------------
+# The Protocol Extension design (the whole document: chapters 1-9 normative
+# Schema plus chapter 11 final decisions) must stay aligned with Architecture
+# v1 and the MEM-02 Schema Convergence decisions (D1-D12). The initial Schema
+# Gate audit lives in a separate archived file that is NOT protocol input, so
+# only the main protocol document is scanned for forbidden terms.
+pe_doc="docs/OMR_MNEMOSYNE_MEM-02_PROTOCOL_EXTENSION_PLAN.zh-CN.md"
+[ -f "$pe_doc" ] || fail "missing $pe_doc"
+pe_body=$(cat "$pe_doc")
+
+pe_required=(
+  'schema_version: 1'
+  'memory_context:'
+  'project_generation_ref: ProjectGenerationRef | null'
+  'global_generation_ref: GlobalGenerationRef | null'
+  'judgment_type: critic_review'
+  'passed | failed | unavailable'
+  'fixture_oracle | offline_rule | user_review'
+  'runtime | user | official | project | external'
+  'direct | tool_observed | model_extracted | imported'
+  'verified | confirmed | inferred | unverified'
+  'provenance_refs: [EvidenceRef]'
+  'basis_context_refs'
+  'required_condition_ids'
+  'result: exact | applicable | conditionally_applicable | not_applicable | unknown'
+  'observation_provenance'
+  'Schema Gate：PASS'
+  'SCHEMA_GATE_AUDIT'
+)
+for required in "${pe_required[@]}"; do
+  printf '%s\n' "$pe_body" | grep -Fq "$required" || fail "Protocol Extension design missing required contract '$required'"
+done
+
+pe_forbidden=(
+  'schema_version: 2'
+  'EvidenceTrustFact'
+  'candidate_universe'
+  'CandidateUniverseRef'
+  'authority:'
+  'trust_policy_sha256'
+  'source_context_ref'
+  'retrieval_generation_ref'
+  'evaluation_generation_ref'
+  'ProvenanceRef'
+  '[ContextRef]'
+  'Gate 未通过'
+  '## 十、Schema Gate 审核结果'
+)
+for pat in "${pe_forbidden[@]}"; do
+  if printf '%s\n' "$pe_body" | grep -Fq "$pat"; then
+    fail "Protocol Extension design contains forbidden form '$pat'"
+  fi
+done
+
+# The initial Schema Gate audit is archived history, not protocol input.
+pe_audit="docs/OMR_MNEMOSYNE_MEM-02_SCHEMA_GATE_AUDIT.zh-CN.md"
+[ -f "$pe_audit" ] || fail "missing archived Schema Gate audit $pe_audit"
+grep -q '历史归档' "$pe_audit" || fail "Schema Gate audit must be marked as archived history"
+grep -q '不作为当前协议输入' "$pe_audit" || fail "Schema Gate audit must state it is not protocol input"
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"
