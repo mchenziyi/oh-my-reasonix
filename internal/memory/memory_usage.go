@@ -33,6 +33,25 @@ type MemoryUsage struct {
 	Source        string `json:"source"`
 	ContentSHA256 string `json:"content_sha256"`
 	CreatedAt     string `json:"created_at"`
+
+	// MEM-02A evaluation anchors. Two forms are legal: Legacy (all anchor
+	// fields absent, canonical bytes/hash identical to pre-MEM-02A) and
+	// Anchored (all anchor fields present and valid). Partial anchors are
+	// corrupt input and fail closed; nothing is auto-filled.
+	RetrievalID             string                 `json:"retrieval_id,omitempty"`
+	RootTaskID              string                 `json:"root_task_id,omitempty"`
+	MemoryContext           *MemoryContext         `json:"memory_context,omitempty"`
+	ContextSignatureVersion int                    `json:"context_signature_version,omitempty"`
+	ContextSignature        string                 `json:"context_signature,omitempty"`
+	ContextDescriptorRef    string                 `json:"context_descriptor_ref,omitempty"`
+	ObservationProvenance   *ObservationProvenance `json:"observation_provenance,omitempty"`
+}
+
+// anchored reports whether the usage carries any MEM-02A anchor field.
+func (u MemoryUsage) anchored() bool {
+	return u.RetrievalID != "" || u.RootTaskID != "" || u.MemoryContext != nil ||
+		u.ContextSignatureVersion != 0 || u.ContextSignature != "" ||
+		u.ContextDescriptorRef != "" || u.ObservationProvenance != nil
 }
 
 // usageStages is the frozen five-phase pipeline; the schema rejects anything
@@ -69,7 +88,7 @@ func (u MemoryUsage) Validate() error {
 		return errors.New("memory usage: revision must be >= 1")
 	}
 	if !usageStages[u.UsageStage] {
-		return fmt.Errorf("memory usage: usage_stage must be one of retrieved|read|adopted|affected|evaluated, got %q", u.UsageStage)
+		return errors.New("memory usage: usage_stage must be one of retrieved|read|adopted|affected|evaluated")
 	}
 	if u.EpisodeID != "" {
 		if err := validateID(u.EpisodeID, "episode_id"); err != nil {
@@ -85,7 +104,53 @@ func (u MemoryUsage) Validate() error {
 	if err := validateHash(u.ContentSHA256, "content_sha256"); err != nil {
 		return fmt.Errorf("memory usage: %w", err)
 	}
-	return validateTime(u.CreatedAt, "created_at")
+	if err := validateTime(u.CreatedAt, "created_at"); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	return u.validateAnchors()
+}
+
+// validateAnchors enforces the all-or-none MEM-02A anchor contract: Legacy
+// (everything absent) or Anchored (everything present and valid); any partial
+// anchor is corrupt input and fails closed without auto-filling defaults.
+func (u MemoryUsage) validateAnchors() error {
+	if !u.anchored() {
+		return nil // legacy form: canonical output stays pre-MEM-02A
+	}
+	if u.RetrievalID == "" {
+		return errors.New("memory usage: anchored usage requires retrieval_id")
+	}
+	if err := validateID(u.RetrievalID, "retrieval_id"); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	if u.RootTaskID == "" {
+		return errors.New("memory usage: anchored usage requires root_task_id")
+	}
+	if err := validateID(u.RootTaskID, "root_task_id"); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	if u.MemoryContext == nil {
+		return errors.New("memory usage: anchored usage requires memory_context")
+	}
+	if err := u.MemoryContext.Validate(); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	if u.ContextSignatureVersion != 1 {
+		return errors.New("memory usage: context_signature_version must be 1")
+	}
+	if err := validateHash(u.ContextSignature, "context_signature"); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	if err := validateID(u.ContextDescriptorRef, "context_descriptor_ref"); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	if u.ObservationProvenance == nil {
+		return errors.New("memory usage: anchored usage requires observation_provenance")
+	}
+	if err := u.ObservationProvenance.Validate(); err != nil {
+		return fmt.Errorf("memory usage: %w", err)
+	}
+	return nil
 }
 
 func (u MemoryUsage) canonMap() (map[string]any, error) {
@@ -97,7 +162,7 @@ func (u MemoryUsage) canonMap() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{
+	m := map[string]any{
 		"schema_version": u.SchemaVersion,
 		"usage_id":       u.UsageID,
 		"scope":          string(u.Scope),
@@ -109,7 +174,28 @@ func (u MemoryUsage) canonMap() (map[string]any, error) {
 		"source":         u.Source,
 		"content_sha256": u.ContentSHA256,
 		"created_at":     created,
-	}, nil
+	}
+	if u.anchored() {
+		if u.MemoryContext == nil || u.ObservationProvenance == nil {
+			return nil, errors.New("memory usage: partial anchors cannot be canonicalized")
+		}
+		ctxMap, err := u.MemoryContext.canonMap()
+		if err != nil {
+			return nil, err
+		}
+		provMap, err := u.ObservationProvenance.canonMap()
+		if err != nil {
+			return nil, err
+		}
+		m["retrieval_id"] = u.RetrievalID
+		m["root_task_id"] = u.RootTaskID
+		m["memory_context"] = ctxMap
+		m["context_signature_version"] = u.ContextSignatureVersion
+		m["context_signature"] = u.ContextSignature
+		m["context_descriptor_ref"] = u.ContextDescriptorRef
+		m["observation_provenance"] = provMap
+	}
+	return m, nil
 }
 
 func (u MemoryUsage) CanonicalBytes() ([]byte, error) {

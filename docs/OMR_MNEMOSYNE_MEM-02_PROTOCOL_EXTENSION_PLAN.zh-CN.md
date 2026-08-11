@@ -236,6 +236,7 @@ memory_context:
   global_generation_ref: GlobalGenerationRef | null
 context_signature_version: 1
 context_signature: sha256_...
+context_descriptor_ref: controlled_id
 observation_provenance: {source: agent_reported | runtime_observed | user_confirmed, evidence_ref | null, judgment_ref | null}
 ```
 
