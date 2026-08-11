@@ -238,6 +238,25 @@ if grep -Fq 'exact` 并入 `applicable`' "$mem02_doc" || \
   fail "MEM-02 plan contains the superseded Context Applicability result proposal"
 fi
 
+# --- 1g. Mnemosyne MEM-02F frozen implementation contract -----------------
+mem02f_doc="docs/OMR_MNEMOSYNE_MEM-02F_FRESHNESS_REVALIDATION_PLAN.zh-CN.md"
+[ -f "$mem02f_doc" ] || fail "missing $mem02f_doc"
+grep -Fq '状态：✅ 已实现（待 CTO 签收）' "$mem02f_doc" || fail "MEM-02F implementation status is stale"
+grep -Fq '不新增 Schema 字段' "$mem02f_doc" || fail "MEM-02F plan attempts an unapproved Schema expansion"
+grep -Fq 'PolicyRef.content_sha256' "$mem02f_doc" || fail "MEM-02F plan missing the unique Policy hash anchor"
+grep -Fq 'fresh | aging | needs_revalidation' "$mem02f_doc" || fail "MEM-02F plan missing the frozen Freshness enum"
+grep -Fq 'evaluation_expired' "$mem02f_doc" || fail "MEM-02F plan missing judgment expiry semantics"
+grep -Fq 'revalidation_evidence_types' "$mem02f_doc" || fail "MEM-02F plan missing evidence type filtering"
+grep -Fq '## 八、交给 Reasonix 的完整执行提示词' "$mem02f_doc" || fail "MEM-02F plan missing the Reasonix execution prompt"
+grep -Fq '未进入 MEM-02G、未提交、未推送' "$mem02f_doc" || fail "MEM-02F plan missing the phase boundary"
+grep -Fq 'conflicting_freshness_judgments' "$mem02f_doc" || fail "MEM-02F plan missing implemented conflict fallback"
+grep -Fq 'stale_window' "$mem02f_doc" || fail "MEM-02F plan missing implemented stale-window reason"
+
+if grep -Fq 'payload 增加 `freshness_policy_sha256`' "$mem02_doc" || \
+   grep -Fq 'content_classification_ref`（受约束 JudgmentRef' "$mem02_doc"; then
+  fail "MEM-02 plan contains the superseded Freshness Schema proposal"
+fi
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"

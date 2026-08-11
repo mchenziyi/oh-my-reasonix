@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 与 MEM-02E Context Applicability 已完成待 CTO 签收；Conflict 尚未实现；未进入 MEM-03）
+- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 与 MEM-02E Context Applicability 已完成并签收；MEM-02F Freshness/Revalidation 加固已实现待 CTO 签收；Conflict 尚未实现；未进入 MEM-03）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -121,11 +121,13 @@ Manifest 重建、精确 Memory/Evidence/Judgment 引用验证和只读派生结
 
 ### MEM-02-06：Freshness / Revalidation 评估
 
+状态：✅ MEM-02F 精确验证加固已实现（待 CTO 签收）。
+
 目标：把时间老化与有效性隔离，生成可审计的 Revalidation 候选。
 
 实现：
 
-- Freshness Judgment 固定 `evaluated_at`、`freshness_policy_ref`、`freshness_policy_sha256`、`content_classification_ref`；
+- Freshness Judgment 沿用 Architecture v1 冻结的 `evaluated_at`、`freshness_policy_ref` 与 `basis_refs`；PolicyRef 已携带唯一 Hash，不增加重复字段；
 - 结果固定 `fresh | aging | needs_revalidation`；
 - 时间流逝不得直接 frozen/superseded/archived；
 - Revalidation 只生成候选或新 Evidence/Journal，不自动修改 Revision；
@@ -287,15 +289,17 @@ Bytes/Hash。持久化 `result` 保留
 Ontology。完整边界、测试矩阵与执行提示词见
 `OMR_MNEMOSYNE_MEM-02E_CONTEXT_APPLICABILITY_PLAN.zh-CN.md`。
 
-### 6.5 MEM-02-06：Freshness 缺口字段（部分阻塞）
+### 6.5 MEM-02-06：Freshness / Revalidation 加固（已实现）
 
-现状核对：`freshness_evaluation` Judgment payload（MEM-01A 冻结）已含
+现状核对：`freshness_evaluation` Judgment payload（MEM-01A 冻结）已完整包含
 `memory_ref、result（fresh|aging|needs_revalidation）、evaluated_at、
-freshness_policy_ref、basis_refs`；计划要求的 `freshness_policy_sha256` 与
-`content_classification_ref` 未冻结。
+freshness_policy_ref、basis_refs`；现有 `EvaluateRevalidation` 已提供基础只读窗口
+评估，但 Subject/payload 身份、Basis、supersede、未来事实与 Evidence type 过滤
+仍需加固。
 
-变更提案：payload 增加 `freshness_policy_sha256`（与 `freshness_policy_ref`
-的 Policy Fact 实际 hash 精确一致，Policy 漂移 fail closed）与
-`content_classification_ref`（受约束 JudgmentRef，
-`judgment_type=content_classification`）。未冻结前 Judgment 字段不扩展；
-02-06 只读 Revalidation 评估器（不写 Judgment、不修改 Revision）可先行交付。
+实现决议：不扩 payload；`PolicyRef.content_sha256` 是唯一 Policy Hash 锚，不重复
+增加 `freshness_policy_sha256`；Architecture v1 未把
+`content_classification_ref` 纳入 Freshness Schema，因此不引入。MEM-02F 只加固
+精确引用、时间窗口、Evidence 类型过滤、确定性与 Lifecycle/Health 隔离。完整
+边界和测试矩阵见
+`OMR_MNEMOSYNE_MEM-02F_FRESHNESS_REVALIDATION_PLAN.zh-CN.md`。
