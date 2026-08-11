@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：进行中（MEM-02-01/06/07/08 已完成；MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；Retrieval/Context/Conflict 尚未实现；未进入 MEM-03）
+- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 计划已冻结、待实现；Context/Conflict 尚未实现；未进入 MEM-03）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -254,14 +254,14 @@ retrieval_id、memory_context.project_generation_ref/global_generation_ref、
 evaluation_scope、judgment_ref`）与 `evaluation_scope`
 `fixture | generation_full_scan | expanded_index_scan | sampled_audit` 未实现。
 
-变更提案：实现架构 6.2.3 已冻结的 RetrievalEvaluation 事实类型（新 FactKind，
-进入 FactStore 路由/校验/幂等/Hash），并在 `retrieval_relevance` payload 增加
-`evaluation_scope`、`retrieval_generation_ref`、`evaluation_generation_ref`、
-`candidate_universe_ref + candidate_universe_sha256` 字段（全部进 Canonical
-Hash）。`memory_context` 复用 MEM-02-01 `EvaluationContext` 锚；某个 Scope 当时
-无 Memory 时对应 Generation Ref 显式 `null`。`authority` 只存在 Judgment
-`source`（`fixture_oracle | retrieval_critic | user_review`），不在 Evaluation
-重复保存。未冻结前 MEM-02-04 阻塞。
+实现决议：按架构 6.2.3 的双对象模型新增 `RetrievalEvaluation` Fact（新
+FactKind，进入 FactStore 路由/校验/幂等/Hash）；既有
+`RetrievalRelevancePayload` 不扩字段。Evaluation 只保存 `retrieval_id`、固定
+`memory_context`、`evaluation_scope` 与精确 `judgment_ref`，结果和引用只保存在
+Judgment。`JudgmentSubject` 新增向后兼容的 `retrieval` 分支绑定同一
+`retrieval_id`；旧 Subject 分支字节不变。第一版不新增 Candidate Universe，
+不读取 CURRENT，不自动生成语义判断。完整边界与测试见
+`OMR_MNEMOSYNE_MEM-02D_RETRIEVAL_EVALUATION_PLAN.zh-CN.md`。
 
 ### 6.4 MEM-02-05：Context Applicability 字段（阻塞点）
 

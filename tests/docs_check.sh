@@ -149,6 +149,9 @@ pe_body=$(cat "$pe_doc")
 
 pe_required=(
   'schema_version: 1'
+  'judgment_type: retrieval_relevance'
+  'subject_type: retrieval'
+  'retrieval_id: retrieval_'
   'memory_context:'
   'project_generation_ref: ProjectGenerationRef | null'
   'global_generation_ref: GlobalGenerationRef | null'

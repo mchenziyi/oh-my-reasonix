@@ -182,6 +182,9 @@ Retrieval Relevance Judgment（沿用架构 6.2.3:726-737 冻结 payload，不�
 
 ```yaml
 judgment_type: retrieval_relevance
+subject:
+  subject_type: retrieval
+  retrieval_id: retrieval_...
 retrieval_relevance:
   result: hit_relevant | hit_irrelevant | missed_relevant | no_relevant_memory | unknown | unavailable
   expected_memory_refs: [MemoryRef]
@@ -192,6 +195,7 @@ retrieval_relevance:
 约束：
 
 - 判断来源不重复保存：只存在于 Judgment 的 `source`（`fixture_oracle | retrieval_critic | user_review`，架构 6.2.3:724）；只有 `fixture_oracle` 可作为 Benchmark 真值；
+- `JudgmentSubject` 为检索审计增加向后兼容的 `retrieval` 分支，且只携带受控 `retrieval_id`；旧 Subject 分支的 Canonical Bytes/Hash 不变，新建并由 RetrievalEvaluation 引用的 Judgment 必须使用该分支，禁止用单条 Memory 或 Outcome 冒充整次检索；
 - `memory_context` 必须固定同一 Generation Pair，某 Scope 无记忆时显式 `null`；禁止用未来 Generation 评价历史；
 - expected/retrieved 引用必须属于固定 Generation；`missed_relevant` 用固定 Generation Pair + `evaluation_scope` 承载候选世界（D7：第一版不新增候选世界对象）；
 - Evaluation 与 Judgment 内容必须一致（`judgment_ref` 指向该次评估对应的 retrieval_relevance Judgment）；
