@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 计划已冻结、待实现；Context/Conflict 尚未实现；未进入 MEM-03）
+- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 与 MEM-02E Context Applicability 已完成待 CTO 签收；Conflict 尚未实现；未进入 MEM-03）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -88,20 +88,24 @@
 
 ### MEM-02-04：Retrieval Evaluation 与 Miss Judgment
 
+状态：✅ 已实现（2026-08-11，MEM-02D）——RetrievalEvaluation Fact 与
+retrieval_relevance Judgment 双对象、固定 Project/Global Generation Pair、永久
+Manifest 重建、精确 Memory/Evidence/Judgment 引用验证和只读派生结果均已落地。
+
 目标：为 Librarian 检索结果提供可重放的命中/漏检评估。
 
 实现：
 
-- 固定 `evaluation_scope: fixture | generation_full_scan | expanded_index_scan | sampled_audit`；
-- 保存 `retrieval_generation_ref` 与 `evaluation_generation_ref`，不得扫描未来 Generation；
-- 候选全集使用 `candidate_universe_ref + candidate_universe_sha256`；
-- 输出 `hit_relevant | hit_irrelevant | missed_relevant | no_relevant_memory | unknown | unavailable`；
-- authority 只存在 Judgment Fact，不在 Evaluation 中重复；
-- 结果作为 Judgment Fact，不能成为第二事实源。
+- Evaluation 仅固定 `retrieval_id`、`memory_context`、`evaluation_scope` 与精确 `judgment_ref`；
+- 语义结果、Memory/Evidence refs 与 source 只存在 `retrieval_relevance` Judgment；
+- 禁止 Candidate Universe、泛化 GenerationRef、CURRENT 与程序语义推断；
+- Generation 清理后只按永久 Manifest 精确重建，无法重建返回 `unavailable`。
 
-验收：索引修复后不能改变对旧 Generation 的历史评价；Generation 清理时可重建或 unavailable；candidate hash 篡改必须拒绝。
+验收：历史固定世界不受 CURRENT 变化影响；Generation 清理后可精确重建或明确 unavailable；路径正文身份、Hash、未来引用、跨 Scope 与引用断链均 fail closed。
 
 ### MEM-02-05：Context Applicability Judgment
+
+状态：✅ 已实现（2026-08-11，MEM-02E）——顶层 `basis_context_refs`、Legacy/Enriched 兼容、条件与 Evidence 精确闭合、只读验证器均已落地。
 
 目标：判断 Memory 对目标 Context 是否适用，避免把单一来源 Context 伪装成知识事实。
 
@@ -109,7 +113,7 @@
 
 - `subject` 使用 `memory_ref + target_context_ref`；
 - `basis_context_refs` 独立记录依据 Context；
-- 结果固定为 `applicable | conditionally_applicable | not_applicable | unknown | unavailable`；
+- 持久化结果固定为 `exact | applicable | conditionally_applicable | not_applicable | unknown`；验证器的 `unavailable` 仅为派生状态，不写回 Judgment；
 - `conditionally_applicable` 必须复用结构化 `applies_when` 条件 Schema，禁止自由文本条件；
 - 不创建 Context Ontology 或第二套关系图。
 
@@ -245,7 +249,7 @@ acquisition_method | verification_status | provenance_refs` 四个独立维度�
 
 Schema Convergence 已完成并通过 Gate；实现边界、Legacy 兼容、状态矩阵与安全规则见 `OMR_MNEMOSYNE_MEM-02C_EVIDENCE_TRUST_PLAN.zh-CN.md`。
 
-### 6.3 MEM-02-04：Retrieval Evaluation 字段（阻塞点）
+### 6.3 MEM-02-04：Retrieval Evaluation 字段（✅ 已实现）
 
 现状核对：`retrieval_relevance` Judgment payload（MEM-01A 冻结）仅
 `result + expected_memory_refs + retrieved_memory_refs + evidence_refs`；
@@ -263,7 +267,7 @@ Judgment。`JudgmentSubject` 新增向后兼容的 `retrieval` 分支绑定同�
 不读取 CURRENT，不自动生成语义判断。完整边界与测试见
 `OMR_MNEMOSYNE_MEM-02D_RETRIEVAL_EVALUATION_PLAN.zh-CN.md`。
 
-### 6.4 MEM-02-05：Context Applicability 字段（阻塞点）
+### 6.4 MEM-02-05：Context Applicability 字段（✅ 已实现）
 
 现状核对：`context_applicability` Judgment payload（MEM-01A 冻结）仅
 `result + required_condition_ids + evidence_refs`；`result` 枚举为
@@ -273,13 +277,15 @@ Judgment。`JudgmentSubject` 新增向后兼容的 `retrieval` 分支绑定同�
 （JudgmentSubject 的 `context` subject 类型已有 `target_context_ref`，但 payload
 无 `basis_context_refs`）。
 
-变更提案：`ContextApplicabilityPayload` 增加 `basis_context_refs`（受控标识、
-去重、进 Canonical Hash）；`result` 枚举冻结为
-`applicable | conditionally_applicable | not_applicable | unknown | unavailable`
-（与 MEM-02-01 的 unavailable 语义一致；`exact` 并入 `applicable`，需 CTO
-确认后冻结）。`conditionally_applicable` 必须复用已冻结结构化
+实现决议：在 `JudgmentFact` 顶层增加向后兼容的 `basis_context_refs`，仅
+`context_applicability` 可用；采用 Legacy/Enriched 双形态保留旧 Canonical
+Bytes/Hash。持久化 `result` 保留
+`exact | applicable | conditionally_applicable | not_applicable | unknown`，不新增
+`unavailable`、不合并 `exact`；验证器可用派生 `unavailable` 表示 Legacy 或引用
+无法闭合。`conditionally_applicable` 必须引用目标 Revision 已存在的结构化
 `ApplicabilityCondition.condition_id`，禁止自由文本条件；不创建 Context
-Ontology。未冻结前 MEM-02-05 阻塞。
+Ontology。完整边界、测试矩阵与执行提示词见
+`OMR_MNEMOSYNE_MEM-02E_CONTEXT_APPLICABILITY_PLAN.zh-CN.md`。
 
 ### 6.5 MEM-02-06：Freshness 缺口字段（部分阻塞）
 

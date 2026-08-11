@@ -640,6 +640,7 @@ type JudgmentSubject struct {
 	OutcomeID        string       `json:"outcome_id,omitempty"`
 	EvidenceRef      *EvidenceRef `json:"evidence_ref,omitempty"`
 	TargetContextRef string       `json:"target_context_ref,omitempty"`
+	RetrievalID      string       `json:"retrieval_id,omitempty"`
 }
 
 func (s JudgmentSubject) Validate() error {
@@ -651,14 +652,14 @@ func (s JudgmentSubject) Validate() error {
 		if err := s.MemoryRef.Validate(); err != nil {
 			return fmt.Errorf("judgment subject: %w", err)
 		}
-		if s.OutcomeID != "" || s.EvidenceRef != nil || s.TargetContextRef != "" {
+		if s.OutcomeID != "" || s.EvidenceRef != nil || s.TargetContextRef != "" || s.RetrievalID != "" {
 			return errors.New("judgment subject: memory_revision must not carry other fields")
 		}
 	case "memory_outcome":
 		if err := validateID(s.OutcomeID, "outcome_id"); err != nil {
 			return fmt.Errorf("judgment subject: %w", err)
 		}
-		if s.MemoryRef != nil || s.EvidenceRef != nil || s.TargetContextRef != "" {
+		if s.MemoryRef != nil || s.EvidenceRef != nil || s.TargetContextRef != "" || s.RetrievalID != "" {
 			return errors.New("judgment subject: memory_outcome must not carry other fields")
 		}
 	case "evidence":
@@ -668,7 +669,7 @@ func (s JudgmentSubject) Validate() error {
 		if err := s.EvidenceRef.Validate(); err != nil {
 			return fmt.Errorf("judgment subject: %w", err)
 		}
-		if s.MemoryRef != nil || s.OutcomeID != "" || s.TargetContextRef != "" {
+		if s.MemoryRef != nil || s.OutcomeID != "" || s.TargetContextRef != "" || s.RetrievalID != "" {
 			return errors.New("judgment subject: evidence must not carry other fields")
 		}
 	case "context":
@@ -681,8 +682,15 @@ func (s JudgmentSubject) Validate() error {
 		if err := validateID(s.TargetContextRef, "target_context_ref"); err != nil {
 			return fmt.Errorf("judgment subject: %w", err)
 		}
-		if s.OutcomeID != "" || s.EvidenceRef != nil {
+		if s.OutcomeID != "" || s.EvidenceRef != nil || s.RetrievalID != "" {
 			return errors.New("judgment subject: context must not carry other fields")
+		}
+	case "retrieval":
+		if err := validateID(s.RetrievalID, "retrieval_id"); err != nil {
+			return fmt.Errorf("judgment subject: %w", err)
+		}
+		if s.MemoryRef != nil || s.OutcomeID != "" || s.EvidenceRef != nil || s.TargetContextRef != "" {
+			return errors.New("judgment subject: retrieval must not carry other fields")
 		}
 	default:
 		return fmt.Errorf("invalid subject_type %q", s.SubjectType)
@@ -723,6 +731,8 @@ func (s JudgmentSubject) canonMap() (map[string]any, error) {
 		}
 		m["memory_ref"] = ref
 		m["target_context_ref"] = s.TargetContextRef
+	case "retrieval":
+		m["retrieval_id"] = s.RetrievalID
 	default:
 		return nil, fmt.Errorf("invalid subject_type %q", s.SubjectType)
 	}
@@ -824,19 +834,31 @@ func (p RetrievalRelevancePayload) Validate() error {
 		if len(list) > maxPayloadRefs {
 			return fmt.Errorf("retrieval relevance: ref list exceeds %d entries", maxPayloadRefs)
 		}
+		seen := make(map[string]bool, len(list))
 		for _, ref := range list {
 			if err := ref.Validate(); err != nil {
 				return fmt.Errorf("retrieval relevance: %w", err)
 			}
+			key := string(ref.Scope) + "|" + string(ref.MemoryType) + "|" + ref.MemoryID + "|" + fmt.Sprint(ref.Revision) + "|" + ref.ContentSHA256
+			if seen[key] {
+				return errors.New("retrieval relevance: duplicate memory ref")
+			}
+			seen[key] = true
 		}
 	}
 	if len(p.EvidenceRefs) > maxPayloadRefs {
 		return fmt.Errorf("retrieval relevance: evidence_refs exceeds %d entries", maxPayloadRefs)
 	}
+	seenEvidence := make(map[string]bool, len(p.EvidenceRefs))
 	for _, ref := range p.EvidenceRefs {
 		if err := ref.Validate(); err != nil {
 			return fmt.Errorf("retrieval relevance: %w", err)
 		}
+		key := evidenceKey(ref)
+		if seenEvidence[key] {
+			return errors.New("retrieval relevance: duplicate evidence ref")
+		}
+		seenEvidence[key] = true
 	}
 	return nil
 }
@@ -877,18 +899,35 @@ func (p ContextApplicabilityPayload) Validate() error {
 	if p.Result == "conditionally_applicable" && len(p.RequiredConditionIDs) == 0 {
 		return errors.New("context applicability: conditionally_applicable requires required_condition_ids")
 	}
+	if p.Result != "conditionally_applicable" && len(p.RequiredConditionIDs) != 0 {
+		return errors.New("context applicability: required_condition_ids are only allowed for conditionally_applicable")
+	}
+	if len(p.RequiredConditionIDs) > maxPayloadRefs {
+		return fmt.Errorf("context applicability: required_condition_ids exceeds %d entries", maxPayloadRefs)
+	}
+	seenConditions := make(map[string]bool, len(p.RequiredConditionIDs))
 	for _, id := range p.RequiredConditionIDs {
 		if err := validateID(id, "required_condition_id"); err != nil {
 			return fmt.Errorf("context applicability: %w", err)
 		}
+		if seenConditions[id] {
+			return errors.New("context applicability: duplicate required condition id")
+		}
+		seenConditions[id] = true
 	}
 	if len(p.EvidenceRefs) > maxPayloadRefs {
 		return fmt.Errorf("context applicability: evidence_refs exceeds %d entries", maxPayloadRefs)
 	}
+	seenEvidence := make(map[string]bool, len(p.EvidenceRefs))
 	for _, ref := range p.EvidenceRefs {
 		if err := ref.Validate(); err != nil {
 			return fmt.Errorf("context applicability: %w", err)
 		}
+		key := evidenceKey(ref)
+		if seenEvidence[key] {
+			return errors.New("context applicability: duplicate evidence ref")
+		}
+		seenEvidence[key] = true
 	}
 	return nil
 }
@@ -1133,6 +1172,7 @@ type JudgmentFact struct {
 	Scope                 Scope                         `json:"scope"`
 	Subject               JudgmentSubject               `json:"subject"`
 	Source                JudgmentSource                `json:"source"`
+	BasisContextRefs      []string                      `json:"basis_context_refs,omitempty"`
 	Confirmation          *ConfirmationPayload          `json:"confirmation,omitempty"`
 	AttributionOverride   *AttributionOverridePayload   `json:"attribution_override,omitempty"`
 	RetrievalRelevance    *RetrievalRelevancePayload    `json:"retrieval_relevance,omitempty"`
@@ -1263,6 +1303,9 @@ func (j JudgmentFact) Validate() error {
 	if err := j.validateCriticConstraints(); err != nil {
 		return err
 	}
+	if err := j.validateContextApplicabilityConstraints(); err != nil {
+		return err
+	}
 	if len(j.BasisRefs) > maxBasisRefs {
 		return fmt.Errorf("judgment: basis_refs exceeds %d entries", maxBasisRefs)
 	}
@@ -1283,6 +1326,43 @@ func (j JudgmentFact) Validate() error {
 	}
 	if j.ContentSHA256 != h {
 		return errors.New("judgment: content_sha256 mismatch")
+	}
+	return nil
+}
+
+// validateContextApplicabilityConstraints implements the MEM-02E enriched
+// shape while leaving nil as the byte-compatible legacy representation.
+func (j JudgmentFact) validateContextApplicabilityConstraints() error {
+	if j.JudgmentType != JudgmentTypeContextApplicability {
+		if j.BasisContextRefs != nil {
+			return errors.New("judgment: basis_context_refs are only allowed for context_applicability")
+		}
+		return nil
+	}
+	if j.Subject.SubjectType != "context" || j.Subject.MemoryRef == nil {
+		return errors.New("judgment: context_applicability subject must be context")
+	}
+	if j.Subject.MemoryRef.Scope != j.Scope {
+		return errors.New("judgment: context_applicability subject scope must equal judgment scope")
+	}
+	if j.BasisContextRefs == nil {
+		return nil // legacy canonical form
+	}
+	if len(j.BasisContextRefs) == 0 {
+		return errors.New("judgment: enriched context_applicability requires basis_context_refs")
+	}
+	if len(j.BasisContextRefs) > maxBasisRefs {
+		return fmt.Errorf("judgment: basis_context_refs exceeds %d entries", maxBasisRefs)
+	}
+	seen := make(map[string]bool, len(j.BasisContextRefs))
+	for _, id := range j.BasisContextRefs {
+		if err := validateID(id, "basis_context_ref"); err != nil {
+			return errors.New("judgment: invalid basis_context_ref")
+		}
+		if seen[id] {
+			return errors.New("judgment: duplicate basis_context_ref")
+		}
+		seen[id] = true
 	}
 	return nil
 }
@@ -1367,6 +1447,13 @@ func (j JudgmentFact) canonMap() (map[string]any, error) {
 		"source":         source,
 		"basis_refs":     basis,
 		"created_at":     created,
+	}
+	if j.BasisContextRefs != nil {
+		basisContexts, err := canonStrings(j.BasisContextRefs)
+		if err != nil {
+			return nil, err
+		}
+		m["basis_context_refs"] = basisContexts
 	}
 	if j.SupersedesJudgmentRef != nil {
 		ref, err := j.SupersedesJudgmentRef.canonMap()

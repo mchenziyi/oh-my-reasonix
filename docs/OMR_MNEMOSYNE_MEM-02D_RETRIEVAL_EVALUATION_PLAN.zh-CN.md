@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02D：Retrieval Evaluation 与 Miss Judgment 实现计划
 
 - 阶段：MEM-02D / MEM-02-04
-- 状态：🟡 计划已冻结，待实现
+- 状态：✅ 已实现（2026-08-11，待 CTO 签收）
 - 前置：MEM-02A～MEM-02C 已签收；MEM-02 Schema Convergence Gate 已通过
 - 目标：实现可重放、可审计的检索评价双对象模型，不调用模型、不猜测相关性、不修改 Memory。
 
@@ -262,3 +262,43 @@ bash tests/docs_check.sh
 
 全部测试与门禁通过、无 blocking/should-fix、文档状态同步后才可签收。签收前不得
 把 `missed_relevant` 接入自动索引修复或自进化 Proposal。
+
+## 十二、实施记录
+
+本节是计划执行日志，不修改第二～九章的冻结协议。每个阶段必须先出现失败测试，
+再实现最小代码，最后记录验证结果。
+
+| 阶段 | 状态 | 成功标准 |
+|---|---|---|
+| D-01 Retrieval Subject | ✅ 完成 | `retrieval_id` 严格联合分支；旧 Subject/Judgment golden 不变 |
+| D-02 RetrievalEvaluation Fact | ✅ 完成 | 严格 Schema、Canonical、Hash、Store round-trip/NOOP/冲突 |
+| D-03 Manifest/Store 路由 | ✅ 完成 | FactKind、身份、Scope、Manifest 解析对称且路径正文一致 |
+| D-04 固定世界验证器 | ✅ 完成 | Project/Global Pair、历史重建、显式 Now、禁止 CURRENT |
+| D-05 引用闭合与来源 | ✅ 完成 | Memory/Evidence/Judgment 精确引用；三种 source；错误脱敏 |
+| D-06 隔离与确定性 | ✅ 完成 | 只读零写入、稳定结果字节、不改 Lifecycle/CURRENT |
+| D-07 文档与门禁 | ✅ 完成 | 第九章全部通过；无遗留 should-fix |
+
+### 12.1 第一轮失败测试证据
+
+在产品实现前新增 Retrieval Subject、RetrievalEvaluation 与 FactStore 测试，当前基线
+按预期编译失败：`RetrievalEvaluation`、`FactKindRetrievalEvaluation` 未定义，且
+`JudgmentSubject` 尚无 `RetrievalID`。这证明测试覆盖的是新增契约，而不是既有行为。
+
+### 12.2 当前手术式改动边界
+
+仅允许继续修改 `internal/memory/**`、本计划、MEM-02 总计划状态与
+`tests/docs_check.sh`。不得修改 Architecture v1、MEM-01A～F 历史协议、CLI、Prompt、
+Reasonix、Desktop 或 Evolution；不得提交、推送或创建 Tag，直至 CTO 验收。
+
+### 12.3 实现与验证结果
+
+- 新增 `RetrievalEvaluation` 不可变 Fact、`FactKindRetrievalEvaluation`、Manifest
+  身份路由以及 Retrieval Subject；旧 Subject/Judgment Canonical 兼容测试保持通过。
+- `ValidateRetrievalEvaluation` 只读验证 Evaluation、固定 Project/Global Generation
+  Pair、永久 Manifest、JudgmentRef、MemoryRef 和 EvidenceRef；只返回
+  `verified | unavailable`，不读 CURRENT、不写事实。
+- 覆盖 Project-only、Project+Global、Generation 清理后重建、不可重建、未来 Fact、
+  路径正文错配、非法 source、retrieval_id 错配、重复引用、零写入和稳定编码。
+- Memory 测试与 race、全仓 18 包、vet、build、Docs Gate、`git diff --check` 均通过。
+  全仓测试在 macOS 默认临时目录曾遇到已知外部清理器竞态；改用
+  `TMPDIR=/private/tmp` 后完整通过，不归类为产品回归。

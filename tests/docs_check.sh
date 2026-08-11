@@ -212,6 +212,32 @@ fi
 grep -Fq 'Legacy 完成这些验证后受控短路为 `unavailable`' "$mem02c_doc" || fail "MEM-02C plan missing the Legacy controlled short-circuit rule"
 grep -Fq 'Generation 路径与正文身份' "$mem02c_doc" || fail "MEM-02C plan missing exact Generation identity validation"
 
+# --- 1e. Mnemosyne MEM-02D implementation boundary ------------------------
+mem02d_doc="docs/OMR_MNEMOSYNE_MEM-02D_RETRIEVAL_EVALUATION_PLAN.zh-CN.md"
+[ -f "$mem02d_doc" ] || fail "missing $mem02d_doc"
+grep -Fq '状态：✅ 已实现' "$mem02d_doc" || fail "MEM-02D plan is not marked implemented"
+grep -Fq 'RetrievalEvaluation Fact + retrieval_relevance Judgment 双对象' "$mem02d_doc" || fail "MEM-02D plan missing the dual-object contract"
+grep -Fq '固定 Project/Global Generation Pair' "$mem02d_doc" || fail "MEM-02D plan missing the fixed-world contract"
+grep -Fq '不读 CURRENT' "$mem02d_doc" || fail "MEM-02D plan missing the no-CURRENT boundary"
+grep -Fq '未进入 MEM-02E' "$mem02d_doc" || fail "MEM-02D plan missing the phase boundary"
+
+# --- 1f. Mnemosyne MEM-02E frozen implementation contract -----------------
+mem02e_doc="docs/OMR_MNEMOSYNE_MEM-02E_CONTEXT_APPLICABILITY_PLAN.zh-CN.md"
+[ -f "$mem02e_doc" ] || fail "missing $mem02e_doc"
+grep -Fq '状态：✅ 已实现' "$mem02e_doc" || fail "MEM-02E plan is not marked implemented"
+grep -Fq 'BasisContextRefs []string `json:"basis_context_refs,omitempty"`' "$mem02e_doc" || fail "MEM-02E plan missing the top-level basis context field"
+grep -Fq 'Legacy / Enriched 双形态' "$mem02e_doc" || fail "MEM-02E plan missing the Legacy compatibility boundary"
+grep -Fq 'exact | applicable | conditionally_applicable | not_applicable | unknown' "$mem02e_doc" || fail "MEM-02E plan missing the frozen result enum"
+grep -Fq '不把 `unavailable` 写进 Judgment' "$mem02e_doc" || fail "MEM-02E plan confuses derived unavailable with persisted result"
+grep -Fq 'Context Descriptor Fact 尚未实现' "$mem02e_doc" || fail "MEM-02E plan hides the Context Descriptor protocol gap"
+grep -Fq '## 九、交给 Reasonix 的完整执行提示词' "$mem02e_doc" || fail "MEM-02E plan missing the Reasonix execution prompt"
+grep -Fq '未进入 MEM-02F、未提交、未推送' "$mem02e_doc" || fail "MEM-02E plan missing the phase boundary"
+
+if grep -Fq 'exact` 并入 `applicable`' "$mem02_doc" || \
+   grep -Fq 'not_applicable | unknown | unavailable`' "$mem02_doc"; then
+  fail "MEM-02 plan contains the superseded Context Applicability result proposal"
+fi
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"

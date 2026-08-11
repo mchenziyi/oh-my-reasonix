@@ -25,6 +25,7 @@ const (
 	FactKindGenerationInputManifest  FactKind = "generation-input-manifests"
 	FactKindMemoryUsage              FactKind = "memory-usages"
 	FactKindOutcome                  FactKind = "outcomes"
+	FactKindRetrievalEvaluation      FactKind = "retrieval-evaluations"
 )
 
 var allKinds = []FactKind{
@@ -36,6 +37,7 @@ var allKinds = []FactKind{
 	FactKindGenerationInputManifest,
 	FactKindMemoryUsage,
 	FactKindOutcome,
+	FactKindRetrievalEvaluation,
 }
 
 func (k FactKind) valid() bool {
@@ -497,6 +499,11 @@ func (s *FactStore) readVerified(ctx context.Context, kind FactKind, comps []str
 	if err != nil {
 		return nil, nil, classifyDecodeError(err)
 	}
+	if v, ok := fact.(RetrievalEvaluation); ok {
+		if len(comps) != 1 || v.EvaluationID != comps[0] {
+			return nil, nil, storeError(CodeHashMismatch, "retrieval evaluation identity mismatch")
+		}
+	}
 	canon, err := fact.EncodeCanonical()
 	if err != nil {
 		return nil, nil, storeError(CodeSchemaInvalid, "fact cannot be canonicalized")
@@ -591,6 +598,8 @@ func factKey(f Fact) (FactKind, string, error) {
 		return FactKindMemoryUsage, v.UsageID, nil
 	case Outcome:
 		return FactKindOutcome, v.OutcomeID, nil
+	case RetrievalEvaluation:
+		return FactKindRetrievalEvaluation, v.EvaluationID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -611,6 +620,8 @@ func factScope(f Fact) (Scope, bool) {
 	case MemoryUsage:
 		return v.Scope, true
 	case Outcome:
+		return v.Scope, true
+	case RetrievalEvaluation:
 		return v.Scope, true
 	default:
 		return "", false
@@ -656,6 +667,8 @@ func decodeKind(kind FactKind, data []byte) (Fact, error) {
 		return DecodeStrict[MemoryUsage](data)
 	case FactKindOutcome:
 		return DecodeStrict[Outcome](data)
+	case FactKindRetrievalEvaluation:
+		return DecodeStrict[RetrievalEvaluation](data)
 	default:
 		return nil, storeError(CodePathUnsafe, "unknown fact kind")
 	}

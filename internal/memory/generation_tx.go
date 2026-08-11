@@ -78,6 +78,8 @@ func factIdentity(f Fact) (factType, factID string, err error) {
 		return "governance_event", v.EventID, nil
 	case GenerationInputManifest:
 		return "generation_input_manifest", v.GenerationID, nil
+	case RetrievalEvaluation:
+		return "retrieval_evaluation", v.EvaluationID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -97,6 +99,8 @@ func factSchemaVersion(f Fact) int {
 	case GovernanceEvent:
 		return v.SchemaVersion
 	case GenerationInputManifest:
+		return v.SchemaVersion
+	case RetrievalEvaluation:
 		return v.SchemaVersion
 	default:
 		return 0
@@ -164,6 +168,8 @@ func resolveManifestInput(factType, factID string) (FactKind, string, error) {
 		return FactKindGovernanceEvent, factID, nil
 	case "generation_input_manifest":
 		return FactKindGenerationInputManifest, factID, nil
+	case "retrieval_evaluation":
+		return FactKindRetrievalEvaluation, factID, nil
 	default:
 		return "", "", fmt.Errorf("unknown fact type %q", factType)
 	}
