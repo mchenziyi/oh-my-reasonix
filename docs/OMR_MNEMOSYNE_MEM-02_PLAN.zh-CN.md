@@ -195,7 +195,7 @@ bash tests/docs_check.sh
 以下提案由 MEM-02 执行时核对冻结 Schema 后产生。按计划约束，未冻结前一律不修改
 Architecture v1 与 MEM-01A～01F 已签收协议；冻结后相关子任务才能继续实现。
 
-### 6.1 MEM-02-02：注册 `critic_review` Judgment subtype（阻塞点）
+### 6.1 MEM-02-02：注册 `critic_review` Judgment subtype（✅ 已冻结并实现，MEM-02B 完成）
 
 现状核对：MEM-01A 冻结的 `JudgmentType` 严格枚举（model.go）为 `confirmation |
 attribution_override | retrieval_relevance | context_applicability |
@@ -208,31 +208,12 @@ payload；实现不得接受未注册的自由 judgment_type"。因此 Critic �
 critic_review 未注册 → 恒 `unavailable` + 不满足，`evidence_validated` 派生
 生命周期保持 probation；扫描期间损坏/未知字段/未注册 type 一律 fail closed。
 
-变更提案（冻结后才可实施，需同步修改 model.go 联合判别与 `JudgmentType` 枚举）：
-
-```yaml
-judgment_type: critic_review
-critic_review:
-  result: passed | failed | unavailable        # 严格枚举
-  evaluation_scope: fixture | generation_full_scan | expanded_index_scan | sampled_audit
-  reviewed_generation_ref:                     # 复用 MEM-02-01 EvaluationContext 锚
-    scope: project | global
-    generation_id: gen_...
-    input_manifest_sha256: sha256_...
-  basis_refs: [MemoryRef/EvidenceRef/JudgmentRef]  # 复用已冻结 BasisRef 联合
-  critic_source:
-    source_type: fixture_oracle | retrieval_critic | user_review
-    source_id: ...
-  content_sha256: 由程序计算，禁止手工填写
-```
-
-约束：禁止 Prompt、思考、命令、凭据和自由长文本（无自由 `reason` 长文本字段）；
-`reviewed_generation_ref` 必须与 MEM-02-01 `EvaluationContext` 锚一致，未来
-Generation 引用 fail closed；跨 Scope fail closed；`content_sha256` 程序计算。
-只有 `result=passed` 且 `evaluation_scope` 合法、generation 锚可重建时才满足
-Critic 条件；`unavailable` 永不算通过。Critic 条件满足后，架构 11.5 的
-`evidence_validated` Active 条件（≥3 独立 EvidenceRef、≥2 独立 Root Task/正式
-来源、无未解决冲突、Critic 通过）才可启用。
+实现（MEM-02B，2026-08-11）：`critic_review` 已注册为 `JudgmentType` 第 8 值
+与 `JudgmentFact` 联合分支；`EvaluateCriticRequirement` 升级为固定 Generation
+Pair（`ExpectedMemoryContext` + 显式 `Now` + Project/Global Store）上的完整
+验证器：Generation/Manifest/compiled output 全链路验证与精确重建、证据并集
+精确匹配、supersede 链逐节点一致性/环/并列冲突处理、passed 仅令
+`Satisfied=true`（Conflict Fact 未冻结，`evidence_validated` 恒 probation）。
 
 ### 6.2 MEM-02-03：Evidence Provenance 维度 + Trust 状态枚举（阻塞点）
 

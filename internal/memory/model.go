@@ -103,6 +103,7 @@ const (
 	JudgmentTypeContentClassification JudgmentType = "content_classification"
 	JudgmentTypeEvidenceTrust         JudgmentType = "evidence_trust"
 	JudgmentTypeFreshnessEvaluation   JudgmentType = "freshness_evaluation"
+	JudgmentTypeCriticReview          JudgmentType = "critic_review"
 )
 
 func (j JudgmentType) Validate() error {
@@ -110,7 +111,7 @@ func (j JudgmentType) Validate() error {
 	case JudgmentTypeConfirmation, JudgmentTypeAttributionOverride,
 		JudgmentTypeRetrievalRelevance, JudgmentTypeContextApplicability,
 		JudgmentTypeContentClassification, JudgmentTypeEvidenceTrust,
-		JudgmentTypeFreshnessEvaluation:
+		JudgmentTypeFreshnessEvaluation, JudgmentTypeCriticReview:
 		return nil
 	default:
 		return fmt.Errorf("invalid judgment_type %q", j)
@@ -932,6 +933,66 @@ func (p FreshnessEvaluationPayload) canonMap() (map[string]any, error) {
 	}, nil
 }
 
+// CriticReviewPayload records a critic review of one revision within a
+// pinned Generation Pair (MEM-02B). No free text, prompts, commands or
+// credentials are stored anywhere; the critic source lives in the envelope.
+type CriticReviewPayload struct {
+	Result               string        `json:"result"`
+	EvaluationScope      string        `json:"evaluation_scope"`
+	MemoryContext        MemoryContext `json:"memory_context"`
+	RequiredEvidenceRefs []EvidenceRef `json:"required_evidence_refs"`
+}
+
+// criticResults / criticEvaluationScopes are the frozen critic vocabularies.
+var (
+	criticResults          = map[string]bool{"passed": true, "failed": true, "unavailable": true}
+	criticEvaluationScopes = map[string]bool{
+		"fixture": true, "generation_full_scan": true,
+		"expanded_index_scan": true, "sampled_audit": true,
+	}
+)
+
+func (p CriticReviewPayload) Validate() error {
+	if !criticResults[p.Result] {
+		return errors.New("critic review: result must be passed|failed|unavailable")
+	}
+	if !criticEvaluationScopes[p.EvaluationScope] {
+		return errors.New("critic review: evaluation_scope must be fixture|generation_full_scan|expanded_index_scan|sampled_audit")
+	}
+	if err := p.MemoryContext.Validate(); err != nil {
+		return fmt.Errorf("critic review: %w", err)
+	}
+	if len(p.RequiredEvidenceRefs) > maxPayloadRefs {
+		return fmt.Errorf("critic review: required_evidence_refs exceeds %d entries", maxPayloadRefs)
+	}
+	for i := range p.RequiredEvidenceRefs {
+		if err := p.RequiredEvidenceRefs[i].Validate(); err != nil {
+			return fmt.Errorf("critic review: %w", err)
+		}
+	}
+	if p.Result == "passed" && len(p.RequiredEvidenceRefs) == 0 {
+		return errors.New("critic review: passed requires required_evidence_refs")
+	}
+	return nil
+}
+
+func (p CriticReviewPayload) canonMap() (map[string]any, error) {
+	ctxMap, err := p.MemoryContext.canonMap()
+	if err != nil {
+		return nil, err
+	}
+	req, err := canonSlice(p.RequiredEvidenceRefs)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"result":                 p.Result,
+		"evaluation_scope":       p.EvaluationScope,
+		"memory_context":         ctxMap,
+		"required_evidence_refs": req,
+	}, nil
+}
+
 // JudgmentFact is the immutable canonical fact for Confirmation,
 // Attribution Override and the other registered judgment subtypes.
 type JudgmentFact struct {
@@ -948,6 +1009,7 @@ type JudgmentFact struct {
 	ContentClassification *ContentClassificationPayload `json:"content_classification,omitempty"`
 	EvidenceTrust         *EvidenceTrustPayload         `json:"evidence_trust,omitempty"`
 	FreshnessEvaluation   *FreshnessEvaluationPayload   `json:"freshness_evaluation,omitempty"`
+	CriticReview          *CriticReviewPayload          `json:"critic_review,omitempty"`
 	SupersedesJudgmentRef *JudgmentRef                  `json:"supersedes_judgment_ref"`
 	BasisRefs             []BasisRef                    `json:"basis_refs"`
 	ContentSHA256         string                        `json:"content_sha256"`
@@ -975,6 +1037,9 @@ func (j JudgmentFact) validatePayload() error {
 		nonNil++
 	}
 	if j.FreshnessEvaluation != nil {
+		nonNil++
+	}
+	if j.CriticReview != nil {
 		nonNil++
 	}
 	if nonNil != 1 {
@@ -1017,6 +1082,11 @@ func (j JudgmentFact) validatePayload() error {
 			return errors.New("judgment: freshness_evaluation payload missing")
 		}
 		err = j.FreshnessEvaluation.Validate()
+	case JudgmentTypeCriticReview:
+		if j.CriticReview == nil {
+			return errors.New("judgment: critic_review payload missing")
+		}
+		err = j.CriticReview.Validate()
 	default:
 		return fmt.Errorf("judgment: invalid judgment_type %q", j.JudgmentType)
 	}
@@ -1059,6 +1129,9 @@ func (j JudgmentFact) Validate() error {
 	if j.JudgmentType == JudgmentTypeConfirmation && j.Confirmation.Status == "revoked" && j.SupersedesJudgmentRef == nil {
 		return errors.New("judgment: revoked confirmation requires supersedes_judgment_ref")
 	}
+	if err := j.validateCriticConstraints(); err != nil {
+		return err
+	}
 	if len(j.BasisRefs) > maxBasisRefs {
 		return fmt.Errorf("judgment: basis_refs exceeds %d entries", maxBasisRefs)
 	}
@@ -1081,6 +1154,57 @@ func (j JudgmentFact) Validate() error {
 		return errors.New("judgment: content_sha256 mismatch")
 	}
 	return nil
+}
+
+// criticSourceTypes is the frozen critic source vocabulary (MEM-02B). It is
+// enforced only for critic_review judgments so other subtypes keep their
+// existing source freedom.
+var criticSourceTypes = map[string]bool{
+	"fixture_oracle": true, "offline_rule": true, "user_review": true,
+}
+
+// validateCriticConstraints enforces the MEM-02B critic_review specifics.
+func (j JudgmentFact) validateCriticConstraints() error {
+	if j.JudgmentType != JudgmentTypeCriticReview {
+		return nil
+	}
+	if j.Subject.SubjectType != "memory_revision" {
+		return errors.New("judgment: critic_review subject must be a memory_revision")
+	}
+	if j.Subject.MemoryRef != nil && j.Subject.MemoryRef.Scope != j.Scope {
+		return errors.New("judgment: critic_review subject scope must equal judgment scope")
+	}
+	if !criticSourceTypes[j.Source.SourceType] {
+		return errors.New("judgment: critic_review source_type must be fixture_oracle|offline_rule|user_review")
+	}
+	if j.CriticReview.Result == "passed" {
+		if len(j.BasisRefs) == 0 {
+			return errors.New("judgment: passed critic_review requires at least one basis_ref")
+		}
+		for _, req := range j.CriticReview.RequiredEvidenceRefs {
+			if !basisContainsEvidence(j.BasisRefs, req) {
+				return errors.New("judgment: passed critic_review required evidence must be fully present in basis_refs")
+			}
+		}
+	}
+	return nil
+}
+
+// evidenceRefsEqual compares two EvidenceRefs field by field.
+func evidenceRefsEqual(a, b EvidenceRef) bool {
+	return a.Scope == b.Scope && a.EvidenceType == b.EvidenceType &&
+		a.EvidenceID == b.EvidenceID && a.ContentSHA256 == b.ContentSHA256
+}
+
+// basisContainsEvidence reports whether any basis entry carries exactly the
+// wanted EvidenceRef.
+func basisContainsEvidence(basis []BasisRef, want EvidenceRef) bool {
+	for i := range basis {
+		if basis[i].EvidenceRef != nil && evidenceRefsEqual(*basis[i].EvidenceRef, want) {
+			return true
+		}
+	}
+	return false
 }
 
 func (j JudgmentFact) canonMap() (map[string]any, error) {
@@ -1165,6 +1289,12 @@ func (j JudgmentFact) canonMap() (map[string]any, error) {
 			return nil, err
 		}
 		m["freshness_evaluation"] = p
+	case JudgmentTypeCriticReview:
+		p, err := j.CriticReview.canonMap()
+		if err != nil {
+			return nil, err
+		}
+		m["critic_review"] = p
 	}
 	return m, nil
 }
