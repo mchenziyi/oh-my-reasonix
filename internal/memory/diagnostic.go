@@ -44,6 +44,9 @@ const (
 	CodeOKFCompileError Code = "memory_okf_compile_error"
 
 	CodeDerivedInvalidInput Code = "memory_derived_invalid_input"
+
+	// Evaluation codes (MEM-02-01).
+	CodeEvaluationFutureReference Code = "memory_evaluation_future_reference"
 )
 
 // Resource limits. These are implementation safety bounds, centralized here

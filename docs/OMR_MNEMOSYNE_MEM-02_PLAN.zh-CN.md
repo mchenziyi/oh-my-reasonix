@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：待执行
+- 状态：夜间执行完成（MEM-02-01 EvaluationContext/Generation Pin 完整实现；MEM-02-02 Critic 只读验证器与 MEM-02-06 Revalidation 只读评估器已交付；MEM-02-07 一致性 Doctor 与 MEM-02-08 离线 Benchmark 完整实现；MEM-02-03/04/05 因 Schema 未冻结阻塞于第六章提案，未实现 Trust/Retrieval/Context 扩展；未进入 MEM-03，未提交、未推送）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -189,3 +189,124 @@ bash tests/docs_check.sh
 
 最终输出：每个子任务完成/阻塞状态、实际文件、测试与门禁、[ENV] 限制、未完成项；不要宣称模型质量提升，不要提交或推送。
 ```
+
+## 六、Schema 变更提案（MEM-02 执行记录）
+
+以下提案由 MEM-02 执行时核对冻结 Schema 后产生。按计划约束，未冻结前一律不修改
+Architecture v1 与 MEM-01A～01F 已签收协议；冻结后相关子任务才能继续实现。
+
+### 6.1 MEM-02-02：注册 `critic_review` Judgment subtype（阻塞点）
+
+现状核对：MEM-01A 冻结的 `JudgmentType` 严格枚举（model.go）为 `confirmation |
+attribution_override | retrieval_relevance | context_applicability |
+content_classification | evidence_trust | freshness_evaluation`，无 Critic。
+架构 6.2.1 明确 "Attribution、Generalization Critic 和 MemoryUsage 回执等
+Judgment 同样复用基础 Envelope 与 JudgmentRef，并由对应协议定义固定 subtype
+payload；实现不得接受未注册的自由 judgment_type"。因此 Critic 协议缺口成立。
+
+已交付（02-02 只读部分）：`EvaluateCriticRequirement` 只读验证器 ——
+critic_review 未注册 → 恒 `unavailable` + 不满足，`evidence_validated` 派生
+生命周期保持 probation；扫描期间损坏/未知字段/未注册 type 一律 fail closed。
+
+变更提案（冻结后才可实施，需同步修改 model.go 联合判别与 `JudgmentType` 枚举）：
+
+```yaml
+judgment_type: critic_review
+critic_review:
+  result: passed | failed | unavailable        # 严格枚举
+  evaluation_scope: fixture | generation_full_scan | expanded_index_scan | sampled_audit
+  reviewed_generation_ref:                     # 复用 MEM-02-01 EvaluationContext 锚
+    scope: project | global
+    generation_id: gen_...
+    input_manifest_sha256: sha256_...
+  basis_refs: [MemoryRef/EvidenceRef/JudgmentRef]  # 复用已冻结 BasisRef 联合
+  critic_source:
+    source_type: fixture_oracle | retrieval_critic | user_review
+    source_id: ...
+  content_sha256: 由程序计算，禁止手工填写
+```
+
+约束：禁止 Prompt、思考、命令、凭据和自由长文本（无自由 `reason` 长文本字段）；
+`reviewed_generation_ref` 必须与 MEM-02-01 `EvaluationContext` 锚一致，未来
+Generation 引用 fail closed；跨 Scope fail closed；`content_sha256` 程序计算。
+只有 `result=passed` 且 `evaluation_scope` 合法、generation 锚可重建时才满足
+Critic 条件；`unavailable` 永不算通过。Critic 条件满足后，架构 11.5 的
+`evidence_validated` Active 条件（≥3 独立 EvidenceRef、≥2 独立 Root Task/正式
+来源、无未解决冲突、Critic 通过）才可启用。
+
+### 6.2 MEM-02-03：Evidence Provenance 维度 + Trust 状态枚举（阻塞点）
+
+现状核对：架构 6.2.3 要求每个长期 Evidence Fact 包含 `evidence_origin |
+acquisition_method | verification_status | provenance_refs` 四个独立维度，且
+`evidence_origin` 固定 `runtime | user | official | project | external`、
+`acquisition_method` 固定 `direct | tool_observed | model_extracted | imported`、
+`verification_status` 固定 `verified | confirmed | inferred | unverified`；
+但 MEM-01A 实现的 `MemoryEvidenceGeneration` 不含这些字段（仅
+`root_task_refs`）。`PolicyConfigTrust` 的 `allowed_acquisition_methods` 目前是
+自由 identifier 列表而非冻结枚举。Trust 派生状态
+`trusted | restricted | unverified | blocked` 未在任何冻结 Schema 出现。
+
+变更提案：
+
+1. `MemoryEvidenceGeneration` 增加四个严格不可变字段：`evidence_origin`
+   （枚举）、`acquisition_method`（枚举）、`verification_status`（枚举）、
+   `provenance_refs []EvidenceRef`（去重、进 Canonical Hash、与
+   `evidence_refs` 并集闭合到原始 EvidenceRef）。旧字段无这些维度时按
+   "缺失维度" 处理，不得猜测。
+2. `PolicyConfigTrust.allowed_acquisition_methods` 收敛为上述冻结枚举子集。
+3. 冻结 Trust 派生状态枚举 `trusted | restricted | unverified | blocked`：
+   - 安全根不可关闭（`require_provenance=true`、`require_verification_status=true`、
+     `external_unverified_instruction_allowed=false` 保持 MEM-01C 冻结值）；
+   - 未验证外部内容不得成为 instructional content；
+   - Trust 结果只作派生输入，不直接晋升 Lifecycle。
+
+未冻结前 MEM-02-03 阻塞，不实现 Trust 派生。
+
+### 6.3 MEM-02-04：Retrieval Evaluation 字段（阻塞点）
+
+现状核对：`retrieval_relevance` Judgment payload（MEM-01A 冻结）仅
+`result + expected_memory_refs + retrieved_memory_refs + evidence_refs`；
+架构 6.2.3 的 `facts/retrieval-evaluations/` 事实（`evaluation_id、scope、
+retrieval_id、memory_context.project_generation_ref/global_generation_ref、
+evaluation_scope、judgment_ref`）与 `evaluation_scope`
+`fixture | generation_full_scan | expanded_index_scan | sampled_audit` 未实现。
+
+变更提案：实现架构 6.2.3 已冻结的 RetrievalEvaluation 事实类型（新 FactKind，
+进入 FactStore 路由/校验/幂等/Hash），并在 `retrieval_relevance` payload 增加
+`evaluation_scope`、`retrieval_generation_ref`、`evaluation_generation_ref`、
+`candidate_universe_ref + candidate_universe_sha256` 字段（全部进 Canonical
+Hash）。`memory_context` 复用 MEM-02-01 `EvaluationContext` 锚；某个 Scope 当时
+无 Memory 时对应 Generation Ref 显式 `null`。`authority` 只存在 Judgment
+`source`（`fixture_oracle | retrieval_critic | user_review`），不在 Evaluation
+重复保存。未冻结前 MEM-02-04 阻塞。
+
+### 6.4 MEM-02-05：Context Applicability 字段（阻塞点）
+
+现状核对：`context_applicability` Judgment payload（MEM-01A 冻结）仅
+`result + required_condition_ids + evidence_refs`；`result` 枚举为
+`exact | applicable | conditionally_applicable | not_applicable | unknown`
+（无 `unavailable`）；架构 6.2.3 要求 `subject` 携带
+`memory_ref + target_context_ref` 且 `basis_context_refs` 独立记录依据 Context
+（JudgmentSubject 的 `context` subject 类型已有 `target_context_ref`，但 payload
+无 `basis_context_refs`）。
+
+变更提案：`ContextApplicabilityPayload` 增加 `basis_context_refs`（受控标识、
+去重、进 Canonical Hash）；`result` 枚举冻结为
+`applicable | conditionally_applicable | not_applicable | unknown | unavailable`
+（与 MEM-02-01 的 unavailable 语义一致；`exact` 并入 `applicable`，需 CTO
+确认后冻结）。`conditionally_applicable` 必须复用已冻结结构化
+`ApplicabilityCondition.condition_id`，禁止自由文本条件；不创建 Context
+Ontology。未冻结前 MEM-02-05 阻塞。
+
+### 6.5 MEM-02-06：Freshness 缺口字段（部分阻塞）
+
+现状核对：`freshness_evaluation` Judgment payload（MEM-01A 冻结）已含
+`memory_ref、result（fresh|aging|needs_revalidation）、evaluated_at、
+freshness_policy_ref、basis_refs`；计划要求的 `freshness_policy_sha256` 与
+`content_classification_ref` 未冻结。
+
+变更提案：payload 增加 `freshness_policy_sha256`（与 `freshness_policy_ref`
+的 Policy Fact 实际 hash 精确一致，Policy 漂移 fail closed）与
+`content_classification_ref`（受约束 JudgmentRef，
+`judgment_type=content_classification`）。未冻结前 Judgment 字段不扩展；
+02-06 只读 Revalidation 评估器（不写 Judgment、不修改 Revision）可先行交付。
