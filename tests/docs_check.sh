@@ -203,6 +203,12 @@ for required in '状态：✅ 已实现' '不能冒充 Episodic Generation' '它
   grep -q "$required" "$episodic_recall_doctor_plan" || fail "MEM-03C Recall/Doctor plan missing '$required'"
 done
 
+episodic_reasonix_plan="docs/OMR_MNEMOSYNE_MEM-03C_04_REASONIX_INTEGRATION_PLAN.zh-CN.md"
+[ -f "$episodic_reasonix_plan" ] || fail "missing $episodic_reasonix_plan"
+for required in '状态：🟡 待实现' '不要求 Reasonix 官方新增接口' 'context` 是唯一允许解析 CURRENT 的入口' '启动一个只读 Librarian Subagent' '自动采集真实 Episode 属 MEM-04'; do
+  grep -q "$required" "$episodic_reasonix_plan" || fail "MEM-03C Reasonix integration plan missing '$required'"
+done
+
 if grep -Eq '将 Episode Card 新增为 FactKind|允许引入向量数据库|允许使用 Embedding|直接复用 internal/evolution.Episode|允许模型提供可信 Hash' "$episodic_plan"; then
   fail "MEM-03C plan contains a forbidden Episodic Recall architecture"
 fi
