@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-03C：Episodic Recall 计划
 
 - 阶段：MEM-03C
-- 状态：🟡 设计草案，等待 Schema Gate
+- 状态：🟠 Schema Gate 已完成，等待 CTO 批准 D1～D10
 - 前置：MEM-03A 确定性分片索引、MEM-03B 固定快照 Librarian 已实现
 - 目标：让 Reasonix 能在尚未形成稳定 Memory 的历史任务中渐进查找相似 Episode，同时保证
   Episode Card 和 Episodic Index 只是可删除重建的派生表示
@@ -30,6 +30,10 @@ Mnemosyne 的规范 Episode，也不能由 Card 或 Index 反向补齐缺失字�
 3. **MEM-03C-03 固定世界读取与 Doctor**：Librarian 读取、重建与漂移诊断。
 
 Schema Gate 通过前不新增 FactKind、不写产品代码、不修改旧 Evolution Episode。
+
+只读审核结果见 `OMR_MNEMOSYNE_MEM-03C_SCHEMA_GATE_AUDIT.zh-CN.md`。审核确认当前缺口属于
+实现盘点暴露的 Architecture Amendment 条件；D1～D10 未批准前 Gate 状态为
+`WAITING_CTO`，不得进入 MEM-03C-02。
 
 ## 二、范围与成功标准
 
@@ -342,4 +346,3 @@ MEM-03C-02”。
 
 MEM-03C 不实现 Retrieval Evaluation（MEM-03D）、CLI（MEM-03E）、Memory Candidate/Mutation
 自动生成、旧 Episode 批量迁移、Web、自动 Hook、跨项目全局晋升、Embedding 或向量数据库。
-
