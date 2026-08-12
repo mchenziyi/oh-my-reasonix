@@ -215,6 +215,15 @@ for required in '状态：✅ Schema Gate 与 Composite Compiler 已实现' '共
   grep -q "$required" "$composite_plan" || fail "MEM-03C Composite plan missing '$required'"
 done
 
+usage_capture_plan="docs/OMR_MNEMOSYNE_MEM-04A_USAGE_CAPTURE_PLAN.zh-CN.md"
+[ -f "$usage_capture_plan" ] || fail "missing $usage_capture_plan"
+for required in '状态：🟡 Schema Gate 已设计，待实现' '回执不是新 Fact' '每个任务只记录最终阶段' '禁止 `time.Now()`' 'Episode EvidenceRef 固定为 `evidence_type=episode`' '未产生 Outcome 前 help/harm 均为 0'; do
+  grep -q "$required" "$usage_capture_plan" || fail "MEM-04A Usage Capture plan missing '$required'"
+done
+if grep -Eq '模型直接提供 `(usage_id|content_sha256)`|自动生成 `Outcome`|自动判断 helped/harmed|读取最新 CURRENT' "$usage_capture_plan"; then
+  fail "MEM-04A plan contains a forbidden Usage Capture architecture"
+fi
+
 if grep -Eq '将 Episode Card 新增为 FactKind|允许引入向量数据库|允许使用 Embedding|直接复用 internal/evolution.Episode|允许模型提供可信 Hash' "$episodic_plan"; then
   fail "MEM-03C plan contains a forbidden Episodic Recall architecture"
 fi
