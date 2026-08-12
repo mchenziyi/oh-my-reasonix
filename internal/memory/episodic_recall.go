@@ -48,7 +48,7 @@ func verifyEpisodicScope(ctx context.Context, store *FactStore, p EpisodicScopeC
 		return err
 	}
 	doc, err := readJSONFile[generationDoc](filepath.Join(dir, "generation.json"))
-	if err != nil || doc.GenerationID != p.GenerationID || doc.Scope != p.Scope || doc.CompilerVersion != EpisodicCompilerVersion {
+	if err != nil || doc.GenerationID != p.GenerationID || doc.Scope != p.Scope || (doc.CompilerVersion != EpisodicCompilerVersion && doc.CompilerVersion != CompositeCompilerVersion) {
 		return storeError(CodeLibrarianInvalidContext, "pinned episodic generation is invalid")
 	}
 	if err := gs.verifyCompiledOutputIntegrity(ctx, dir, doc); err != nil {

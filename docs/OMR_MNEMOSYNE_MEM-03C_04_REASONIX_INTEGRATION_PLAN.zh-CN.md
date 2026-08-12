@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-04：Reasonix 接入与真实联调计划
 
-- 状态：🟠 发现单 CURRENT 协议冲突，等待 Composite Generation Gate
+- 状态：🟡 Composite Generation 已实现，待 CLI/Profile 接入
 - 前置：MEM-03C-01～03 已实现并推送
 - 目标：让 Reasonix 通过稳定的 OMR CLI 与 `omr-memory` Profile 使用固定世界 Episodic Recall
 

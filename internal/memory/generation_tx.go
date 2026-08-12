@@ -286,10 +286,11 @@ func (g generationDoc) outputHash() (string, error) {
 // generations or be used for deterministic rebuild; unknown versions block
 // with memory_generation_compiler_unavailable instead of guessing.
 var supportedGenerationCompilers = map[string]int{
-	"mnemosyne-compiler/1":  1,                          // MEM-01D skeleton compiler
-	OKFCompilerVersionV1:    OKFCanonicalizationVersion, // MEM-01E legacy compiler
-	OKFCompilerVersion:      OKFCanonicalizationVersion, // MEM-01E OKF compiler
-	EpisodicCompilerVersion: 1,                          // MEM-03C episodic compiler
+	"mnemosyne-compiler/1":   1,                          // MEM-01D skeleton compiler
+	OKFCompilerVersionV1:     OKFCanonicalizationVersion, // MEM-01E legacy compiler
+	OKFCompilerVersion:       OKFCanonicalizationVersion, // MEM-01E OKF compiler
+	EpisodicCompilerVersion:  1,                          // MEM-03C episodic compiler
+	CompositeCompilerVersion: 1,                          // MEM-03C composite compiler
 }
 
 func generationCompilerAvailable(compiler string, canon int) bool {

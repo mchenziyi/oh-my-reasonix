@@ -205,13 +205,13 @@ done
 
 episodic_reasonix_plan="docs/OMR_MNEMOSYNE_MEM-03C_04_REASONIX_INTEGRATION_PLAN.zh-CN.md"
 [ -f "$episodic_reasonix_plan" ] || fail "missing $episodic_reasonix_plan"
-for required in '状态：🟠 发现单 CURRENT 协议冲突' '不要求 Reasonix 官方新增接口' 'context` 是唯一允许解析 CURRENT 的入口' '启动一个只读 Librarian Subagent' '自动采集真实 Episode 属 MEM-04'; do
+for required in '状态：🟡 Composite Generation 已实现，待 CLI/Profile 接入' '不要求 Reasonix 官方新增接口' 'context` 是唯一允许解析 CURRENT 的入口' '启动一个只读 Librarian Subagent' '自动采集真实 Episode 属 MEM-04'; do
   grep -q "$required" "$episodic_reasonix_plan" || fail "MEM-03C Reasonix integration plan missing '$required'"
 done
 
 composite_plan="docs/OMR_MNEMOSYNE_MEM-03C_04A_COMPOSITE_GENERATION_PLAN.zh-CN.md"
 [ -f "$composite_plan" ] || fail "missing $composite_plan"
-for required in '状态：🟡 Schema Gate 待执行' '共享唯一 `CURRENT`' 'mnemosyne-composite-compiler/1' '一个 Manifest + 一个 compiled_output_sha256 + 一个 CURRENT' '不实现 `omr memory episodic context`'; do
+for required in '状态：✅ Schema Gate 与 Composite Compiler 已实现' '共享唯一 `CURRENT`' 'mnemosyne-composite-compiler/1' '一个 Manifest + 一个 compiled_output_sha256 + 一个 CURRENT' '不实现 `omr memory episodic context`'; do
   grep -q "$required" "$composite_plan" || fail "MEM-03C Composite plan missing '$required'"
 done
 

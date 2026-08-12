@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-04A：Composite Generation Schema Gate 与开发计划
 
-- 状态：🟡 Schema Gate 待执行
+- 状态：✅ Schema Gate 与 Composite Compiler 已实现（2026-08-12）
 - 原因：Memory OKF 与 Episodic Recall 共享唯一 `CURRENT`
 - 目标：一个不可变 Generation 同时发布两类派生读取表示
 
