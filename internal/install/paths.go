@@ -18,6 +18,7 @@ const (
 	LSPProfileRel           = ".reasonix/skills/omr-lsp/SKILL.md"
 	GrillMeProfileRel       = ".reasonix/skills/omr-grill-me/SKILL.md"
 	GrillWithDocsProfileRel = ".reasonix/skills/omr-grill-with-docs/SKILL.md"
+	MemoryProfileRel        = ".reasonix/skills/omr-memory/SKILL.md"
 )
 
 func ProjectRoot(start string) (string, error) {

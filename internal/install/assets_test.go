@@ -25,6 +25,7 @@ func TestLoadAssetsFallsBackToEmbeddedReleaseAssets(t *testing.T) {
 		"review brief":    assets.ReviewBrief,
 		"grill-me":        assets.GrillMe,
 		"grill-with-docs": assets.GrillWithDocs,
+		"memory":          assets.Memory,
 	} {
 		if len(data) == 0 {
 			t.Errorf("embedded %s is empty", name)
@@ -47,6 +48,7 @@ func TestLoadAssetsFromExternalDirectory(t *testing.T) {
 		"skills/omr-lsp/SKILL.md",
 		"skills/omr-grill-me/SKILL.md",
 		"skills/omr-grill-with-docs/SKILL.md",
+		"skills/omr-memory/SKILL.md",
 	} {
 		path := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -61,7 +63,7 @@ func TestLoadAssetsFromExternalDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAssets: %v", err)
 	}
-	if assets.Root != root || string(assets.Frontend) != "skills/omr-frontend/SKILL.md" || string(assets.ReviewBrief) != "prompts/review-task-protocol.zh.md" || string(assets.Git) != "skills/omr-git/SKILL.md" || string(assets.LSP) != "skills/omr-lsp/SKILL.md" || string(assets.GrillMe) != "skills/omr-grill-me/SKILL.md" || string(assets.GrillWithDocs) != "skills/omr-grill-with-docs/SKILL.md" {
+	if assets.Root != root || string(assets.Frontend) != "skills/omr-frontend/SKILL.md" || string(assets.ReviewBrief) != "prompts/review-task-protocol.zh.md" || string(assets.Git) != "skills/omr-git/SKILL.md" || string(assets.LSP) != "skills/omr-lsp/SKILL.md" || string(assets.GrillMe) != "skills/omr-grill-me/SKILL.md" || string(assets.GrillWithDocs) != "skills/omr-grill-with-docs/SKILL.md" || string(assets.Memory) != "skills/omr-memory/SKILL.md" {
 		t.Fatalf("unexpected external assets: %#v", assets)
 	}
 }

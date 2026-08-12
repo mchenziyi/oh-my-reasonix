@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-03B：Librarian 渐进读取协议计划
 
 - 阶段：MEM-03B
-- 状态：🟡 设计冻结，待实现
+- 状态：✅ 已实现并通过门禁（2026-08-12）
 - 前置：MEM-03A 确定性 Root/Local Index 已实现；Project/Global Generation、
   MemoryContext、Conflict/Critic/Trust Gate 已存在
 - 目标：为 Reasonix 提供一个只读 Mnemosyne Librarian Profile，以及可由程序严格校验的
@@ -289,7 +289,20 @@ GOCACHE=/tmp/omr-gocache go build ./cmd/omr
 bash tests/docs_check.sh
 ```
 
-## 十一、交给 Reasonix 的完整执行提示词
+## 十一、实现结果
+
+- 已实现固定 Project/Global Retrieval Context；构建时验证 Generation、永久 Manifest、
+  compiled output、Root Index 与 IndexTree，构建后所有读取只使用固定 Generation ID；
+- 已实现严格 `LibrarianRequest`/`LibrarianReceipt` 校验、完整 MemoryRef+页面路径核验、
+  explicit/excluded 约束、正常模式 frozen 隔离和确定性候选排序；
+- 已实现只读 Index/Memory Page Reader，逐组件拒绝 symlink、绝对路径、路径穿越、超限与
+  非普通文件；后台切换 CURRENT 不影响已固定 Retrieval；
+- 已新增 `omr-memory` 只读 Profile，并接入 embedded/external assets、安装 Manifest、升级、
+  profile list 与通用 Doctor/Manifest Hash 校验链；
+- 临时项目真实初始化已确认 Profile 文件落盘、Manifest 记录与 profile list 状态均为 enabled；
+- 本阶段按范围不提供 CLI、自动 Hook、Episode Recall 或 Retrieval Evaluation 持久化。
+
+## 十二、交给 Reasonix 的完整执行提示词
 
 ```text
 执行 OMR Mnemosyne MEM-03B：Librarian 渐进读取协议。
@@ -328,7 +341,7 @@ bash tests/docs_check.sh
 未进入 MEM-03C”。
 ```
 
-## 十二、完成定义
+## 十三、完成定义
 
 - 同一 Retrieval 的 Project/Global Snapshot 固定且可重放；
 - Librarian 候选全部能在固定世界中精确验证；

@@ -43,3 +43,6 @@ var GrillMe []byte
 
 //go:embed skills/omr-grill-with-docs/SKILL.md
 var GrillWithDocs []byte
+
+//go:embed skills/omr-memory/SKILL.md
+var Memory []byte

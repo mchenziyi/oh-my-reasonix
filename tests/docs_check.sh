@@ -154,7 +154,7 @@ librarian_plan="docs/OMR_MNEMOSYNE_MEM-03B_LIBRARIAN_PLAN.zh-CN.md"
 [ -f "$librarian_plan" ] || fail "missing $librarian_plan"
 
 librarian_required=(
-  '状态：🟡 设计冻结，待实现'
+  '状态：✅ 已实现并通过门禁'
   '固定 Project / Global Generation Pair'
   '程序不分析自然语言语义'
   'requires_parent_read'
@@ -163,6 +163,7 @@ librarian_required=(
   'Profile `omr-memory`'
   '不实现：`omr memory context` CLI'
   '交给 Reasonix 的完整执行提示词'
+  '十一、实现结果'
 )
 for required in "${librarian_required[@]}"; do
   grep -q "$required" "$librarian_plan" || fail "MEM-03B plan missing contract '$required'"

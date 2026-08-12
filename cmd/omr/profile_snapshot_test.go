@@ -114,8 +114,8 @@ func TestProfileListJSONSnapshot(t *testing.T) {
 	if err := json.Unmarshal(data, &profiles); err != nil {
 		t.Fatalf("invalid JSON: %v", err)
 	}
-	if len(profiles) != 9 {
-		t.Fatalf("expected 9 profiles, got %d", len(profiles))
+	if len(profiles) != 10 {
+		t.Fatalf("expected 10 profiles, got %d", len(profiles))
 	}
 	for _, p := range profiles {
 		if _, ok := p["id"]; !ok {
@@ -145,7 +145,7 @@ func TestProfileListJSONSnapshot(t *testing.T) {
 	if disabled != 1 {
 		t.Fatalf("expected 1 disabled profile, got %d", disabled)
 	}
-	if enabled != 8 {
-		t.Fatalf("expected 8 enabled profiles, got %d", enabled)
+	if enabled != 9 {
+		t.Fatalf("expected 9 enabled profiles, got %d", enabled)
 	}
 }

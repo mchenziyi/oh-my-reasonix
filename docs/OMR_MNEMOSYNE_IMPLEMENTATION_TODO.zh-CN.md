@@ -282,7 +282,7 @@ omr memory index doctor
 
 ### MEM-03B：Librarian 协议
 
-状态：🟡 设计冻结，待实现（见 `OMR_MNEMOSYNE_MEM-03B_LIBRARIAN_PLAN.zh-CN.md`）
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-03B_LIBRARIAN_PLAN.zh-CN.md`）
 
 - 固定 Project/Global Generation Pair；
 - 先返回索引和页面引用，再由父 Agent 读取正文；

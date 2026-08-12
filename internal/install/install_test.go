@@ -24,6 +24,7 @@ func testAssets() Assets {
 		ReviewBrief:   []byte("review\n"),
 		GrillMe:       []byte("grill-me\n"),
 		GrillWithDocs: []byte("grill-with-docs\n"),
+		Memory:        []byte("memory\n"),
 	}
 }
 
@@ -99,7 +100,7 @@ func TestInitIsIdempotentAndUninstallRestoresConfig(t *testing.T) {
 		t.Fatalf("manifest invalid: %v %#v", err, manifestData)
 	}
 	profiles := manifestData.NormalizedProfiles()
-	if len(profiles) != 7 || profiles[0].ID != "omr-explore" || profiles[0].Path != ExploreProfileRel || profiles[1].ID != "omr-research" || profiles[1].Path != ResearchProfileRel || profiles[2].ID != "omr-debug" || profiles[2].Path != DebugProfileRel || profiles[3].ID != "omr-planner" || profiles[3].Path != PlannerProfileRel || profiles[4].ID != "omr-frontend" || profiles[4].Path != FrontendProfileRel || profiles[5].ID != "omr-grill-me" || profiles[5].Path != GrillMeProfileRel || profiles[6].ID != "omr-grill-with-docs" || profiles[6].Path != GrillWithDocsProfileRel {
+	if len(profiles) != 8 || profiles[0].ID != "omr-explore" || profiles[0].Path != ExploreProfileRel || profiles[1].ID != "omr-research" || profiles[1].Path != ResearchProfileRel || profiles[2].ID != "omr-debug" || profiles[2].Path != DebugProfileRel || profiles[3].ID != "omr-planner" || profiles[3].Path != PlannerProfileRel || profiles[4].ID != "omr-frontend" || profiles[4].Path != FrontendProfileRel || profiles[5].ID != "omr-grill-me" || profiles[5].Path != GrillMeProfileRel || profiles[6].ID != "omr-grill-with-docs" || profiles[6].Path != GrillWithDocsProfileRel || profiles[7].ID != "omr-memory" || profiles[7].Path != MemoryProfileRel {
 		t.Fatalf("manifest profiles invalid: %#v", profiles)
 	}
 	if _, err := Uninstall(Options{ProjectDir: root}); err != nil {
