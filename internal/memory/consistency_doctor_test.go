@@ -280,6 +280,30 @@ func hasFinding(rep *ConsistencyReport, code string) bool {
 	return false
 }
 
+func TestConsistencyDoctorConflictReviewReferences(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev := validEvidenceValidatedRevision()
+	put(t, s, rev)
+	j := validConflictJudgment(rev, "conflict")
+	j.ConflictReview.CounterpartMemoryRefs = []MemoryRef{{
+		Scope: ScopeProject, MemoryType: MemoryTypePattern, MemoryID: "mem_missing_counterpart",
+		Revision: 1, ContentSHA256: testHash,
+	}}
+	j.ConflictReview.EvidenceRefs = []EvidenceRef{{
+		Scope: ScopeProject, EvidenceType: "episode", EvidenceID: "episode_missing", ContentSHA256: testHash,
+	}}
+	j.ContentSHA256 = ""
+	j = fillJudgmentHash(j)
+	put(t, s, j)
+	report, err := CheckConsistency(context.Background(), s, ConsistencyRequest{Scope: ScopeProject})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !hasFinding(report, findingOrphanMemoryRef) || !hasFinding(report, findingOrphanEvidenceRef) {
+		t.Fatalf("doctor must report conflict reference gaps: %+v", report.Findings)
+	}
+}
+
 func validFreshnessJudgmentFor(rev MemoryRevision, result, evaluatedAt string) JudgmentFact {
 	return JudgmentFact{
 		SchemaVersion: 1,

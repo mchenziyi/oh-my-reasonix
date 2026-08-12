@@ -31,17 +31,23 @@ func validEvidenceValidatedRevision() MemoryRevision {
 // 2026-08-10), puts an evidence_validated revision plus its evidence
 // generation, and returns the stores.
 func criticWorld(t *testing.T, key string) (string, *FactStore, *GenerationTx, MemoryRevision, MemoryEvidenceGeneration) {
+	return criticWorldWithEvidence(t, key,
+		[]EvidenceRef{{Scope: ScopeProject, EvidenceType: "episode", EvidenceID: "episode_001", ContentSHA256: testHash}}, nil)
+}
+
+func criticWorldWithEvidence(t *testing.T, key string, evidence []EvidenceRef, roots []string) (string, *FactStore, *GenerationTx, MemoryRevision, MemoryEvidenceGeneration) {
 	t.Helper()
 	root := tempRoot(t)
-	tx, s, _ := commitOKFGeneration(t, root, key, nil)
+	s := openProject(t, root, Options{})
+	gs := NewGenerationStore(s)
 	rev := validEvidenceValidatedRevision()
-	put(t, s, rev)
 	ev := MemoryEvidenceGeneration{
 		SchemaVersion:      1,
 		MemoryID:           rev.MemoryID,
 		Revision:           rev.Revision,
 		EvidenceGeneration: 1,
-		EvidenceRefs:       []EvidenceRef{{Scope: ScopeProject, EvidenceType: "episode", EvidenceID: "episode_001", ContentSHA256: testHash}},
+		EvidenceRefs:       evidence,
+		RootTaskRefs:       roots,
 		TransactionID:      "tx_critic",
 		CreatedAt:          "2026-08-11T00:00:00Z",
 	}
@@ -50,7 +56,28 @@ func criticWorld(t *testing.T, key string) (string, *FactStore, *GenerationTx, M
 		t.Fatal(err)
 	}
 	ev.EvidenceSetSHA256 = h
-	if _, err := s.Put(context.Background(), ev); err != nil {
+	putRevisionEvidence(t, s, rev, ev)
+	compiled, err := CompileOKF(context.Background(), s, okfRequest(rev, ev))
+	if err != nil {
+		t.Fatal(err)
+	}
+	begin := beginReq(key, nil)
+	begin.CompilerVersion = OKFCompilerVersion
+	begin.CanonicalizationVersion = OKFCanonicalizationVersion
+	tx, err := gs.Begin(context.Background(), begin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gs.PrepareManifest(context.Background(), tx, manifestFor(tx, compiled.Inputs)); err != nil {
+		t.Fatal(err)
+	}
+	if err := gs.WriteCompiledOutput(context.Background(), tx, compiled.Outputs); err != nil {
+		t.Fatal(err)
+	}
+	if err := gs.ValidateStaging(context.Background(), tx); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gs.Commit(context.Background(), tx); err != nil {
 		t.Fatal(err)
 	}
 	return root, s, tx, rev, ev
@@ -172,6 +199,28 @@ func TestCriticRequirementPassedSatisfied(t *testing.T) {
 	}
 	if res.Status != CriticRequirementPassed || !res.Satisfied {
 		t.Errorf("passed critic must satisfy, got %s satisfied=%v", res.Status, res.Satisfied)
+	}
+}
+
+func TestCriticRequirementIgnoresEvidenceAddedAfterPinnedGeneration(t *testing.T) {
+	_, s, tx, rev, _ := criticWorld(t, "critic_pinned_evidence")
+	mc := expectedContext(t, s, tx)
+	late := EvidenceRef{Scope: ScopeProject, EvidenceType: "episode", EvidenceID: "episode_late", ContentSHA256: testHash}
+	ev := MemoryEvidenceGeneration{
+		SchemaVersion: 1, MemoryID: rev.MemoryID, Revision: rev.Revision, EvidenceGeneration: 2,
+		EvidenceRefs: []EvidenceRef{late}, TransactionID: "tx_critic_late", CreatedAt: "2026-08-11T00:00:00Z",
+	}
+	ev = fillEvidenceHash(ev)
+	put(t, s, ev)
+	putCritic(t, s, rev, mc, "judgment_critic_late", "passed", nil, &late)
+	req := criticReq(rev, mc)
+	req.ProjectStore = s
+	got, err := evalCritic(t, s, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Status != CriticRequirementUnavailable || got.Satisfied {
+		t.Fatalf("post-generation evidence must not satisfy critic: %+v", got)
 	}
 }
 

@@ -44,6 +44,8 @@ const (
 	findingOrphanOutcomeRef    = "orphan_outcome_ref"
 	findingOrphanPolicyRef     = "orphan_policy_ref"
 	findingOrphanJudgmentRef   = "orphan_judgment_ref"
+	findingOrphanEvidenceRef   = "orphan_evidence_ref"
+	findingReferenceMismatch   = "reference_mismatch"
 	findingCrossScopeReference = "cross_scope_reference"
 	findingSupersedeCycle      = "supersede_cycle"
 	findingSubjectMismatch     = "subject_payload_mismatch"
@@ -78,10 +80,23 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 	if err != nil {
 		return nil, err
 	}
+	evidenceGenerations, err := loadEvidenceGenerations(ctx, store, report)
+	if err != nil {
+		return nil, err
+	}
 
 	revSet := map[string]bool{} // memory_id@revision
+	revRefSet := map[string]bool{}
 	for _, r := range revisions {
 		revSet[fmtMemID(r.MemoryID, r.Revision)] = true
+		ref := MemoryRef{Scope: r.Scope, MemoryType: r.MemoryType, MemoryID: r.MemoryID, Revision: r.Revision, ContentSHA256: r.ContentSHA256}
+		revRefSet[memoryRefKey(ref)] = true
+	}
+	evidenceSet := map[string]bool{}
+	for _, generation := range evidenceGenerations {
+		for _, ref := range generation.EvidenceRefs {
+			evidenceSet[evidenceKey(ref)] = true
+		}
 	}
 	outcomeSet := map[string]bool{}
 	for _, o := range outcomes {
@@ -94,8 +109,10 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 		polSet[fmtPolicyKey(p.PolicyID, p.PolicyType, p.ContentSHA256)] = true
 	}
 	judgmentIDs := map[string]JudgmentType{}
+	judgmentByID := map[string]JudgmentFact{}
 	for _, j := range judgments {
 		judgmentIDs[j.JudgmentID] = j.JudgmentType
+		judgmentByID[j.JudgmentID] = j
 	}
 	// supersede refs: judgment_id -> superseded judgment_id
 	supersedes := map[string]string{}
@@ -148,6 +165,21 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 		if j.ContentClassification != nil {
 			checkPolicyRef(report, j, j.ContentClassification.ClassifierPolicyRef, PolicyTypeContentClassifier, polSet)
 		}
+		if j.ConflictReview != nil {
+			if j.Subject.MemoryRef != nil && !revRefSet[memoryRefKey(*j.Subject.MemoryRef)] {
+				add(report, findingReferenceMismatch, "error", "judgment", j.JudgmentID, "conflict subject memory revision does not exactly match")
+			}
+			for _, ref := range j.ConflictReview.CounterpartMemoryRefs {
+				if !revRefSet[memoryRefKey(ref)] {
+					add(report, findingOrphanMemoryRef, "error", "judgment", j.JudgmentID, "conflict counterpart memory revision does not exist or does not match")
+				}
+			}
+			for _, ref := range j.ConflictReview.EvidenceRefs {
+				if !evidenceSet[evidenceKey(ref)] {
+					add(report, findingOrphanEvidenceRef, "error", "judgment", j.JudgmentID, "conflict evidence reference does not exist")
+				}
+			}
+		}
 		// Supersede targets must exist and share the judgment type. The
 		// target's actual registered type is authoritative: a lying ref
 		// cannot bypass the check by declaring a different type.
@@ -157,6 +189,11 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 				add(report, findingOrphanJudgmentRef, "error", "judgment", j.JudgmentID, "supersede target judgment does not exist")
 			} else if targetType != j.JudgmentType {
 				add(report, findingSubjectMismatch, "error", "judgment", j.JudgmentID, "supersede target judgment type differs from the referencing judgment")
+			} else if j.JudgmentType == JudgmentTypeConflictReview {
+				target := judgmentByID[j.SupersedesJudgmentRef.JudgmentID]
+				if validateJudgmentRefTarget(*j.SupersedesJudgmentRef, target) != nil || !conflictNodesEqual(j, target) {
+					add(report, findingReferenceMismatch, "error", "judgment", j.JudgmentID, "conflict supersede reference does not exactly match its target")
+				}
 			}
 		}
 	}
@@ -334,6 +371,31 @@ func loadPolicies(ctx context.Context, store *FactStore, report *ConsistencyRepo
 			continue
 		}
 		out = append(out, p)
+	}
+	return out, nil
+}
+
+func loadEvidenceGenerations(ctx context.Context, store *FactStore, report *ConsistencyReport) ([]MemoryEvidenceGeneration, error) {
+	keys, err := store.List(ctx, FactKindMemoryEvidenceGeneration)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MemoryEvidenceGeneration, 0, len(keys))
+	for _, key := range keys {
+		data, err := store.Get(ctx, FactKindMemoryEvidenceGeneration, key)
+		if err != nil {
+			if isCorruptCode(ErrorCode(err)) {
+				add(report, findingCorruptFact, "error", "memory_evidence_generation", key, "evidence generation fails strict validation")
+				continue
+			}
+			return nil, err
+		}
+		generation, err := DecodeStrict[MemoryEvidenceGeneration](data)
+		if err != nil {
+			add(report, findingCorruptFact, "error", "memory_evidence_generation", key, "evidence generation fails strict validation")
+			continue
+		}
+		out = append(out, generation)
 	}
 	return out, nil
 }

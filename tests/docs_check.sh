@@ -257,6 +257,20 @@ if grep -Fq 'payload 增加 `freshness_policy_sha256`' "$mem02_doc" || \
   fail "MEM-02 plan contains the superseded Freshness Schema proposal"
 fi
 
+# --- 1h. Mnemosyne MEM-02G Conflict Review Schema Gate --------------------
+mem02g_doc="docs/OMR_MNEMOSYNE_MEM-02G_CONFLICT_REVIEW_PLAN.zh-CN.md"
+[ -f "$mem02g_doc" ] || fail "missing $mem02g_doc"
+grep -Fq '状态：✅ 已完成并经 CTO 签收（2026-08-12）' "$mem02g_doc" || fail "MEM-02G implementation status is stale"
+grep -Fq '不新增独立 Conflict FactKind' "$mem02g_doc" || fail "MEM-02G must not create a second conflict fact source"
+grep -Fq 'judgment_type: conflict_review' "$mem02g_doc" || fail "MEM-02G missing conflict_review schema"
+grep -Fq 'clear | conflict | unavailable' "$mem02g_doc" || fail "MEM-02G missing frozen result vocabulary"
+grep -Fq 'sampled_audit + clear' "$mem02g_doc" || fail "MEM-02G missing sampled-clear restriction"
+grep -Fq '独立 EvidenceRef >= 3' "$mem02g_doc" || fail "MEM-02G missing evidence gate threshold"
+grep -Fq 'CriticRequirement == passed' "$mem02g_doc" || fail "MEM-02G missing critic gate"
+grep -Fq 'ConflictRequirement == clear' "$mem02g_doc" || fail "MEM-02G missing conflict gate"
+grep -Fq '## 九、交给 Reasonix 的完整执行提示词' "$mem02g_doc" || fail "MEM-02G missing Reasonix prompt"
+grep -Fq '未进入 MEM-03' "$mem02g_doc" || fail "MEM-02G phase boundary is missing"
+
 # --- 2. link check (README pair) -------------------------------------------
 check_links() {
   local file="$1"

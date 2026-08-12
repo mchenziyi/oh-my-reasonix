@@ -13,7 +13,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 )
 
@@ -97,9 +96,23 @@ func EvaluateCriticRequirement(ctx context.Context, store *FactStore, req Critic
 		}
 		return nil, err
 	}
+	fixedWorld, err := loadFixedMemoryWorld(ctx, req.ExpectedMemoryContext, req.Scope, req.ProjectStore, req.GlobalStore)
+	if err != nil {
+		if err == errWorldUnavailable {
+			return unavailableResult(rev), nil
+		}
+		return nil, err
+	}
+	targetRef := MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}
+	if err := fixedWorld.requireRevision(targetRef); err != nil {
+		if err == errWorldUnavailable {
+			return unavailableResult(rev), nil
+		}
+		return nil, err
+	}
 
 	// Exact evidence union of the target revision's evidence generations.
-	evidenceSet, err := collectRevisionEvidenceSet(ctx, store, req.MemoryID, req.Revision)
+	evidenceSet, _, err := fixedWorld.collectEvidence(ctx, req.MemoryID, req.Revision, req.Now)
 	if err != nil {
 		return nil, err
 	}
@@ -256,38 +269,6 @@ func verifyRebuildFromManifest(ctx context.Context, store *FactStore, scope Scop
 }
 
 // ---- evidence union ----
-
-// collectRevisionEvidenceSet returns the exact union of evidence_refs across
-// every MemoryEvidenceGeneration of the target revision. Corrupt evidence
-// facts fail closed; nothing is guessed from evidence_type.
-func collectRevisionEvidenceSet(ctx context.Context, store *FactStore, memoryID string, revision int) (map[string]bool, error) {
-	set := make(map[string]bool)
-	keys, err := store.List(ctx, FactKindMemoryEvidenceGeneration)
-	if err != nil {
-		return nil, err
-	}
-	prefix := fmt.Sprintf("%s/%d/", memoryID, revision)
-	for _, key := range keys {
-		if !strings.HasPrefix(key, prefix) {
-			continue
-		}
-		data, err := store.Get(ctx, FactKindMemoryEvidenceGeneration, key)
-		if err != nil {
-			return nil, err
-		}
-		ev, err := DecodeStrict[MemoryEvidenceGeneration](data)
-		if err != nil {
-			return nil, classifyDecodeError(err)
-		}
-		if ev.MemoryID != memoryID || ev.Revision != revision {
-			return nil, storeError(CodeHashMismatch, "evidence generation identity mismatch")
-		}
-		for _, ref := range ev.EvidenceRefs {
-			set[evidenceKey(ref)] = true
-		}
-	}
-	return set, nil
-}
 
 func evidenceKey(r EvidenceRef) string {
 	return string(r.Scope) + "|" + r.EvidenceType + "|" + r.EvidenceID + "|" + r.ContentSHA256

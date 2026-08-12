@@ -104,6 +104,7 @@ const (
 	JudgmentTypeEvidenceTrust         JudgmentType = "evidence_trust"
 	JudgmentTypeFreshnessEvaluation   JudgmentType = "freshness_evaluation"
 	JudgmentTypeCriticReview          JudgmentType = "critic_review"
+	JudgmentTypeConflictReview        JudgmentType = "conflict_review"
 )
 
 func (j JudgmentType) Validate() error {
@@ -111,7 +112,8 @@ func (j JudgmentType) Validate() error {
 	case JudgmentTypeConfirmation, JudgmentTypeAttributionOverride,
 		JudgmentTypeRetrievalRelevance, JudgmentTypeContextApplicability,
 		JudgmentTypeContentClassification, JudgmentTypeEvidenceTrust,
-		JudgmentTypeFreshnessEvaluation, JudgmentTypeCriticReview:
+		JudgmentTypeFreshnessEvaluation, JudgmentTypeCriticReview,
+		JudgmentTypeConflictReview:
 		return nil
 	default:
 		return fmt.Errorf("invalid judgment_type %q", j)
@@ -1113,6 +1115,83 @@ type CriticReviewPayload struct {
 	RequiredEvidenceRefs []EvidenceRef `json:"required_evidence_refs"`
 }
 
+// ConflictReviewPayload records whether a fixed Generation Pair contains a
+// conflicting revision. It stores references only; review reasoning remains
+// outside the fact store.
+type ConflictReviewPayload struct {
+	Result                string        `json:"result"`
+	EvaluationScope       string        `json:"evaluation_scope"`
+	MemoryContext         MemoryContext `json:"memory_context"`
+	CounterpartMemoryRefs []MemoryRef   `json:"counterpart_memory_refs"`
+	EvidenceRefs          []EvidenceRef `json:"evidence_refs"`
+}
+
+var conflictResults = map[string]bool{"clear": true, "conflict": true, "unavailable": true}
+
+func (p ConflictReviewPayload) Validate() error {
+	if !conflictResults[p.Result] {
+		return errors.New("conflict review: result must be clear|conflict|unavailable")
+	}
+	if !criticEvaluationScopes[p.EvaluationScope] {
+		return errors.New("conflict review: invalid evaluation_scope")
+	}
+	if err := p.MemoryContext.Validate(); err != nil {
+		return fmt.Errorf("conflict review: %w", err)
+	}
+	if len(p.CounterpartMemoryRefs) > maxPayloadRefs || len(p.EvidenceRefs) > maxPayloadRefs {
+		return fmt.Errorf("conflict review: references exceed %d entries", maxPayloadRefs)
+	}
+	if p.Result == "conflict" && len(p.CounterpartMemoryRefs) == 0 {
+		return errors.New("conflict review: conflict requires counterpart_memory_refs")
+	}
+	if p.Result != "conflict" && len(p.CounterpartMemoryRefs) != 0 {
+		return errors.New("conflict review: only conflict may carry counterpart_memory_refs")
+	}
+	seenMemory := make(map[string]bool, len(p.CounterpartMemoryRefs))
+	for i := range p.CounterpartMemoryRefs {
+		if err := p.CounterpartMemoryRefs[i].Validate(); err != nil {
+			return fmt.Errorf("conflict review: %w", err)
+		}
+		key := memoryRefKey(p.CounterpartMemoryRefs[i])
+		if seenMemory[key] {
+			return errors.New("conflict review: duplicate counterpart_memory_ref")
+		}
+		seenMemory[key] = true
+	}
+	seenEvidence := make(map[string]bool, len(p.EvidenceRefs))
+	for i := range p.EvidenceRefs {
+		if err := p.EvidenceRefs[i].Validate(); err != nil {
+			return fmt.Errorf("conflict review: %w", err)
+		}
+		key := evidenceKey(p.EvidenceRefs[i])
+		if seenEvidence[key] {
+			return errors.New("conflict review: duplicate evidence_ref")
+		}
+		seenEvidence[key] = true
+	}
+	return nil
+}
+
+func (p ConflictReviewPayload) canonMap() (map[string]any, error) {
+	ctx, err := p.MemoryContext.canonMap()
+	if err != nil {
+		return nil, err
+	}
+	counterparts, err := canonSlice(p.CounterpartMemoryRefs)
+	if err != nil {
+		return nil, err
+	}
+	evidence, err := canonSlice(p.EvidenceRefs)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]any{
+		"result": p.Result, "evaluation_scope": p.EvaluationScope,
+		"memory_context": ctx, "counterpart_memory_refs": counterparts,
+		"evidence_refs": evidence,
+	}, nil
+}
+
 // criticResults / criticEvaluationScopes are the frozen critic vocabularies.
 var (
 	criticResults          = map[string]bool{"passed": true, "failed": true, "unavailable": true}
@@ -1181,6 +1260,7 @@ type JudgmentFact struct {
 	EvidenceTrust         *EvidenceTrustPayload         `json:"evidence_trust,omitempty"`
 	FreshnessEvaluation   *FreshnessEvaluationPayload   `json:"freshness_evaluation,omitempty"`
 	CriticReview          *CriticReviewPayload          `json:"critic_review,omitempty"`
+	ConflictReview        *ConflictReviewPayload        `json:"conflict_review,omitempty"`
 	SupersedesJudgmentRef *JudgmentRef                  `json:"supersedes_judgment_ref"`
 	BasisRefs             []BasisRef                    `json:"basis_refs"`
 	ContentSHA256         string                        `json:"content_sha256"`
@@ -1211,6 +1291,9 @@ func (j JudgmentFact) validatePayload() error {
 		nonNil++
 	}
 	if j.CriticReview != nil {
+		nonNil++
+	}
+	if j.ConflictReview != nil {
 		nonNil++
 	}
 	if nonNil != 1 {
@@ -1258,6 +1341,11 @@ func (j JudgmentFact) validatePayload() error {
 			return errors.New("judgment: critic_review payload missing")
 		}
 		err = j.CriticReview.Validate()
+	case JudgmentTypeConflictReview:
+		if j.ConflictReview == nil {
+			return errors.New("judgment: conflict_review payload missing")
+		}
+		err = j.ConflictReview.Validate()
 	default:
 		return fmt.Errorf("judgment: invalid judgment_type %q", j.JudgmentType)
 	}
@@ -1301,6 +1389,9 @@ func (j JudgmentFact) Validate() error {
 		return errors.New("judgment: revoked confirmation requires supersedes_judgment_ref")
 	}
 	if err := j.validateCriticConstraints(); err != nil {
+		return err
+	}
+	if err := j.validateConflictConstraints(); err != nil {
 		return err
 	}
 	if err := j.validateContextApplicabilityConstraints(); err != nil {
@@ -1399,6 +1490,52 @@ func (j JudgmentFact) validateCriticConstraints() error {
 		}
 	}
 	return nil
+}
+
+var conflictSourceTypes = map[string]bool{
+	"fixture_oracle": true, "offline_rule": true, "user_review": true, "conflict_critic": true,
+}
+
+func (j JudgmentFact) validateConflictConstraints() error {
+	if j.JudgmentType != JudgmentTypeConflictReview {
+		return nil
+	}
+	if j.Subject.SubjectType != "memory_revision" || j.Subject.MemoryRef == nil {
+		return errors.New("judgment: conflict_review subject must be a memory_revision")
+	}
+	if j.Subject.MemoryRef.Scope != j.Scope {
+		return errors.New("judgment: conflict_review subject scope must equal judgment scope")
+	}
+	if !conflictSourceTypes[j.Source.SourceType] {
+		return errors.New("judgment: invalid conflict_review source_type")
+	}
+	for _, counterpart := range j.ConflictReview.CounterpartMemoryRefs {
+		if memoryRefsEqual(counterpart, *j.Subject.MemoryRef) {
+			return errors.New("judgment: conflict_review counterpart must not reference its subject")
+		}
+	}
+	if j.ConflictReview.Result == "clear" && j.SupersedesJudgmentRef != nil {
+		hasNonPolicyBasis := false
+		for _, basis := range j.BasisRefs {
+			if basis.PolicyRef == nil {
+				hasNonPolicyBasis = true
+				break
+			}
+		}
+		if !hasNonPolicyBasis {
+			return errors.New("judgment: clear conflict_review supersede requires non-policy basis_ref")
+		}
+	}
+	return nil
+}
+
+func memoryRefsEqual(a, b MemoryRef) bool {
+	return a.Scope == b.Scope && a.MemoryType == b.MemoryType && a.MemoryID == b.MemoryID &&
+		a.Revision == b.Revision && a.ContentSHA256 == b.ContentSHA256
+}
+
+func memoryRefKey(r MemoryRef) string {
+	return string(r.Scope) + "|" + string(r.MemoryType) + "|" + r.MemoryID + "|" + fmt.Sprint(r.Revision) + "|" + r.ContentSHA256
 }
 
 // evidenceRefsEqual compares two EvidenceRefs field by field.
@@ -1513,6 +1650,12 @@ func (j JudgmentFact) canonMap() (map[string]any, error) {
 			return nil, err
 		}
 		m["critic_review"] = p
+	case JudgmentTypeConflictReview:
+		p, err := j.ConflictReview.canonMap()
+		if err != nil {
+			return nil, err
+		}
+		m["conflict_review"] = p
 	}
 	return m, nil
 }

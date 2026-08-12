@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02：评估、信任与再验证
 
 - 阶段：MEM-02
-- 状态：进行中（MEM-02-01/06/07/08、MEM-02A Usage Anchors、MEM-02B Critic Review 与 MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D Retrieval Evaluation 与 MEM-02E Context Applicability 已完成并签收；MEM-02F Freshness/Revalidation 加固已实现待 CTO 签收；Conflict 尚未实现；未进入 MEM-03）
+- 状态：✅ 已完成（MEM-02A Usage Anchors 与 MEM-02B Critic Review 已完成并签收；MEM-02C Evidence Provenance + Trust Gate 已完成并签收；MEM-02D～MEM-02G 已完成并签收；2026-08-12；未进入 MEM-03）
 - 前置：MEM-01A～MEM-01F 已签收
 - 目标：为 Mnemosyne 补齐可审计的评估事实与 Evidence Trust 基础，不接入真实模型、不自动修改知识。
 
@@ -162,6 +162,15 @@ Manifest 重建、精确 Memory/Evidence/Judgment 引用验证和只读派生结
 - 报告可被删除后从 Fixture 重建。
 
 验收：同一 Fixture 多次运行字节一致；恶意 Fixture 被拒绝；通过不等于模型质量提升。
+
+### MEM-02G：Conflict Review 与 Evidence-Validated Gate
+
+状态：✅ 已完成并经 CTO 签收（2026-08-12）。
+
+目标：以 `conflict_review` Judgment 补齐“无未解决冲突”的可审计协议，并提供只读
+综合 Gate；不新增独立 Conflict FactKind，不直接改 Lifecycle。完整 Schema、状态
+矩阵、TDD 与 Reasonix 执行提示词见
+`OMR_MNEMOSYNE_MEM-02G_CONFLICT_REVIEW_PLAN.zh-CN.md`。
 
 ## 四、每个子任务的通用门禁
 

@@ -94,6 +94,26 @@ func TestBenchmarkFixtureCleanAndDeterministic(t *testing.T) {
 	}
 }
 
+func TestBenchmarkFixtureCountsBrokenConflictReviewReference(t *testing.T) {
+	fx := cleanBenchmarkFixture()
+	rev := fx.Revisions[0]
+	j := validConflictJudgment(rev, "conflict")
+	j.ConflictReview.CounterpartMemoryRefs = []MemoryRef{{
+		Scope: ScopeProject, MemoryType: MemoryTypePattern, MemoryID: "mem_missing_benchmark",
+		Revision: 1, ContentSHA256: testHash,
+	}}
+	j.ContentSHA256 = ""
+	j = fillJudgmentHash(j)
+	fx.Judgments = []JudgmentFact{j}
+	report, err := RunBenchmarkFixture(context.Background(), writeBenchmarkFixture(t, fx))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Metrics.BrokenLinks == 0 || report.Metrics.LinkCount != 1 {
+		t.Fatalf("benchmark must count conflict reference gap: %+v", report.Metrics)
+	}
+}
+
 func TestBenchmarkFixtureRejectsUnknownField(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "malicious_unknown.json")
