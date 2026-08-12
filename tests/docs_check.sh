@@ -149,6 +149,29 @@ if grep -Eq '新增 (facts/index|FactKindIndex)|引入向量数据库|允许静�
   fail "MEM-03A plan contains a forbidden index architecture"
 fi
 
+# --- 1e. Mnemosyne MEM-03B Librarian plan ---------------------------------
+librarian_plan="docs/OMR_MNEMOSYNE_MEM-03B_LIBRARIAN_PLAN.zh-CN.md"
+[ -f "$librarian_plan" ] || fail "missing $librarian_plan"
+
+librarian_required=(
+  '状态：🟡 设计冻结，待实现'
+  '固定 Project / Global Generation Pair'
+  '程序不分析自然语言语义'
+  'requires_parent_read'
+  '正常模式必须严格为空'
+  '不设置 Librarian 总页面数'
+  'Profile `omr-memory`'
+  '不实现：`omr memory context` CLI'
+  '交给 Reasonix 的完整执行提示词'
+)
+for required in "${librarian_required[@]}"; do
+  grep -q "$required" "$librarian_plan" || fail "MEM-03B plan missing contract '$required'"
+done
+
+if grep -Eq '允许引入向量数据库|允许使用 Embedding|允许自动切换 CURRENT|正常模式允许 include-frozen|允许 Librarian 写项目' "$librarian_plan"; then
+  fail "MEM-03B plan contains a forbidden Librarian architecture"
+fi
+
 mutation_plan=$(sed -n '/^## 6\.8 MemoryMutationPlan/,/^## 6\.9 /p' "$mnemosyne")
 if printf '%s\n' "$mutation_plan" | grep -Eq 'before_content_sha256|after_content_sha256|content_sha256:[[:space:]]*sha256_(old|new)'; then
   fail "Mnemosyne MemoryMutationPlan lets the model supply trusted before/after hashes"
