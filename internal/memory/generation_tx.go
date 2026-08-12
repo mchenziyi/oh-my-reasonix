@@ -80,6 +80,10 @@ func factIdentity(f Fact) (factType, factID string, err error) {
 		return "generation_input_manifest", v.GenerationID, nil
 	case RetrievalEvaluation:
 		return "retrieval_evaluation", v.EvaluationID, nil
+	case EpisodeFact:
+		return "episode", v.EpisodeID, nil
+	case ContextDescriptorFact:
+		return "context_descriptor", v.ContextDescriptorID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -101,6 +105,10 @@ func factSchemaVersion(f Fact) int {
 	case GenerationInputManifest:
 		return v.SchemaVersion
 	case RetrievalEvaluation:
+		return v.SchemaVersion
+	case EpisodeFact:
+		return v.SchemaVersion
+	case ContextDescriptorFact:
 		return v.SchemaVersion
 	default:
 		return 0
@@ -170,6 +178,10 @@ func resolveManifestInput(factType, factID string) (FactKind, string, error) {
 		return FactKindGenerationInputManifest, factID, nil
 	case "retrieval_evaluation":
 		return FactKindRetrievalEvaluation, factID, nil
+	case "episode":
+		return FactKindEpisode, factID, nil
+	case "context_descriptor":
+		return FactKindContextDescriptor, factID, nil
 	default:
 		return "", "", fmt.Errorf("unknown fact type %q", factType)
 	}
@@ -274,9 +286,10 @@ func (g generationDoc) outputHash() (string, error) {
 // generations or be used for deterministic rebuild; unknown versions block
 // with memory_generation_compiler_unavailable instead of guessing.
 var supportedGenerationCompilers = map[string]int{
-	"mnemosyne-compiler/1": 1,                          // MEM-01D skeleton compiler
-	OKFCompilerVersionV1:   OKFCanonicalizationVersion, // MEM-01E legacy compiler
-	OKFCompilerVersion:     OKFCanonicalizationVersion, // MEM-01E OKF compiler
+	"mnemosyne-compiler/1":  1,                          // MEM-01D skeleton compiler
+	OKFCompilerVersionV1:    OKFCanonicalizationVersion, // MEM-01E legacy compiler
+	OKFCompilerVersion:      OKFCanonicalizationVersion, // MEM-01E OKF compiler
+	EpisodicCompilerVersion: 1,                          // MEM-03C episodic compiler
 }
 
 func generationCompilerAvailable(compiler string, canon int) bool {

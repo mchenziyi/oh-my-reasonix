@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-02B：Episode Card 与 Episodic Index 编译器
 
-- 状态：🟡 开发中
+- 状态：✅ 已实现（2026-08-12）
 - 前置：MEM-03C-02A EpisodeFact/ContextDescriptorFact 已提交
 - 范围：只实现确定性派生编译，不实现 Librarian Recall、Doctor、采集桥或模型调用
 

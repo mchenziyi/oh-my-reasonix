@@ -178,7 +178,7 @@ episodic_plan="docs/OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md"
 [ -f "$episodic_plan" ] || fail "missing $episodic_plan"
 
 episodic_required=(
-  '状态：🟡 Schema Gate PASS，MEM-03C-02 实现中'
+  '状态：🟡 MEM-03C-02 已实现，待 MEM-03C-03 固定世界读取与 Doctor'
   'MEM-03C-01 Schema Gate'
   'internal/evolution.Episode'
   'Episode Card / Episodic Index'
@@ -189,6 +189,12 @@ episodic_required=(
 )
 for required in "${episodic_required[@]}"; do
   grep -q "$required" "$episodic_plan" || fail "MEM-03C plan missing contract '$required'"
+done
+
+episodic_compiler_plan="docs/OMR_MNEMOSYNE_MEM-03C_02B_COMPILER_PLAN.zh-CN.md"
+[ -f "$episodic_compiler_plan" ] || fail "missing $episodic_compiler_plan"
+for required in '状态：✅ 已实现' '不读取 CURRENT' '不读取 Evolution Store' '每个 Episode 恰好出现一次'; do
+  grep -q "$required" "$episodic_compiler_plan" || fail "MEM-03C compiler plan missing '$required'"
 done
 
 if grep -Eq '将 Episode Card 新增为 FactKind|允许引入向量数据库|允许使用 Embedding|直接复用 internal/evolution.Episode|允许模型提供可信 Hash' "$episodic_plan"; then

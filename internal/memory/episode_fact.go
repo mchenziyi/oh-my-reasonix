@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"time"
 )
 
 type EpisodeRef struct {
@@ -254,6 +255,34 @@ func (e EpisodeFact) Validate() error {
 	if (e.TaskResult == "failed" || e.TaskResult == "cancelled") && len(e.TaskResultEvidenceRefs) == 0 {
 		return errors.New("episode: task result evidence required")
 	}
+	if len(e.EvidenceRefs) > maxRefs || len(e.TaskResultEvidenceRefs) > maxRefs {
+		return errors.New("episode: evidence reference limit exceeded")
+	}
+	all := map[string]bool{}
+	for _, ref := range e.EvidenceRefs {
+		if ref.Scope != e.Scope {
+			return errors.New("episode: evidence scope mismatch")
+		}
+		key := string(ref.Scope) + "\x00" + ref.EvidenceType + "\x00" + ref.EvidenceID + "\x00" + ref.ContentSHA256
+		if all[key] {
+			return errors.New("episode: evidence_refs contains duplicate")
+		}
+		all[key] = true
+	}
+	seenResult := map[string]bool{}
+	for _, ref := range e.TaskResultEvidenceRefs {
+		if ref.Scope != e.Scope {
+			return errors.New("episode: task result evidence scope mismatch")
+		}
+		key := string(ref.Scope) + "\x00" + ref.EvidenceType + "\x00" + ref.EvidenceID + "\x00" + ref.ContentSHA256
+		if seenResult[key] {
+			return errors.New("episode: task_result_evidence_refs contains duplicate")
+		}
+		seenResult[key] = true
+		if !all[key] {
+			return errors.New("episode: task result evidence must belong to evidence_refs")
+		}
+	}
 	if _, err := e.canonMap(); err != nil {
 		return err
 	}
@@ -262,6 +291,11 @@ func (e EpisodeFact) Validate() error {
 	}
 	if err := validateTime(e.CreatedAt, "created_at"); err != nil {
 		return err
+	}
+	occurred, _ := time.Parse(time.RFC3339Nano, e.OccurredAt)
+	created, _ := time.Parse(time.RFC3339Nano, e.CreatedAt)
+	if created.Before(occurred) {
+		return errors.New("episode: created_at precedes occurred_at")
 	}
 	h, err := e.ContentHash()
 	if err != nil {
