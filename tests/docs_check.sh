@@ -178,7 +178,7 @@ episodic_plan="docs/OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md"
 [ -f "$episodic_plan" ] || fail "missing $episodic_plan"
 
 episodic_required=(
-  '状态：🟠 Schema Gate 已完成，等待 CTO 批准 D1～D10'
+  '状态：🟡 Schema Gate PASS，MEM-03C-02 实现中'
   'MEM-03C-01 Schema Gate'
   'internal/evolution.Episode'
   'Episode Card / Episodic Index'
@@ -197,7 +197,7 @@ fi
 
 episodic_audit="docs/OMR_MNEMOSYNE_MEM-03C_SCHEMA_GATE_AUDIT.zh-CN.md"
 [ -f "$episodic_audit" ] || fail "missing $episodic_audit"
-for required in 'WAITING_CTO' '一个 Root Task 聚合为一个 Episode' 'task_result' 'canonical_sha256 与 content_sha256 分离' 'Card/Index 不进入 inputs'; do
+for required in 'Schema Gate：PASS' '一个 Root Task 聚合为一个 Episode' 'task_result' 'EpisodeFact v1 不保存自由文本摘要' 'canonical_sha256 与 content_sha256 分离' 'Card/Index 不进入 inputs'; do
   grep -q "$required" "$episodic_audit" || fail "MEM-03C Schema Gate audit missing '$required'"
 done
 

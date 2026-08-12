@@ -26,6 +26,8 @@ const (
 	FactKindMemoryUsage              FactKind = "memory-usages"
 	FactKindOutcome                  FactKind = "outcomes"
 	FactKindRetrievalEvaluation      FactKind = "retrieval-evaluations"
+	FactKindEpisode                  FactKind = "episodes"
+	FactKindContextDescriptor        FactKind = "context-descriptors"
 )
 
 var allKinds = []FactKind{
@@ -38,6 +40,8 @@ var allKinds = []FactKind{
 	FactKindMemoryUsage,
 	FactKindOutcome,
 	FactKindRetrievalEvaluation,
+	FactKindEpisode,
+	FactKindContextDescriptor,
 }
 
 func (k FactKind) valid() bool {
@@ -600,6 +604,10 @@ func factKey(f Fact) (FactKind, string, error) {
 		return FactKindOutcome, v.OutcomeID, nil
 	case RetrievalEvaluation:
 		return FactKindRetrievalEvaluation, v.EvaluationID, nil
+	case EpisodeFact:
+		return FactKindEpisode, v.EpisodeID, nil
+	case ContextDescriptorFact:
+		return FactKindContextDescriptor, v.ContextDescriptorID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -622,6 +630,10 @@ func factScope(f Fact) (Scope, bool) {
 	case Outcome:
 		return v.Scope, true
 	case RetrievalEvaluation:
+		return v.Scope, true
+	case EpisodeFact:
+		return v.Scope, true
+	case ContextDescriptorFact:
 		return v.Scope, true
 	default:
 		return "", false
@@ -669,6 +681,10 @@ func decodeKind(kind FactKind, data []byte) (Fact, error) {
 		return DecodeStrict[Outcome](data)
 	case FactKindRetrievalEvaluation:
 		return DecodeStrict[RetrievalEvaluation](data)
+	case FactKindEpisode:
+		return DecodeStrict[EpisodeFact](data)
+	case FactKindContextDescriptor:
+		return DecodeStrict[ContextDescriptorFact](data)
 	default:
 		return nil, storeError(CodePathUnsafe, "unknown fact kind")
 	}

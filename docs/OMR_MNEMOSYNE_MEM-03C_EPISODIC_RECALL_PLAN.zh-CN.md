@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-03C：Episodic Recall 计划
 
 - 阶段：MEM-03C
-- 状态：🟠 Schema Gate 已完成，等待 CTO 批准 D1～D10
+- 状态：🟡 Schema Gate PASS，MEM-03C-02 实现中
 - 前置：MEM-03A 确定性分片索引、MEM-03B 固定快照 Librarian 已实现
 - 目标：让 Reasonix 能在尚未形成稳定 Memory 的历史任务中渐进查找相似 Episode，同时保证
   Episode Card 和 Episodic Index 只是可删除重建的派生表示
@@ -32,8 +32,7 @@ Mnemosyne 的规范 Episode，也不能由 Card 或 Index 反向补齐缺失字�
 Schema Gate 通过前不新增 FactKind、不写产品代码、不修改旧 Evolution Episode。
 
 只读审核结果见 `OMR_MNEMOSYNE_MEM-03C_SCHEMA_GATE_AUDIT.zh-CN.md`。审核确认当前缺口属于
-实现盘点暴露的 Architecture Amendment 条件；D1～D10 未批准前 Gate 状态为
-`WAITING_CTO`，不得进入 MEM-03C-02。
+实现盘点暴露的 Architecture Amendment 条件；D1～D10 已批准，Gate 状态为 `PASS`。
 
 ## 二、范围与成功标准
 
@@ -67,31 +66,29 @@ schema_version: 1
 episode_id: episode_01K...
 scope: project
 root_task_id: task_01K...
-attempt_id: attempt_01K...
 context_descriptor_ref:
+  scope: project
   context_descriptor_id: context_01K...
   content_sha256: sha256_...
 task_class_refs: [task_class_build]
 component_refs: [component_memory]
 operation_refs: [operation_compile]
 failure_concept_refs: []
+task_result: succeeded
+task_result_evidence_refs: []
 evidence_refs: []
-outcome_refs: []
 occurred_at: 2026-08-12T00:00:00Z
-sanitized_summary: "受限、脱敏、非指令性事实摘要"
 content_sha256: sha256_...
 created_at: 2026-08-12T00:00:00Z
 ```
 
-Gate 必须决定：
+Gate 已冻结：
 
-- `attempt_id` 是否必填，以及同 Root Task 多次尝试的身份关系；
-- Episode 是否允许无 Outcome；允许时如何表达“尚未评估”；
+- 一个 Root Task 只形成一个 Episode；attempt 只作为 Evidence，不进入身份；
+- `task_result` 使用 `succeeded|failed|cancelled|unknown`，不复用 Memory Outcome；
 - `task_class_refs/component_refs/operation_refs/failure_concept_refs` 使用受控 ID 还是完整
   MemoryRef；推荐使用受控 ID 并由 Context Descriptor 保存结构化世界，避免循环引用；
-- `sanitized_summary` 是否进入规范 Fact。推荐保留受限描述性事实，但必须通过独立脱敏器，
-  禁止模型指令、命令、路径、凭据和思考；
-- `outcome_refs` 应新增完整 `OutcomeRef`，不得只存字符串 ID；
+- v1 不保存自由文本摘要；Card 只渲染结构化事实；
 - EvidenceRef、OutcomeRef、ContextDescriptorRef 的 Scope 与 Hash 一致性规则；
 - 最大数组长度、文本上限、时间顺序与 Canonical 排序规则。
 
