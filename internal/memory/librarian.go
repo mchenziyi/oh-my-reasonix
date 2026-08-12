@@ -320,7 +320,7 @@ func safeGenerationRelativePath(path string) bool {
 			return false
 		}
 	}
-	return strings.HasPrefix(path, "wiki/") || path == "state/index-tree.json"
+	return strings.HasPrefix(path, "wiki/") || path == "state/index-tree.json" || strings.HasPrefix(path, "state/episodes/")
 }
 
 func indexPathInTree(path string, tree *IndexTree) bool {

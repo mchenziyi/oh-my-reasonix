@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-03：固定世界 Episode Recall 与 Doctor
 
-- 状态：🟡 待实现
+- 状态：✅ 已实现（2026-08-12）
 - 前置：MEM-03C-02A 规范 Fact、MEM-03C-02B 派生编译器已实现并推送
 - 范围：固定 Generation Reader、Recall 协议校验与只读 Doctor；不做语义检索模型、不做采集桥
 

@@ -178,7 +178,7 @@ episodic_plan="docs/OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md"
 [ -f "$episodic_plan" ] || fail "missing $episodic_plan"
 
 episodic_required=(
-  '状态：🟡 MEM-03C-02 已实现，待 MEM-03C-03 固定世界读取与 Doctor'
+  '状态：✅ MEM-03C-01～03 已实现，待 MEM-03C-04 Reasonix 接入联调'
   'MEM-03C-01 Schema Gate'
   'internal/evolution.Episode'
   'Episode Card / Episodic Index'
@@ -199,7 +199,7 @@ done
 
 episodic_recall_doctor_plan="docs/OMR_MNEMOSYNE_MEM-03C_03_RECALL_DOCTOR_PLAN.zh-CN.md"
 [ -f "$episodic_recall_doctor_plan" ] || fail "missing $episodic_recall_doctor_plan"
-for required in '状态：🟡 待实现' '不能冒充 Episodic Generation' '它不读取 CURRENT' '不自动读取 Evidence' '不修复、不删除、不切 CURRENT'; do
+for required in '状态：✅ 已实现' '不能冒充 Episodic Generation' '它不读取 CURRENT' '不自动读取 Evidence' '不修复、不删除、不切 CURRENT'; do
   grep -q "$required" "$episodic_recall_doctor_plan" || fail "MEM-03C Recall/Doctor plan missing '$required'"
 done
 

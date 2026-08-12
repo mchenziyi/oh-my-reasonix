@@ -30,7 +30,7 @@ type EpisodicCompileResult struct {
 	Inputs         []ManifestInput
 }
 
-type episodeCard struct {
+type EpisodeCard struct {
 	SchemaVersion        int                  `json:"schema_version"`
 	EpisodeRef           EpisodeRef           `json:"episode_ref"`
 	ContextDescriptorRef ContextDescriptorRef `json:"context_descriptor_ref"`
@@ -46,7 +46,7 @@ type episodeCard struct {
 	CardSHA256           string               `json:"card_sha256"`
 }
 
-type episodicIndexEntry struct {
+type EpisodicIndexEntry struct {
 	EpisodeRef         EpisodeRef `json:"episode_ref"`
 	ComponentRefs      []string   `json:"component_refs"`
 	OperationRefs      []string   `json:"operation_refs"`
@@ -58,11 +58,11 @@ type episodicIndexEntry struct {
 	CardSHA256         string     `json:"card_sha256"`
 }
 
-type episodicIndex struct {
+type EpisodicIndex struct {
 	SchemaVersion   int                  `json:"schema_version"`
 	CompilerVersion string               `json:"compiler_version"`
 	GenerationID    string               `json:"generation_id"`
-	Entries         []episodicIndexEntry `json:"entries"`
+	Entries         []EpisodicIndexEntry `json:"entries"`
 }
 
 func CompileEpisodic(ctx context.Context, req EpisodicCompileRequest) (*EpisodicCompileResult, error) {
@@ -101,7 +101,7 @@ func CompileEpisodic(ctx context.Context, req EpisodicCompileRequest) (*Episodic
 	}
 
 	res := &EpisodicCompileResult{Outputs: map[string][]byte{}, Inputs: inputs}
-	entries := make([]episodicIndexEntry, 0, len(episodes))
+	entries := make([]EpisodicIndexEntry, 0, len(episodes))
 	for _, e := range episodes {
 		card, err := buildEpisodeCard(e, req.GenerationID)
 		if err != nil {
@@ -111,10 +111,10 @@ func CompileEpisodic(ctx context.Context, req EpisodicCompileRequest) (*Episodic
 		path := "state/episodes/cards/" + e.EpisodeID + ".json"
 		res.Outputs[path] = jsonBytes
 		res.Outputs["wiki/episodes/cards/"+e.EpisodeID+".md"] = renderEpisodeCard(card)
-		entries = append(entries, episodicIndexEntry{EpisodeRef: card.EpisodeRef, ComponentRefs: card.ComponentRefs, OperationRefs: card.OperationRefs, TaskClassRefs: card.TaskClassRefs, FailureConceptRefs: card.FailureConceptRefs, TimeBucket: card.OccurredAt[:7], TaskResult: card.TaskResult, CardPath: path, CardSHA256: card.CardSHA256})
+		entries = append(entries, EpisodicIndexEntry{EpisodeRef: card.EpisodeRef, ComponentRefs: card.ComponentRefs, OperationRefs: card.OperationRefs, TaskClassRefs: card.TaskClassRefs, FailureConceptRefs: card.FailureConceptRefs, TimeBucket: card.OccurredAt[:7], TaskResult: card.TaskResult, CardPath: path, CardSHA256: card.CardSHA256})
 	}
 	sort.Slice(entries, func(i, j int) bool { return episodicEntryKey(entries[i]) < episodicEntryKey(entries[j]) })
-	idx := episodicIndex{SchemaVersion: 1, CompilerVersion: req.CompilerVersion, GenerationID: req.GenerationID, Entries: entries}
+	idx := EpisodicIndex{SchemaVersion: 1, CompilerVersion: req.CompilerVersion, GenerationID: req.GenerationID, Entries: entries}
 	res.Outputs["state/episodes/index.json"], _ = json.MarshalIndent(idx, "", "  ")
 	res.Outputs["wiki/episodes/index.md"] = renderEpisodicIndex(idx)
 	for _, data := range res.Outputs {
@@ -221,7 +221,7 @@ func after(s string, now time.Time) bool {
 	return err != nil || t.After(now)
 }
 
-func buildEpisodeCard(e EpisodeFact, gen string) (episodeCard, error) {
+func buildEpisodeCard(e EpisodeFact, gen string) (EpisodeCard, error) {
 	refs := append([]EvidenceRef{}, e.EvidenceRefs...)
 	maps := make([]map[string]any, 0, len(refs))
 	for _, r := range refs {
@@ -234,7 +234,7 @@ func buildEpisodeCard(e EpisodeFact, gen string) (episodeCard, error) {
 		return string(a) < string(b)
 	})
 	eb, _ := json.Marshal(maps)
-	c := episodeCard{SchemaVersion: 1, EpisodeRef: EpisodeRef{Scope: e.Scope, EpisodeID: e.EpisodeID, ContentSHA256: e.ContentSHA256}, ContextDescriptorRef: e.ContextDescriptorRef, EvidenceSetSHA256: hashOf(eb), CompilerVersion: EpisodicCompilerVersion, GenerationID: gen, OccurredAt: e.OccurredAt, ComponentRefs: sortedStrings(e.ComponentRefs), OperationRefs: sortedStrings(e.OperationRefs), TaskClassRefs: sortedStrings(e.TaskClassRefs), FailureConceptRefs: sortedStrings(e.FailureConceptRefs), TaskResult: e.TaskResult}
+	c := EpisodeCard{SchemaVersion: 1, EpisodeRef: EpisodeRef{Scope: e.Scope, EpisodeID: e.EpisodeID, ContentSHA256: e.ContentSHA256}, ContextDescriptorRef: e.ContextDescriptorRef, EvidenceSetSHA256: hashOf(eb), CompilerVersion: EpisodicCompilerVersion, GenerationID: gen, OccurredAt: e.OccurredAt, ComponentRefs: sortedStrings(e.ComponentRefs), OperationRefs: sortedStrings(e.OperationRefs), TaskClassRefs: sortedStrings(e.TaskClassRefs), FailureConceptRefs: sortedStrings(e.FailureConceptRefs), TaskResult: e.TaskResult}
 	b, _ := json.Marshal(c)
 	c.CardSHA256 = hashOf(b)
 	return c, nil
@@ -253,13 +253,13 @@ func subset(items, universe []string) bool {
 	return true
 }
 
-func episodicEntryKey(e episodicIndexEntry) string {
+func episodicEntryKey(e EpisodicIndexEntry) string {
 	return strings.Join(e.ComponentRefs, "\x00") + "\x01" + strings.Join(e.OperationRefs, "\x00") + "\x01" + strings.Join(e.TaskClassRefs, "\x00") + "\x01" + strings.Join(e.FailureConceptRefs, "\x00") + "\x01" + e.TimeBucket + "\x01" + e.TaskResult + "\x01" + e.EpisodeRef.EpisodeID
 }
-func renderEpisodeCard(c episodeCard) []byte {
+func renderEpisodeCard(c EpisodeCard) []byte {
 	return []byte(fmt.Sprintf("# Episode %s\n\n- Result: `%s`\n- Occurred: `%s`\n- Context: `%s`\n- Card SHA256: `%s`\n", c.EpisodeRef.EpisodeID, c.TaskResult, c.OccurredAt, c.ContextDescriptorRef.ContextDescriptorID, c.CardSHA256))
 }
-func renderEpisodicIndex(idx episodicIndex) []byte {
+func renderEpisodicIndex(idx EpisodicIndex) []byte {
 	var b strings.Builder
 	b.WriteString("# Episodic Index\n\n")
 	for _, e := range idx.Entries {
