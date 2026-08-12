@@ -189,7 +189,9 @@ func commitOKFGeneration(t *testing.T, root, key string, base *string) (*Generat
 	rev := validRevision()
 	ev := validEvidenceGeneration()
 	putRevisionEvidence(t, s, rev, ev)
-	res, err := CompileOKF(context.Background(), s, okfRequest(rev, ev))
+	compileReq := okfRequest(rev, ev)
+	compileReq.EvaluationTime = time.Date(2026, 8, 10, 0, 0, 0, 0, time.UTC)
+	res, err := CompileOKF(context.Background(), s, compileReq)
 	if err != nil {
 		t.Fatal(err)
 	}

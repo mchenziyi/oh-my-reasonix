@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 )
 
 // The OKF compiler (MEM-01E) is a pure, model-free, deterministic compiler:
@@ -17,13 +18,27 @@ import (
 // Frozen compiler identity. The registry in generation_tx.go must map this
 // exact pair; anything else returns memory_generation_compiler_unavailable.
 const (
-	OKFCompilerVersion               = "mnemosyne-okf-compiler/1"
+	OKFCompilerVersionV1             = "mnemosyne-okf-compiler/1"
+	OKFCompilerVersion               = "mnemosyne-okf-compiler/2"
 	OKFCanonicalizationVersion       = 1
 	okfOutputSchemaVersion           = 1
 	okfFrontmatterVersion            = "0.1"
 	okfNotAvailable                  = "not_available"
 	maxCompiledOutputBytes     int64 = 1 << 20 // 1 MiB per view file
 )
+
+func compileOKFLegacy(ctx context.Context, store *FactStore, req OKFCompileRequest) (*OKFCompileResult, error) {
+	revisions, evidenceByKey, err := loadOKFInputs(ctx, store, req)
+	if err != nil {
+		return nil, err
+	}
+	res := &OKFCompileResult{Outputs: map[string][]byte{}}
+	if err := compileOKFLegacyViews(res, req.Scope, revisions, evidenceByKey); err != nil {
+		return nil, err
+	}
+	res.CompiledSHA256 = compiledOutputHash(res.Outputs)
+	return res, nil
+}
 
 // MemoryRevisionRef explicitly references one canonical MemoryRevision.
 type MemoryRevisionRef struct {
@@ -44,10 +59,13 @@ type MemoryEvidenceRef struct {
 // OKFCompileRequest declares the exact input set of one OKF compilation.
 // The compiler never scans directories or guesses facts.
 type OKFCompileRequest struct {
-	Scope          Scope
-	BaseGeneration *string
-	Revisions      []MemoryRevisionRef
-	Evidence       []MemoryEvidenceRef
+	Scope            Scope
+	BaseGeneration   *string
+	IndexPolicyRef   PolicyRef
+	EvaluationTime   time.Time
+	DerivationInputs []ManifestInput
+	Revisions        []MemoryRevisionRef
+	Evidence         []MemoryEvidenceRef
 }
 
 // OKFCompileResult is the deterministic output of one compilation.
@@ -84,18 +102,29 @@ func CompileOKF(ctx context.Context, store *FactStore, req OKFCompileRequest) (*
 	if err := validateOKFRefs(req); err != nil {
 		return nil, err
 	}
+	if err := req.IndexPolicyRef.Validate(); err != nil || req.IndexPolicyRef.PolicyType != PolicyTypeIndex {
+		return nil, storeError(CodeOKFInvalidInput, "invalid index policy reference")
+	}
+	indexPolicy, err := NewPolicyStore(store).GetPolicy(ctx, req.IndexPolicyRef)
+	if err != nil {
+		return nil, err
+	}
 
 	revisions, evidenceByKey, err := loadOKFInputs(ctx, store, req)
 	if err != nil {
 		return nil, err
 	}
 
+	states, derivedInputs, err := deriveSelectedStates(ctx, store, req.Scope, req.Revisions, req.DerivationInputs, req.EvaluationTime)
+	if err != nil {
+		return nil, err
+	}
 	res := &OKFCompileResult{Outputs: map[string][]byte{}}
-	if err := compileOKFViews(res, req.Scope, revisions, evidenceByKey); err != nil {
+	if err := compileOKFViews(res, req.Scope, revisions, evidenceByKey, states, *indexPolicy.Config.Index, req.IndexPolicyRef); err != nil {
 		return nil, err
 	}
 	res.CompiledSHA256 = compiledOutputHash(res.Outputs)
-	inputs, err := okfManifestInputs(revisions, evidenceByKey)
+	inputs, err := okfManifestInputs(revisions, evidenceByKey, indexPolicy, derivedInputs)
 	if err != nil {
 		return nil, storeError(CodeOKFCompileError, "cannot derive manifest inputs")
 	}
@@ -224,7 +253,7 @@ func loadOKFInputs(ctx context.Context, store *FactStore, req OKFCompileRequest)
 	return revs, evidenceByKey, nil
 }
 
-func compileOKFViews(res *OKFCompileResult, scope Scope, revisions []loadedRevision, evidenceByKey map[string]MemoryEvidenceGeneration) error {
+func compileOKFViews(res *OKFCompileResult, scope Scope, revisions []loadedRevision, evidenceByKey map[string]MemoryEvidenceGeneration, states []DerivedMemoryState, policy PolicyConfigIndex, policyRef PolicyRef) error {
 	sorted := append([]loadedRevision{}, revisions...)
 	sort.Slice(sorted, func(i, j int) bool {
 		a, b := sorted[i].revision, sorted[j].revision
@@ -250,7 +279,17 @@ func compileOKFViews(res *OKFCompileResult, scope Scope, revisions []loadedRevis
 		res.Outputs[rel] = []byte(page)
 		pages = append(pages, okfPage{rel: rel, revision: lr.revision})
 	}
-	res.Outputs["wiki/index.md"] = []byte(compileOKFIndex(scope, pages))
+	pagePaths := map[string]string{}
+	for _, page := range pages {
+		pagePaths[page.revision.MemoryID+"\x00"+itoa(page.revision.Revision)] = page.rel
+	}
+	tree, err := compileIndexTree(scope, states, policy, &policyRef, pagePaths)
+	if err != nil {
+		return err
+	}
+	if err := compileIndexOutputs(res.Outputs, tree, policy); err != nil {
+		return err
+	}
 	memories, err := compileOKFMemories(scope, pages, evidenceByKey)
 	if err != nil {
 		return err
@@ -264,6 +303,50 @@ func compileOKFViews(res *OKFCompileResult, scope Scope, revisions []loadedRevis
 	for _, lr := range revisions {
 		rev := lr.revision
 		inputs[relationTargetKey(rev.Scope, rev.MemoryType, rev.MemoryID, rev.Revision)] = rev
+	}
+	relations, err := compileOKFRelations(scope, pages, inputs)
+	if err != nil {
+		return err
+	}
+	res.Outputs["state/relations.json"] = relations
+	return nil
+}
+
+func compileOKFLegacyViews(res *OKFCompileResult, scope Scope, revisions []loadedRevision, evidenceByKey map[string]MemoryEvidenceGeneration) error {
+	sorted := append([]loadedRevision{}, revisions...)
+	sort.Slice(sorted, func(i, j int) bool {
+		a, b := sorted[i].revision, sorted[j].revision
+		if a.MemoryType != b.MemoryType {
+			return a.MemoryType < b.MemoryType
+		}
+		if a.CanonicalKey != b.CanonicalKey {
+			return a.CanonicalKey < b.CanonicalKey
+		}
+		if a.MemoryID != b.MemoryID {
+			return a.MemoryID < b.MemoryID
+		}
+		return a.Revision < b.Revision
+	})
+	pages := make([]okfPage, 0, len(sorted))
+	used := map[string]bool{}
+	for _, lr := range sorted {
+		page, rel, err := compileOKFPage(lr, scope, used)
+		if err != nil {
+			return err
+		}
+		res.Outputs[rel] = []byte(page)
+		pages = append(pages, okfPage{rel: rel, revision: lr.revision})
+	}
+	res.Outputs["wiki/index.md"] = []byte(compileOKFIndex(scope, pages))
+	memories, err := compileOKFMemories(scope, pages, evidenceByKey)
+	if err != nil {
+		return err
+	}
+	res.Outputs["state/memories.json"] = memories
+	inputs := make(map[string]MemoryRevision, len(revisions))
+	for _, lr := range revisions {
+		r := lr.revision
+		inputs[relationTargetKey(r.Scope, r.MemoryType, r.MemoryID, r.Revision)] = r
 	}
 	relations, err := compileOKFRelations(scope, pages, inputs)
 	if err != nil {
@@ -729,7 +812,7 @@ func compiledOutputHash(outputs map[string][]byte) string {
 }
 
 // okfManifestInputs derives the manifest inputs from the exact stored facts.
-func okfManifestInputs(revisions []loadedRevision, evidenceByKey map[string]MemoryEvidenceGeneration) ([]ManifestInput, error) {
+func okfManifestInputs(revisions []loadedRevision, evidenceByKey map[string]MemoryEvidenceGeneration, indexPolicy PolicyFact, derived *derivedInputs) ([]ManifestInput, error) {
 	var out []ManifestInput
 	for _, lr := range revisions {
 		ft, fid, err := factIdentity(lr.revision)
@@ -760,5 +843,52 @@ func okfManifestInputs(revisions []loadedRevision, evidenceByKey map[string]Memo
 			ContentSHA256:     eh,
 		})
 	}
-	return out, nil
+	ft, fid, err := factIdentity(indexPolicy)
+	if err != nil {
+		return nil, err
+	}
+	h, err := indexPolicy.ContentHash()
+	if err != nil {
+		return nil, err
+	}
+	out = append(out, ManifestInput{FactType: ft, FactID: fid, FactSchemaVersion: factSchemaVersion(indexPolicy), ContentSHA256: h})
+	for _, fact := range derivedFacts(derived) {
+		ft, fid, err := factIdentity(fact)
+		if err != nil {
+			return nil, err
+		}
+		h, err := fact.ContentHash()
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, ManifestInput{FactType: ft, FactID: fid, FactSchemaVersion: factSchemaVersion(fact), ContentSHA256: h})
+	}
+	return dedupeManifestInputs(out)
+}
+
+func derivedFacts(in *derivedInputs) []Fact {
+	var out []Fact
+	for _, revisions := range in.revisions {
+		for _, fact := range revisions {
+			out = append(out, fact)
+		}
+	}
+	for _, generations := range in.evidence {
+		for _, fact := range generations {
+			out = append(out, fact)
+		}
+	}
+	for _, fact := range in.judgments {
+		out = append(out, fact)
+	}
+	for _, fact := range in.governance {
+		out = append(out, fact)
+	}
+	for _, fact := range in.usages {
+		out = append(out, fact)
+	}
+	for _, fact := range in.outcomes {
+		out = append(out, fact)
+	}
+	return out
 }

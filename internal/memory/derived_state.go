@@ -223,8 +223,78 @@ func DeriveState(ctx context.Context, store *FactStore, req DerivedStateRequest)
 	}
 	sort.Slice(states, func(i, j int) bool { return derivedLess(states[i], states[j]) })
 
-	root, local, global := buildIndexes(req.Scope, states, idx)
+	root, local, global, err := buildIndexes(req.Scope, states, idx)
+	if err != nil {
+		return nil, err
+	}
 	return &DerivedStateResult{States: states, RootIndex: root, LocalIndex: local, GlobalIndex: global}, nil
+}
+
+// deriveSelectedStates derives only the explicitly selected revisions while
+// still validating the complete fact world that can influence them. The
+// caller is responsible for recording every returned input in its Generation
+// manifest.
+func deriveSelectedStates(ctx context.Context, store *FactStore, scope Scope, selected []MemoryRevisionRef, allowed []ManifestInput, now time.Time) ([]DerivedMemoryState, *derivedInputs, error) {
+	var in *derivedInputs
+	var err error
+	if len(allowed) > 0 {
+		in, err = loadDerivedInputsFromManifest(ctx, store, allowed)
+	} else {
+		in, err = loadDerivedInputs(ctx, store)
+	}
+	if err != nil {
+		return nil, nil, err
+	}
+	if err := validateDerivedReferences(in); err != nil {
+		return nil, nil, err
+	}
+	if now.IsZero() {
+		now = time.Unix(0, 0).UTC()
+	}
+	states := make([]DerivedMemoryState, 0, len(selected))
+	for _, ref := range selected {
+		rev := revisionAt(in.revisions[ref.MemoryID], ref.Revision)
+		if rev == nil || rev.Scope != scope || rev.ContentSHA256 != ref.ContentSHA256 {
+			return nil, nil, storeError(CodeOKFInvalidInput, "selected revision is not available for derivation")
+		}
+		states = append(states, deriveOne(ctx, store, in, *rev, defaultFreshnessPolicy, now))
+	}
+	sort.Slice(states, func(i, j int) bool { return derivedLess(states[i], states[j]) })
+	return states, in, nil
+}
+
+func loadDerivedInputsFromManifest(ctx context.Context, store *FactStore, inputs []ManifestInput) (*derivedInputs, error) {
+	in := &derivedInputs{revisions: map[string][]MemoryRevision{}, evidence: map[string][]MemoryEvidenceGeneration{}}
+	for _, input := range inputs {
+		fact, err := readManifestInput(ctx, store, input)
+		if err != nil {
+			return nil, err
+		}
+		switch v := fact.(type) {
+		case MemoryRevision:
+			in.revisions[v.MemoryID] = append(in.revisions[v.MemoryID], v)
+		case MemoryEvidenceGeneration:
+			key := v.MemoryID + "/" + itoa(v.Revision)
+			in.evidence[key] = append(in.evidence[key], v)
+		case JudgmentFact:
+			in.judgments = append(in.judgments, v)
+		case GovernanceEvent:
+			in.governance = append(in.governance, v)
+		case MemoryUsage:
+			in.usages = append(in.usages, v)
+		case Outcome:
+			in.outcomes = append(in.outcomes, v)
+		}
+	}
+	for id := range in.revisions {
+		sort.Slice(in.revisions[id], func(i, j int) bool { return in.revisions[id][i].Revision < in.revisions[id][j].Revision })
+	}
+	for key := range in.evidence {
+		sort.Slice(in.evidence[key], func(i, j int) bool {
+			return in.evidence[key][i].EvidenceGeneration < in.evidence[key][j].EvidenceGeneration
+		})
+	}
+	return in, nil
 }
 
 // defaultFreshnessPolicy is the frozen fallback when no policy is supplied.
@@ -951,7 +1021,7 @@ func evidenceStrength(st DerivedMemoryState) int {
 
 // ---- indexes ----
 
-func buildIndexes(scope Scope, states []DerivedMemoryState, idx PolicyConfigIndex) (RootIndexDoc, LocalIndexDoc, RootIndexDoc) {
+func buildIndexes(scope Scope, states []DerivedMemoryState, idx PolicyConfigIndex) (RootIndexDoc, LocalIndexDoc, RootIndexDoc, error) {
 	root := RootIndexDoc{SchemaVersion: SchemaVersion, Scope: string(scope)}
 	local := LocalIndexDoc{SchemaVersion: SchemaVersion, Scope: string(scope), Shards: map[string][]IndexEntry{}}
 	global := RootIndexDoc{}
@@ -972,30 +1042,28 @@ func buildIndexes(scope Scope, states []DerivedMemoryState, idx PolicyConfigInde
 			continue
 		}
 		root.Entries = append(root.Entries, entry)
-		key := localShardKey(entry, idx)
-		if key == "" {
-			local.Overflow = append(local.Overflow, entry)
-		} else {
-			local.Shards[key] = append(local.Shards[key], entry)
-		}
 		if scope == ScopeGlobal {
 			global.Entries = append(global.Entries, entry)
 		}
 	}
-	// Deterministic shard/overflow ordering.
-	for k := range local.Shards {
-		sort.Slice(local.Shards[k], func(i, j int) bool { return indexEntryLess(local.Shards[k][i], local.Shards[k][j]) })
+	tree, err := CompileIndexTree(scope, states, idx)
+	if err != nil {
+		return RootIndexDoc{}, LocalIndexDoc{}, RootIndexDoc{}, err
 	}
-	sort.Slice(local.Overflow, func(i, j int) bool { return indexEntryLess(local.Overflow[i], local.Overflow[j]) })
-	// Entries too big for one shard page go to the overflow bucket.
-	for k, entries := range local.Shards {
-		if len(entries) > idx.MaxEntriesPerPage {
-			local.Overflow = append(local.Overflow, entries...)
-			delete(local.Shards, k)
-		}
+	projectIndexLeaves(tree.Root, local.Shards)
+	return root, local, global, nil
+}
+
+func projectIndexLeaves(node *IndexNode, out map[string][]IndexEntry) {
+	if node == nil {
+		return
 	}
-	sort.Slice(local.Overflow, func(i, j int) bool { return indexEntryLess(local.Overflow[i], local.Overflow[j]) })
-	return root, local, global
+	if len(node.Entries) > 0 {
+		out[node.Path] = append([]IndexEntry{}, node.Entries...)
+	}
+	for _, child := range node.children {
+		projectIndexLeaves(child, out)
+	}
 }
 
 // indexEntry builds an index entry; a page path that cannot be rendered

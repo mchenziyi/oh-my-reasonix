@@ -43,7 +43,8 @@ const (
 	CodeOKFInvalidInput Code = "memory_okf_invalid_input"
 	CodeOKFCompileError Code = "memory_okf_compile_error"
 
-	CodeDerivedInvalidInput Code = "memory_derived_invalid_input"
+	CodeDerivedInvalidInput    Code = "memory_derived_invalid_input"
+	CodeIndexPolicyUnsatisfied Code = "memory_index_policy_unsatisfied"
 
 	// Evaluation codes (MEM-02-01).
 	CodeEvaluationFutureReference Code = "memory_evaluation_future_reference"

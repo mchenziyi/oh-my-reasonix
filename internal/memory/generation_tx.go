@@ -275,6 +275,7 @@ func (g generationDoc) outputHash() (string, error) {
 // with memory_generation_compiler_unavailable instead of guessing.
 var supportedGenerationCompilers = map[string]int{
 	"mnemosyne-compiler/1": 1,                          // MEM-01D skeleton compiler
+	OKFCompilerVersionV1:   OKFCanonicalizationVersion, // MEM-01E legacy compiler
 	OKFCompilerVersion:     OKFCanonicalizationVersion, // MEM-01E OKF compiler
 }
 

@@ -29,7 +29,7 @@ func conflictWorld(t *testing.T, key string) (*FactStore, *GenerationTx, MemoryR
 	putRevisionEvidence(t, s, rev, ev)
 	putRevisionEvidence(t, s, other, otherEvidence)
 	compiled, err := CompileOKF(context.Background(), s, OKFCompileRequest{
-		Scope: ScopeProject,
+		Scope: ScopeProject, IndexPolicyRef: policyRefOf(policyOf(PolicyTypeIndex)),
 		Revisions: []MemoryRevisionRef{
 			{MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256},
 			{MemoryID: other.MemoryID, Revision: other.Revision, ContentSHA256: other.ContentSHA256},

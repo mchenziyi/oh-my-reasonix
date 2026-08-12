@@ -19,11 +19,14 @@ func putRevisionEvidence(t *testing.T, s *FactStore, rev MemoryRevision, ev Memo
 	if _, err := s.Put(context.Background(), ev); err != nil {
 		t.Fatalf("put evidence: %v", err)
 	}
+	if _, err := s.Put(context.Background(), policyOf(PolicyTypeIndex)); err != nil {
+		t.Fatalf("put index policy: %v", err)
+	}
 }
 
 func okfRequest(rev MemoryRevision, ev MemoryEvidenceGeneration) OKFCompileRequest {
 	return OKFCompileRequest{
-		Scope: rev.Scope,
+		Scope: rev.Scope, IndexPolicyRef: policyRefOf(policyOf(PolicyTypeIndex)),
 		Revisions: []MemoryRevisionRef{{
 			MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256,
 		}},
@@ -32,6 +35,10 @@ func okfRequest(rev MemoryRevision, ev MemoryEvidenceGeneration) OKFCompileReque
 			EvidenceGeneration: ev.EvidenceGeneration, EvidenceSetSHA256: ev.EvidenceSetSHA256,
 		}},
 	}
+}
+
+func policyRefOf(policy PolicyFact) PolicyRef {
+	return PolicyRef{PolicyID: policy.PolicyID, PolicyType: policy.PolicyType, ContentSHA256: policy.ContentSHA256}
 }
 
 func compileOKF(t *testing.T, s *FactStore, req OKFCompileRequest) *OKFCompileResult {
@@ -81,6 +88,76 @@ func TestOKFCompileDeterministic(t *testing.T) {
 	}
 	if !strings.HasPrefix(string(page), "---\n") || !strings.Contains(string(page), "\n---\n") {
 		t.Error("page must have YAML frontmatter delimiters")
+	}
+}
+
+func TestOKFIndexPolicyIsManifestInput(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev, ev := validRevision(), validEvidenceGeneration()
+	putRevisionEvidence(t, s, rev, ev)
+	res := compileOKF(t, s, okfRequest(rev, ev))
+	want := policyOf(PolicyTypeIndex)
+	found := false
+	for _, input := range res.Inputs {
+		if input.FactType == "policy" && input.FactID == want.PolicyID+"@1" && input.ContentSHA256 == want.ContentSHA256 {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatal("exact index policy fact must be recorded in manifest inputs")
+	}
+	if _, ok := res.Outputs["state/index-tree.json"]; !ok {
+		t.Fatal("machine index tree output is missing")
+	}
+	var tree IndexTree
+	if err := json.Unmarshal(res.Outputs["state/index-tree.json"], &tree); err != nil {
+		t.Fatal(err)
+	}
+	if tree.PolicyRef == nil || *tree.PolicyRef != policyRefOf(want) {
+		t.Fatalf("machine index tree must pin the exact policy reference: %+v", tree.PolicyRef)
+	}
+}
+
+func TestOKFIndexUsesFixedDerivedWorld(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev, ev := validRevision(), validEvidenceGeneration()
+	putRevisionEvidence(t, s, rev, ev)
+	base := compileOKF(t, s, okfRequest(rev, ev))
+	// A later governance fact must not affect a replay pinned to the original
+	// manifest input set.
+	gov := validGovernanceEvent()
+	gov.MemoryID, gov.Revision = rev.MemoryID, rev.Revision
+	gov.Operation = "manual_freeze"
+	if _, err := s.Put(context.Background(), gov); err != nil {
+		t.Fatal(err)
+	}
+	req := okfRequest(rev, ev)
+	req.DerivationInputs = base.Inputs
+	replayed := compileOKF(t, s, req)
+	if replayed.CompiledSHA256 != base.CompiledSHA256 {
+		t.Fatal("post-generation facts leaked into fixed derived world")
+	}
+}
+
+func TestOKFIndexExcludesFrozenAndUsesRenderedPagePath(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev, ev := validRevision(), validEvidenceGeneration()
+	putRevisionEvidence(t, s, rev, ev)
+	gov := validGovernanceEvent()
+	gov.MemoryID, gov.Revision, gov.Operation = rev.MemoryID, rev.Revision, "manual_freeze"
+	if _, err := s.Put(context.Background(), gov); err != nil {
+		t.Fatal(err)
+	}
+	res := compileOKF(t, s, okfRequest(rev, ev))
+	var tree IndexTree
+	if err := json.Unmarshal(res.Outputs["state/index-tree.json"], &tree); err != nil {
+		t.Fatal(err)
+	}
+	if tree.FrozenCount != 1 || len(tree.Root.Entries) != 0 {
+		t.Fatalf("frozen memory leaked into normal index: %+v", tree)
+	}
+	if _, ok := res.Outputs["wiki/strategies/"+rev.CanonicalKey+".md"]; !ok {
+		t.Fatal("frozen knowledge page must remain auditable")
 	}
 }
 
@@ -224,7 +301,7 @@ func TestOKFCompileCanonicalCollision(t *testing.T) {
 	putRevisionEvidence(t, s, rev3, ev3)
 
 	req := OKFCompileRequest{
-		Scope: ScopeProject,
+		Scope: ScopeProject, IndexPolicyRef: policyRefOf(policyOf(PolicyTypeIndex)),
 		Revisions: []MemoryRevisionRef{
 			{MemoryID: base.MemoryID, Revision: base.Revision, ContentSHA256: base.ContentSHA256},
 			{MemoryID: rev2.MemoryID, Revision: rev2.Revision, ContentSHA256: rev2.ContentSHA256},
@@ -278,7 +355,7 @@ func TestOKFCompileCanonicalCollision(t *testing.T) {
 		revs = append(revs, MemoryRevisionRef{MemoryID: r.MemoryID, Revision: r.Revision, ContentSHA256: r.ContentSHA256})
 		evs = append(evs, MemoryEvidenceRef{MemoryID: e.MemoryID, Revision: e.Revision, EvidenceGeneration: e.EvidenceGeneration, EvidenceSetSHA256: e.EvidenceSetSHA256})
 	}
-	req4 := OKFCompileRequest{Scope: ScopeProject, Revisions: revs, Evidence: evs}
+	req4 := OKFCompileRequest{Scope: ScopeProject, IndexPolicyRef: policyRefOf(policyOf(PolicyTypeIndex)), Revisions: revs, Evidence: evs}
 	if _, err := CompileOKF(context.Background(), s, req4); ErrorCode(err) != CodeOKFCompileError {
 		t.Fatalf("unresolvable collision must fail closed, got %v", err)
 	}
@@ -320,7 +397,11 @@ func TestOKFCompileCrossScopeRelation(t *testing.T) {
 func TestOKFCompileEmptyGeneration(t *testing.T) {
 	root := tempRoot(t)
 	s := openProject(t, root, Options{})
-	req := OKFCompileRequest{Scope: ScopeProject}
+	policy := policyOf(PolicyTypeIndex)
+	if _, err := s.Put(context.Background(), policy); err != nil {
+		t.Fatal(err)
+	}
+	req := OKFCompileRequest{Scope: ScopeProject, IndexPolicyRef: policyRefOf(policy)}
 
 	res1 := compileOKF(t, s, req)
 	res2 := compileOKF(t, s, req)
@@ -451,6 +532,26 @@ func TestOKFCompilerVersionContract(t *testing.T) {
 	}
 	if doc.CompilerVersion != OKFCompilerVersion || doc.CanonicalizationVersion != OKFCanonicalizationVersion {
 		t.Errorf("generation must record the frozen OKF compiler identity, got %s@%d", doc.CompilerVersion, doc.CanonicalizationVersion)
+	}
+}
+
+func TestOKFLegacyCompilerRemainsRebuildable(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev, ev := validRevision(), validEvidenceGeneration()
+	putRevisionEvidence(t, s, rev, ev)
+	req := okfRequest(rev, ev)
+	res, err := compileOKFLegacy(context.Background(), s, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := res.Outputs["state/index-tree.json"]; ok {
+		t.Fatal("v1 compiler must not gain v2 output")
+	}
+	if !strings.Contains(string(res.Outputs["wiki/index.md"]), rev.Title) {
+		t.Fatal("v1 index rendering changed")
+	}
+	if !generationCompilerAvailable(OKFCompilerVersionV1, OKFCanonicalizationVersion) {
+		t.Fatal("v1 compiler registry entry was removed")
 	}
 }
 

@@ -124,6 +124,31 @@ for pat in "${mnemosyne_forbidden_active[@]}"; do
   fi
 done
 
+# --- 1d. Mnemosyne MEM-03A index sharding plan ----------------------------
+index_plan="docs/OMR_MNEMOSYNE_MEM-03A_INDEX_SHARDING_PLAN.zh-CN.md"
+[ -f "$index_plan" ] || fail "missing $index_plan"
+
+index_required=(
+  '状态：✅ 已实现并通过门禁'
+  'Index 只能是 Generation 派生视图'
+  'IndexPolicyRef PolicyRef'
+  'Policy Fact 作为 `ManifestInput`'
+  '最终规范 UTF-8 渲染结果'
+  'component → operation → memory_type → stable_id_prefix'
+  'Root 超限后只保存路由摘要'
+  '禁止截断、丢弃、随机'
+  'memory_index_policy_unsatisfied'
+  '不实现 Librarian、Episode Index、CLI、Prompt 或模型调用'
+  '交给 Reasonix 的完整执行提示词'
+)
+for required in "${index_required[@]}"; do
+  grep -q "$required" "$index_plan" || fail "MEM-03A plan missing contract '$required'"
+done
+
+if grep -Eq '新增 (facts/index|FactKindIndex)|引入向量数据库|允许静默使用默认|自动使用 defaultIndexPolicy' "$index_plan"; then
+  fail "MEM-03A plan contains a forbidden index architecture"
+fi
+
 mutation_plan=$(sed -n '/^## 6\.8 MemoryMutationPlan/,/^## 6\.9 /p' "$mnemosyne")
 if printf '%s\n' "$mutation_plan" | grep -Eq 'before_content_sha256|after_content_sha256|content_sha256:[[:space:]]*sha256_(old|new)'; then
   fail "Mnemosyne MemoryMutationPlan lets the model supply trusted before/after hashes"

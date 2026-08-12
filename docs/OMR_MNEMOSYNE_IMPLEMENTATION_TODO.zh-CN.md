@@ -272,7 +272,7 @@ omr memory index doctor
 
 ### MEM-03A：确定性 Root/Local Index 与分片
 
-状态：⬜
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-03A_INDEX_SHARDING_PLAN.zh-CN.md`）
 
 - 使用版本化 Index Policy；
 - 稳定排序和 UTF-8 字节计数；

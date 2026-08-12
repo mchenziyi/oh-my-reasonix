@@ -1182,7 +1182,7 @@ func (gs *generationStore) verifyPublished(ctx context.Context, rec txRecord, ge
 // the result (the check itself only reads).
 func (gs *generationStore) verifyCompiledOutputIntegrity(ctx context.Context, dir string, doc generationDoc) error {
 	if doc.CompiledOutputSHA256 == "" {
-		if doc.CompilerVersion == OKFCompilerVersion {
+		if doc.CompilerVersion == OKFCompilerVersion || doc.CompilerVersion == OKFCompilerVersionV1 {
 			return storeError(CodeGenerationStagingInvalid, "compiled output hash is missing on an OKF generation")
 		}
 		emptyHash, err := gs.compiledOutputHash(ctx, dir)

@@ -78,6 +78,10 @@ func runOKFHelper() {
 		fmt.Println("status=error:" + string(ErrorCode(err)))
 		return
 	}
+	if _, err := s.Put(context.Background(), policyOf(PolicyTypeIndex)); err != nil {
+		fmt.Println("status=error:" + string(ErrorCode(err)))
+		return
+	}
 	res, err := CompileOKF(context.Background(), s, okfRequest(rev, ev))
 	if err != nil {
 		fmt.Println("status=error:" + string(ErrorCode(err)))

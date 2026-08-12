@@ -496,7 +496,11 @@ func rebuildFromManifest(ctx context.Context, store *FactStore, genID, manifestS
 		return nil, storeError(CodeScopeMismatch, "manifest scope mismatch")
 	}
 
-	req := OKFCompileRequest{Scope: mf.Scope}
+	evaluationTime, err := time.Parse(time.RFC3339Nano, mf.CreatedAt)
+	if err != nil {
+		return nil, storeError(CodeHashMismatch, "manifest evaluation time is invalid")
+	}
+	req := OKFCompileRequest{Scope: mf.Scope, DerivationInputs: mf.Inputs, EvaluationTime: evaluationTime}
 	for _, in := range mf.Inputs {
 		f, err := readManifestInput(ctx, store, in)
 		if err != nil {
@@ -515,9 +519,18 @@ func rebuildFromManifest(ctx context.Context, store *FactStore, genID, manifestS
 				MemoryID: v.MemoryID, Revision: v.Revision,
 				EvidenceGeneration: v.EvidenceGeneration, EvidenceSetSHA256: v.EvidenceSetSHA256,
 			})
+		case PolicyFact:
+			if v.PolicyType == PolicyTypeIndex {
+				req.IndexPolicyRef = PolicyRef{PolicyID: v.PolicyID, PolicyType: v.PolicyType, ContentSHA256: v.ContentSHA256}
+			}
 		}
 	}
-	res, err := CompileOKF(ctx, store, req)
+	var res *OKFCompileResult
+	if mf.CompilerVersion == OKFCompilerVersionV1 {
+		res, err = compileOKFLegacy(ctx, store, req)
+	} else {
+		res, err = CompileOKF(ctx, store, req)
+	}
 	if err != nil {
 		if ErrorCode(err) == CodeOKFInvalidInput || ErrorCode(err) == CodeOKFCompileError {
 			return &EvaluationRebuild{Status: EvaluationRebuildUnavailable}, nil
