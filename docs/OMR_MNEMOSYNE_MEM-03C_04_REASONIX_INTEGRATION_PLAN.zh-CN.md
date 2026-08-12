@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-04：Reasonix 接入与真实联调计划
 
-- 状态：🟡 Composite Generation 已实现，待 CLI/Profile 接入
+- 状态：✅ 自动化实现完成，待真实 Reasonix Desktop 联调
 - 前置：MEM-03C-01～03 已实现并推送
 - 目标：让 Reasonix 通过稳定的 OMR CLI 与 `omr-memory` Profile 使用固定世界 Episodic Recall
 
@@ -104,3 +104,13 @@ Fake/临时项目测试：
 先写失败的库级、CLI 进程级和安装联调测试，再最小实现。运行 gofmt、diff check、memory/CLI/
 install 测试与 race、全量 test、vet、build、Docs Gate。自动门禁通过后提交推送，但在真实 Desktop
 联调前不创建 Tag/Release，也不把 MEM-03C 标为完全验收。
+
+## 八、实现结果
+
+- 新增 `omr memory episodic context/index/card/validate-receipt/doctor` 只读命令；
+- `context` 是唯一读取 CURRENT 的入口，并且只接受 Composite Generation；
+- 后续命令严格消费固定 `EpisodicScopeContext`，不扫描 Generation、不重读 CURRENT；
+- 上下文与回执文件拒绝未知字段、符号链接、非普通文件和超过 1 MiB 的输入；
+- 缺失 Store 的只读命令零创建；
+- `omr-memory` Profile 已改为通过只读 OMR 命令渐进读取 Episode Index/Card；
+- Composite 事务、CURRENT 固定、Reader、CLI 输入安全与 Profile 安装均由自动测试覆盖。

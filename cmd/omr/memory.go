@@ -1,0 +1,300 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+	"syscall"
+
+	mem "github.com/mchenziyi/oh-my-reasonix/internal/memory"
+)
+
+type episodicContextDocument struct {
+	SchemaVersion int                       `json:"schema_version"`
+	Project       *mem.EpisodicScopeContext `json:"project"`
+	Global        *mem.EpisodicScopeContext `json:"global"`
+}
+
+func runMemory(args []string) error {
+	if len(args) < 2 || args[0] != "episodic" {
+		return errors.New("memory requires episodic context, index, card, validate-receipt, or doctor")
+	}
+	switch args[1] {
+	case "context":
+		return runMemoryContext(args[2:])
+	case "index":
+		return runMemoryIndex(args[2:])
+	case "card":
+		return runMemoryCard(args[2:])
+	case "validate-receipt":
+		return runMemoryReceipt(args[2:])
+	case "doctor":
+		return runMemoryDoctor(args[2:])
+	default:
+		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
+	}
+}
+
+func memoryStoreRoot(project string) string {
+	return filepath.Join(project, ".reasonix", "omr", "memory")
+}
+func openExistingMemoryStore(project string, scope mem.Scope) (*mem.FactStore, error) {
+	root := memoryStoreRoot(project)
+	for _, p := range []string{root, filepath.Join(root, "facts"), filepath.Join(root, "locks"), filepath.Join(root, "diagnostics")} {
+		info, err := os.Lstat(p)
+		if err != nil || !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return nil, errors.New("memory store is unavailable")
+		}
+	}
+	if scope == mem.ScopeGlobal {
+		return mem.OpenGlobal(root, mem.Options{})
+	}
+	return mem.OpenProject(root, mem.Options{})
+}
+
+func runMemoryContext(args []string) error {
+	fs := flag.NewFlagSet("memory episodic context", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	projectID := fs.String("project-scope-id", "project", "project scope id")
+	globalID := fs.String("global-scope-id", "global", "global scope id")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	doc := episodicContextDocument{SchemaVersion: 1}
+	s, err := openExistingMemoryStore(*project, mem.ScopeProject)
+	if err != nil {
+		return err
+	}
+	doc.Project, err = mem.PinCurrentEpisodicContext(context.Background(), s, *projectID)
+	if err != nil {
+		return err
+	}
+	if *global != "" {
+		g, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+		if err != nil {
+			return err
+		}
+		doc.Global, err = mem.PinCurrentEpisodicContext(context.Background(), g, *globalID)
+		if err != nil {
+			return err
+		}
+	}
+	return writeJSONOutput(doc)
+}
+
+func episodicFlags(name string, args []string) (*episodicContextDocument, string, *mem.FactStore, error) {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	contextFile := fs.String("context-file", "", "fixed context JSON")
+	scope := fs.String("scope", "project", "project or global")
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return nil, "", nil, err
+	}
+	if *contextFile == "" {
+		return nil, "", nil, errors.New("context-file is required")
+	}
+	doc, err := readEpisodicContext(*contextFile)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return nil, "", nil, errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return nil, "", nil, errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	return doc, *scope, store, err
+}
+
+func pinnedFrom(doc *episodicContextDocument, scope string) (mem.EpisodicScopeContext, error) {
+	if scope == "project" && doc.Project != nil {
+		return *doc.Project, nil
+	}
+	if scope == "global" && doc.Global != nil {
+		return *doc.Global, nil
+	}
+	return mem.EpisodicScopeContext{}, errors.New("fixed episodic scope is unavailable")
+}
+func runMemoryIndex(args []string) error {
+	doc, scope, s, err := episodicFlags("memory episodic index", args)
+	if err != nil {
+		return err
+	}
+	p, err := pinnedFrom(doc, scope)
+	if err != nil {
+		return err
+	}
+	v, err := mem.ReadEpisodicIndex(context.Background(), s, p)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(v)
+}
+func runMemoryCard(args []string) error {
+	episodeID, args, err := extractStringFlag(args, "episode-id")
+	if err != nil || episodeID == "" {
+		return errors.New("episode-id is required")
+	}
+	doc, scope, s, err := episodicFlags("memory episodic card", args)
+	if err != nil {
+		return err
+	}
+	p, err := pinnedFrom(doc, scope)
+	if err != nil {
+		return err
+	}
+	idx, err := mem.ReadEpisodicIndex(context.Background(), s, p)
+	if err != nil {
+		return err
+	}
+	for _, entry := range idx.Entries {
+		if entry.EpisodeRef.EpisodeID == episodeID {
+			v, err := mem.ReadEpisodeCard(context.Background(), s, p, entry.EpisodeRef)
+			if err != nil {
+				return err
+			}
+			return writeJSONOutput(v)
+		}
+	}
+	return errors.New("episode is not present in fixed index")
+}
+func runMemoryDoctor(args []string) error {
+	doc, scope, s, err := episodicFlags("memory episodic doctor", args)
+	if err != nil {
+		return err
+	}
+	p, err := pinnedFrom(doc, scope)
+	if err != nil {
+		return err
+	}
+	v, err := mem.CheckEpisodicGeneration(context.Background(), s, p)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(v)
+}
+func runMemoryReceipt(args []string) error {
+	fs := flag.NewFlagSet("memory episodic validate-receipt", flag.ContinueOnError)
+	contextFile := fs.String("context-file", "", "fixed context JSON")
+	receiptFile := fs.String("receipt-file", "", "episodic receipt JSON")
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *contextFile == "" || *receiptFile == "" {
+		return errors.New("context-file and receipt-file are required")
+	}
+	doc, err := readEpisodicContext(*contextFile)
+	if err != nil {
+		return err
+	}
+	b, err := readBoundedJSONFile(*receiptFile)
+	if err != nil {
+		return err
+	}
+	var receipt mem.EpisodicRecallReceipt
+	if err := strictJSON(b, &receipt); err != nil {
+		return errors.New("episodic receipt is invalid")
+	}
+	stores := make(map[mem.Scope]*mem.FactStore, 2)
+	contexts := make(map[mem.Scope]mem.EpisodicScopeContext, 2)
+	if doc.Project != nil {
+		s, err := openExistingMemoryStore(*project, mem.ScopeProject)
+		if err != nil {
+			return err
+		}
+		stores[mem.ScopeProject], contexts[mem.ScopeProject] = s, *doc.Project
+	}
+	if doc.Global != nil {
+		if *global == "" {
+			return errors.New("global memory directory is unavailable")
+		}
+		s, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+		if err != nil {
+			return err
+		}
+		stores[mem.ScopeGlobal], contexts[mem.ScopeGlobal] = s, *doc.Global
+	}
+	if err := mem.ValidateEpisodicReceipt(context.Background(), stores, contexts, receipt); err != nil {
+		return err
+	}
+	return writeJSONOutput(map[string]any{"valid": true, "schema_version": 1})
+}
+
+func readEpisodicContext(path string) (*episodicContextDocument, error) {
+	b, err := readBoundedJSONFile(path)
+	if err != nil {
+		return nil, err
+	}
+	var doc episodicContextDocument
+	if err := strictJSON(b, &doc); err != nil || doc.SchemaVersion != 1 || (doc.Project == nil && doc.Global == nil) {
+		return nil, errors.New("episodic context is invalid")
+	}
+	return &doc, nil
+}
+
+func readBoundedJSONFile(path string) ([]byte, error) {
+	if path == "" {
+		return nil, errors.New("JSON file is required")
+	}
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() > 1<<20 {
+		return nil, errors.New("JSON file is unsafe")
+	}
+	f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
+	if err != nil {
+		return nil, errors.New("JSON file is unreadable")
+	}
+	defer f.Close()
+	b, err := io.ReadAll(io.LimitReader(f, 1<<20+1))
+	if err != nil || len(b) > 1<<20 {
+		return nil, errors.New("JSON file is unreadable")
+	}
+	return b, nil
+}
+func strictJSON(data []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(data))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	if dec.Decode(&struct{}{}) != io.EOF {
+		return errors.New("trailing JSON")
+	}
+	return nil
+}
+
+func extractStringFlag(args []string, name string) (string, []string, error) {
+	want := "--" + name
+	for i, arg := range args {
+		if arg == want {
+			if i+1 >= len(args) {
+				return "", args, errors.New("flag value is required")
+			}
+			return args[i+1], append(append([]string{}, args[:i]...), args[i+2:]...), nil
+		}
+		prefix := want + "="
+		if len(arg) >= len(prefix) && arg[:len(prefix)] == prefix {
+			return arg[len(prefix):], append(append([]string{}, args[:i]...), args[i+1:]...), nil
+		}
+	}
+	return "", args, nil
+}

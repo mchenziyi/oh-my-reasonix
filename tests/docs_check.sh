@@ -178,7 +178,7 @@ episodic_plan="docs/OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md"
 [ -f "$episodic_plan" ] || fail "missing $episodic_plan"
 
 episodic_required=(
-  '状态：✅ MEM-03C-01～03 已实现，待 MEM-03C-04 Reasonix 接入联调'
+  '状态：✅ MEM-03C-01～04 自动化实现完成，待真实 Reasonix Desktop 联调'
   'MEM-03C-01 Schema Gate'
   'internal/evolution.Episode'
   'Episode Card / Episodic Index'
@@ -205,7 +205,7 @@ done
 
 episodic_reasonix_plan="docs/OMR_MNEMOSYNE_MEM-03C_04_REASONIX_INTEGRATION_PLAN.zh-CN.md"
 [ -f "$episodic_reasonix_plan" ] || fail "missing $episodic_reasonix_plan"
-for required in '状态：🟡 Composite Generation 已实现，待 CLI/Profile 接入' '不要求 Reasonix 官方新增接口' 'context` 是唯一允许解析 CURRENT 的入口' '启动一个只读 Librarian Subagent' '自动采集真实 Episode 属 MEM-04'; do
+for required in '状态：✅ 自动化实现完成，待真实 Reasonix Desktop 联调' '不要求 Reasonix 官方新增接口' 'context` 是唯一允许解析 CURRENT 的入口' '启动一个只读 Librarian Subagent' '自动采集真实 Episode 属 MEM-04'; do
   grep -q "$required" "$episodic_reasonix_plan" || fail "MEM-03C Reasonix integration plan missing '$required'"
 done
 

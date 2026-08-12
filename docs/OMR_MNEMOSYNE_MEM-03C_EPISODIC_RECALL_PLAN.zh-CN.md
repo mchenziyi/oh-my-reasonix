@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-03C：Episodic Recall 计划
 
 - 阶段：MEM-03C
-- 状态：✅ MEM-03C-01～03 已实现，待 MEM-03C-04 Reasonix 接入联调
+- 状态：✅ MEM-03C-01～04 自动化实现完成，待真实 Reasonix Desktop 联调
 - 前置：MEM-03A 确定性分片索引、MEM-03B 固定快照 Librarian 已实现
 - 目标：让 Reasonix 能在尚未形成稳定 Memory 的历史任务中渐进查找相似 Episode，同时保证
   Episode Card 和 Episodic Index 只是可删除重建的派生表示

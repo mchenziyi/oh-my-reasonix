@@ -43,6 +43,8 @@ func run(args []string) int {
 		err = runRun(args[1:])
 	case "evolve":
 		err = runEvolve(args[1:])
+	case "memory":
+		err = runMemory(args[1:])
 	default:
 		usage()
 		return 2
@@ -55,6 +57,6 @@ func run(args []string) int {
 }
 
 func usage() {
-	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|session|benchmark|comment-check|evolve|version\n", os.Args[0])
+	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|session|benchmark|comment-check|evolve|memory|version\n", os.Args[0])
 	fmt.Println("Use --help on a command for flags.")
 }

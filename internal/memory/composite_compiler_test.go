@@ -94,4 +94,14 @@ func TestCompositeGenerationServesBothReaders(t *testing.T) {
 	if _, err := readLibrarianFile(context.Background(), s, tx.GenerationID, "state/index-tree.json"); err != nil {
 		t.Fatal(err)
 	}
+	pinned, err := PinCurrentEpisodicContext(context.Background(), s, "project_test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pinned.GenerationID != tx.GenerationID || pinned.InputManifestSHA256 != mf.InputManifestSHA256 {
+		t.Fatal("CURRENT was not pinned to the committed composite generation")
+	}
+	if _, err := ReadEpisodicIndex(context.Background(), s, *pinned); err != nil {
+		t.Fatal(err)
+	}
 }

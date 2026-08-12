@@ -20,6 +20,41 @@ type EpisodicScopeContext struct {
 	IndexPath           string `json:"index_path"`
 }
 
+// PinCurrentEpisodicContext resolves CURRENT exactly once and returns a
+// complete immutable routing context. All subsequent reads use the returned
+// generation and never consult CURRENT again.
+func PinCurrentEpisodicContext(ctx context.Context, store *FactStore, scopeID string) (*EpisodicScopeContext, error) {
+	if store == nil || validateID(scopeID, "scope_id") != nil {
+		return nil, storeError(CodeLibrarianInvalidContext, "episodic context request is invalid")
+	}
+	gs := NewGenerationStore(store).(*generationStore)
+	cur, err := gs.readCurrent(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dir, err := gs.publishedGenDir(ctx, cur.GenerationID)
+	if err != nil {
+		return nil, err
+	}
+	doc, err := readJSONFile[generationDoc](filepath.Join(dir, "generation.json"))
+	if err != nil || doc.CompilerVersion != CompositeCompilerVersion {
+		return nil, storeError(CodeLibrarianInvalidContext, "current generation has no composite episodic view")
+	}
+	b, err := store.Get(ctx, FactKindGenerationInputManifest, cur.GenerationID)
+	if err != nil {
+		return nil, err
+	}
+	mf, err := DecodeStrict[GenerationInputManifest](b)
+	if err != nil {
+		return nil, storeError(CodeLibrarianInvalidContext, "current episodic manifest is invalid")
+	}
+	p := &EpisodicScopeContext{Scope: doc.Scope, ScopeID: scopeID, GenerationID: doc.GenerationID, InputManifestID: mf.GenerationID, InputManifestSHA256: mf.InputManifestSHA256, IndexPath: "state/episodes/index.json"}
+	if err := verifyEpisodicScope(ctx, store, *p); err != nil {
+		return nil, err
+	}
+	return p, nil
+}
+
 func (p EpisodicScopeContext) Validate() error {
 	if err := p.Scope.Validate(); err != nil {
 		return err
