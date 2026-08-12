@@ -292,7 +292,7 @@ omr memory index doctor
 
 ### MEM-03C：Episodic Recall
 
-状态：⬜
+状态：🟡 设计草案，等待 Schema Gate（见 `OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md`）
 
 - Episode Card 和 Episodic Index 只能由规范事实派生；
 - 不保存完整命令、思考、凭据或无必要轨迹；
