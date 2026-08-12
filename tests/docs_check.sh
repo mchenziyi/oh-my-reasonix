@@ -193,8 +193,14 @@ done
 
 episodic_compiler_plan="docs/OMR_MNEMOSYNE_MEM-03C_02B_COMPILER_PLAN.zh-CN.md"
 [ -f "$episodic_compiler_plan" ] || fail "missing $episodic_compiler_plan"
-for required in '状态：✅ 已实现' '不读取 CURRENT' '不读取 Evolution Store' '每个 Episode 恰好出现一次'; do
+for required in '状态：✅ 已实现' '不读取 CURRENT' 'Evolution Store' '每个 Episode 恰好出现一次'; do
   grep -q "$required" "$episodic_compiler_plan" || fail "MEM-03C compiler plan missing '$required'"
+done
+
+episodic_recall_doctor_plan="docs/OMR_MNEMOSYNE_MEM-03C_03_RECALL_DOCTOR_PLAN.zh-CN.md"
+[ -f "$episodic_recall_doctor_plan" ] || fail "missing $episodic_recall_doctor_plan"
+for required in '状态：🟡 待实现' '不能冒充 Episodic Generation' '它不读取 CURRENT' '不自动读取 Evidence' '不修复、不删除、不切 CURRENT'; do
+  grep -q "$required" "$episodic_recall_doctor_plan" || fail "MEM-03C Recall/Doctor plan missing '$required'"
 done
 
 if grep -Eq '将 Episode Card 新增为 FactKind|允许引入向量数据库|允许使用 Embedding|直接复用 internal/evolution.Episode|允许模型提供可信 Hash' "$episodic_plan"; then
