@@ -412,7 +412,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05D：迁移切换
 
-状态：✅ MigrationPlan、同 Scope 事实复制、目标 Generation 编译、CURRENT CAS、CLI 与 Migration Doctor 已实现并通过自动门禁；真实跨项目联调仍待后续阶段（见
+状态：✅ MigrationPlan、不可变迁移 Snapshot、同 Scope 事实复制、目标 Generation 编译、CURRENT CAS、CLI 与 Migration Doctor 已实现并通过自动门禁；真实跨项目联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05D_MIGRATION_PLAN.zh-CN.md`）
 
 - 迁移采用预览 → Snapshot → 复制 → 编译 → Doctor → 切换；

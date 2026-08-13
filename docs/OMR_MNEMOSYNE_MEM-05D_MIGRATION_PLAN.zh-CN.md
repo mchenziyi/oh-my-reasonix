@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：✅ 只读 MigrationPlan、同 Scope 事实复制、Migration Doctor 与目标 Generation/CURRENT 事务已实现并通过自动门禁；真实跨项目联调仍未完成
+- 状态：✅ 只读 MigrationPlan、不可变迁移 Snapshot、同 Scope 事实复制、Migration Doctor 与目标 Generation/CURRENT 事务已实现并通过自动门禁；真实跨项目联调仍未完成
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 
@@ -45,7 +45,11 @@ Hash，并通过正常 `Begin → PrepareFact → PrepareManifest → WriteCompi
 
 真正执行必须：预览 → Snapshot → 复制不可变事实 → 编译派生 Generation → Doctor → 在目标 Scope CAS 切换 CURRENT。`ApplyMigration`
 已覆盖复制、编译和 CAS；`CheckMigrationReadiness` 提供只读 Doctor，重新验证源 Generation/Manifest/输入事实并逐项报告目标
-事实的缺失、已存在或冲突。它不写入 FactStore、不创建 Snapshot、不切换 CURRENT。Snapshot 与真实跨项目联调仍待后续。
+事实的缺失、已存在或冲突。它不写入 FactStore、不创建 Snapshot、不切换 CURRENT；真实跨项目联调仍待后续。
+
+`ApplyMigration` 现在在目标 Generation 事务 Claim 后、任何事实复制前写入
+`migration-snapshots/<snapshot-id>.json`。Snapshot 只保存源 Generation/Manifest、Scope、完整计划 Hash
+和目标基线 Generation，不复制事实、不成为第二事实源；同一内容重复写入为 NOOP，内容冲突或损坏均拒绝覆盖。
 
 显式复制入口：
 

@@ -88,6 +88,42 @@ func TestApplyMigrationPublishesNewTargetGeneration(t *testing.T) {
 	}
 }
 
+func TestApplyMigrationPersistsDeterministicSnapshotBeforePublish(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := openProject(t, targetRoot, Options{})
+	sourceTx := commitOne(t, NewGenerationStore(source), "migration_snapshot_source", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, sourceTx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ApplyMigration(context.Background(), source, target, MigrationApplyRequest{Plan: plan, IdempotencyKey: "migration_snapshot_key"})
+	if err != nil || res.SnapshotID == "" {
+		t.Fatalf("migration must publish a snapshot: %+v %v", res, err)
+	}
+	path := filepath.Join(target.root, "migration-snapshots", res.SnapshotID+".json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("migration snapshot missing: %v", err)
+	}
+	var snapshot MigrationSnapshot
+	if err := json.Unmarshal(data, &snapshot); err != nil {
+		t.Fatal(err)
+	}
+	if snapshot.PlanHash != plan.PlanHash() || snapshot.SourceGenerationID != plan.GenerationID || snapshot.SourceManifestSHA256 != plan.InputManifestSHA256 {
+		t.Fatalf("snapshot does not bind source plan: %+v", snapshot)
+	}
+	before := string(data)
+	if _, err := persistMigrationSnapshot(target, plan, nil); err != nil {
+		t.Fatalf("same snapshot must be idempotent: %v", err)
+	}
+	after, err := os.ReadFile(path)
+	if err != nil || string(after) != before {
+		t.Fatalf("snapshot replay must not rewrite immutable bytes")
+	}
+}
+
 func TestApplyMigrationRejectsCrossScopeAndTamperedSource(t *testing.T) {
 	sourceRoot := tempRoot(t)
 	targetRoot := tempRoot(t)

@@ -35,6 +35,22 @@ type MigrationApplyResult struct {
 	Copy         MigrationCopyResult `json:"copy"`
 	Commit       CommitResult        `json:"commit"`
 	GenerationID string              `json:"generation_id"`
+	SnapshotID   string              `json:"snapshot_id"`
+}
+
+// MigrationSnapshot is an immutable, deterministic record of the source
+// generation and target CURRENT captured before migration side effects.
+// It is audit metadata, not a second source of facts.
+type MigrationSnapshot struct {
+	SchemaVersion          int     `json:"schema_version"`
+	SnapshotID             string  `json:"snapshot_id"`
+	PlanHash               string  `json:"plan_hash"`
+	SourceScope            Scope   `json:"source_scope"`
+	TargetScope            Scope   `json:"target_scope"`
+	SourceGenerationID     string  `json:"source_generation_id"`
+	SourceManifestSHA256   string  `json:"source_manifest_sha256"`
+	TargetBaseGenerationID *string `json:"target_base_generation_id,omitempty"`
+	ContentSHA256          string  `json:"content_sha256"`
 }
 
 // ApplyMigration performs copy, target compilation from the source's verified
@@ -68,6 +84,10 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	abort := func(cause error) (MigrationApplyResult, error) {
 		_ = targetGS.Abort(ctx, tx, "migration apply failed")
 		return MigrationApplyResult{}, cause
+	}
+	snapshot, err := persistMigrationSnapshot(target, req.Plan, tx.BaseGeneration)
+	if err != nil {
+		return abort(err)
 	}
 	outputs, err := readCompiledOutputs(sourceDir)
 	if err != nil {
@@ -106,7 +126,55 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	if err != nil && commit.Status != CommitPendingRecovery {
 		return MigrationApplyResult{}, err
 	}
-	return MigrationApplyResult{Copy: copyResult, Commit: commit, GenerationID: commit.GenerationID}, err
+	return MigrationApplyResult{Copy: copyResult, Commit: commit, GenerationID: commit.GenerationID, SnapshotID: snapshot.SnapshotID}, err
+}
+
+func persistMigrationSnapshot(store *FactStore, plan MigrationPlan, base *string) (MigrationSnapshot, error) {
+	planHash := plan.PlanHash()
+	seed, err := json.Marshal(struct {
+		PlanHash string  `json:"plan_hash"`
+		Base     *string `json:"base_generation"`
+	}{planHash, base})
+	if err != nil {
+		return MigrationSnapshot{}, storeError(CodeDerivedInvalidInput, "migration snapshot request is invalid")
+	}
+	snapshotID := "snapshot_" + hashOf(seed)
+	s := MigrationSnapshot{SchemaVersion: SchemaVersion, SnapshotID: snapshotID, PlanHash: planHash, SourceScope: plan.SourceScope, TargetScope: plan.TargetScope, SourceGenerationID: plan.GenerationID, SourceManifestSHA256: plan.InputManifestSHA256, TargetBaseGenerationID: base}
+	content, err := json.Marshal(struct {
+		SchemaVersion          int     `json:"schema_version"`
+		SnapshotID             string  `json:"snapshot_id"`
+		PlanHash               string  `json:"plan_hash"`
+		SourceScope            Scope   `json:"source_scope"`
+		TargetScope            Scope   `json:"target_scope"`
+		SourceGenerationID     string  `json:"source_generation_id"`
+		SourceManifestSHA256   string  `json:"source_manifest_sha256"`
+		TargetBaseGenerationID *string `json:"target_base_generation_id,omitempty"`
+	}{s.SchemaVersion, s.SnapshotID, s.PlanHash, s.SourceScope, s.TargetScope, s.SourceGenerationID, s.SourceManifestSHA256, s.TargetBaseGenerationID})
+	if err != nil {
+		return MigrationSnapshot{}, storeError(CodeSchemaInvalid, "migration snapshot is invalid")
+	}
+	s.ContentSHA256 = hashOf(content)
+	if err != nil {
+		return MigrationSnapshot{}, storeError(CodeSchemaInvalid, "migration snapshot is invalid")
+	}
+	b, err := json.Marshal(s)
+	if err != nil {
+		return MigrationSnapshot{}, storeError(CodeSchemaInvalid, "migration snapshot is invalid")
+	}
+	path, err := secureJoin(store.root, []string{"migration-snapshots", snapshotID + ".json"}, true, true)
+	if err != nil {
+		return MigrationSnapshot{}, err
+	}
+	if err := store.atomicWriteFile(path, b); err != nil {
+		if !errors.Is(err, errTargetExists) {
+			return MigrationSnapshot{}, storeError(CodePermissionDenied, "migration snapshot cannot be written")
+		}
+		old, readErr := os.ReadFile(path)
+		if readErr != nil || string(old) != string(b) {
+			return MigrationSnapshot{}, storeError(CodeGenerationIdempotency, "migration snapshot conflicts")
+		}
+	}
+	return s, nil
 }
 
 func migrationRequestBinding(plan MigrationPlan) (string, error) {
