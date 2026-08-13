@@ -368,7 +368,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：✅ 只读计划层已实现并通过门禁；规范事实写入与批准流程仍待后续阶段（见
+状态：🟡 Revision/Merge/Split/Apply 已实现并通过门禁；Generalize/批准审计与真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；
@@ -379,7 +379,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05B：Global Promotion
 
-状态：✅ 只读 PromotionPlan/Gate 已实现；Global Revision 写入与批准流程仍待后续阶段（见
+状态：🟡 PromotionPlan/Gate 与 Global Apply 已实现；批准审计、Generation 重建与真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05B_GLOBAL_PROMOTION_PLAN.zh-CN.md`）
 
 - Schema 先支持 Global，实际 Promotion 仍按 Usage Policy 分流；
@@ -390,7 +390,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05C：Revalidation、Repair、Rollback
 
-状态：🟡 RepairPlan/RollbackPlan 与审计式 Rollback/CURRENT 事务已实现；CLI/Doctor 联调仍待后续阶段（见
+状态：🟡 RepairPlan/RollbackPlan、审计式 Rollback/CURRENT 事务与 `memory repair/rollback` CLI 已实现；Doctor/真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05C_REPAIR_ROLLBACK_PLAN.zh-CN.md`）
 
 - 历史 Policy/Evaluator 可重建；

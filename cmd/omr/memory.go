@@ -72,12 +72,15 @@ func runMemory(args []string) error {
 	if args[0] == "rollback" {
 		return runMemoryRollback(args[1:])
 	}
+	if args[0] == "repair" {
+		return runMemoryRepair(args[1:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, benchmark, retrieval, migration, rollback, episodic, usage or outcome command")
+		return errors.New("memory requires get, benchmark, retrieval, migration, rollback, repair, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -282,6 +285,37 @@ func runMemoryRollback(args []string) error {
 		return err
 	}
 	return writeJSONOutput(result)
+}
+
+func runMemoryRepair(args []string) error {
+	fs := flag.NewFlagSet("memory repair", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("repair scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("repair scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	plan, err := mem.BuildRepairPlan(context.Background(), mem.NewGenerationStore(store))
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(plan)
 }
 
 func runMemoryStatus(args []string) error {

@@ -148,6 +148,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"rollback", "generation_1", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("rollback must require explicit audit fields")
 	}
+	if err := runMemory([]string{"repair", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("repair must not create a missing memory store")
+	}
 }
 
 func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
