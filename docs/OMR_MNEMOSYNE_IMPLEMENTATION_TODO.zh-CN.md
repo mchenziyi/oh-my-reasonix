@@ -1,6 +1,6 @@
 # OMR Mnemosyne 实现总 Todo
 
-> 状态：MEM-01A 已完成并经 CTO 签收；MEM-01B 尚未开始
+> 状态：MEM-01A～MEM-01F、MEM-02A～MEM-02G 的自动化实现已完成并通过门禁；当前继续收口 MEM-03～MEM-06 与显式写入事务
 >
 > 规范依据：[OMR_EVOLUTION_MEMORY_OKF_ARCHITECTURE.zh-CN.md](/Users/czy/Desktop/demo/oh-my-reasonix/docs/OMR_EVOLUTION_MEMORY_OKF_ARCHITECTURE.zh-CN.md)
 
@@ -98,8 +98,7 @@ internal/memory/canonical.go
 
 ### MEM-01B：安全 Fact Store
 
-状态：🟡 配对 Fixture/Report 自动化已实现，待真实临时项目联调（见
-`OMR_MNEMOSYNE_MEM-06_QUALITY_BENCHMARK_PLAN.zh-CN.md`）
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-01B_PLAN.zh-CN.md`）
 
 交付：
 
@@ -200,7 +199,7 @@ Repair 第一版只能重建派生状态、清理明确孤立的临时目录或�
 
 ### MEM-01G：CLI 接入
 
-状态：⬜
+状态：🟡 主要只读 CLI 已实现；compile/index rebuild 等完整事务入口仍待后续
 
 新增：
 
@@ -220,7 +219,7 @@ omr memory index doctor
 
 ### MEM-02A：旧 Evolution 只读迁移预览
 
-状态：⬜
+状态：⏭ 已由当前 MEM-02A～MEM-02G 协议计划取代；不要按本旧章节执行
 
 - 扫描旧 `episodes/patterns/proposals/observations`；
 - 输出迁移计划和缺失字段；
@@ -230,7 +229,7 @@ omr memory index doctor
 
 ### MEM-02B：事实复制迁移
 
-状态：⬜
+状态：⏭ 已由当前 MEM-02A～MEM-02G 协议计划取代；不要按本旧章节执行
 
 - 复制并校验旧 Episode 等事实到新 `facts/`；
 - 创建迁移 Snapshot 和事务记录；
@@ -240,7 +239,7 @@ omr memory index doctor
 
 ### MEM-02C：MemoryMutationPlan 与候选 Revision
 
-状态：⬜
+状态：⏭ 已由当前 MEM-02A～MEM-02G 协议计划取代；不要按本旧章节执行
 
 - Reasonix 只输出结构化计划；
 - Memory Service 重新计算 before/after Hash；
@@ -251,7 +250,7 @@ omr memory index doctor
 
 ### MEM-02D：自动 probation 与 Trust Gate
 
-状态：⬜
+状态：✅ Trust Gate 与 probation 约束已由当前 MEM-02C/MEM-02G 实现
 
 - 自动记录客观 Episode；
 - 可靠新知识可生成 probation Revision；
@@ -261,7 +260,7 @@ omr memory index doctor
 
 ### MEM-02E：Prompt Composer 接入
 
-状态：⬜
+状态：🟡 Prompt Composer 已有实现；真实 Reasonix 回执联调仍待完成
 
 - System Prompt 只注入入口和读取协议；
 - 不把全部记忆正文塞入 Prompt；
