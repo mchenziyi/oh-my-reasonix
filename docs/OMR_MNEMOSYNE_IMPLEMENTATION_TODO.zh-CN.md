@@ -390,18 +390,18 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05C：Revalidation、Repair、Rollback
 
-状态：✅ 只读 RepairPlan/RollbackPlan 已实现；真正回滚/迁移写入事务仍待后续阶段（见
+状态：🟡 RepairPlan/RollbackPlan 与审计式 Rollback/CURRENT 事务已实现；CLI/Doctor 联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05C_REPAIR_ROLLBACK_PLAN.zh-CN.md`）
 
 - 历史 Policy/Evaluator 可重建；
 - 损坏 Generation 可由永久 Fact 和 Input Manifest 重建；
-- 回滚只切换 CURRENT，不删除规范事实；
+- 回滚只切换 CURRENT，不删除规范事实，并保存 operator/reason/time/hash 审计；
 - 所有 Repair 有审计记录；
 - 跨 Scope 操作显式指定 Scope。
 
 ### MEM-05D：迁移切换
 
-状态：✅ 只读 MigrationPlan 预览已实现；迁移复制与 CURRENT 切换仍待后续阶段（见
+状态：🟡 MigrationPlan、同 Scope 事实复制、目标 Generation 编译与 CURRENT CAS 已实现；CLI/快照/Doctor 联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05D_MIGRATION_PLAN.zh-CN.md`）
 
 - 迁移采用预览 → Snapshot → 复制 → 编译 → Doctor → 切换；
@@ -409,6 +409,7 @@ omr memory retrieval audit <retrieval-id>
 - 旧 Evolution 数据仍可读取；
 - 迁移不伪造缺失 Usage、Lifecycle 或 Health；
 - 多项目数据不能通过单项目迁移自动生成 Global。
+- `omr memory migration preview/apply` 与 `omr memory rollback` CLI 入口已实现，真实临时项目联调待完成。
 
 ## 9. MEM-06：Memory Quality Benchmark
 

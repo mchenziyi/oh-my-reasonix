@@ -66,12 +66,18 @@ func runMemory(args []string) error {
 		}
 		return runMemoryRetrievalAudit(args[2:])
 	}
+	if args[0] == "migration" {
+		return runMemoryMigration(args[1:])
+	}
+	if args[0] == "rollback" {
+		return runMemoryRollback(args[1:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, benchmark, retrieval, episodic, usage or outcome command")
+		return errors.New("memory requires get, benchmark, retrieval, migration, rollback, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -175,6 +181,103 @@ func runMemoryRetrievalAudit(args []string) error {
 		return err
 	}
 	result, err := mem.ValidateRetrievalEvaluation(context.Background(), store, mem.RetrievalEvaluationRequest{Scope: sc, EvaluationID: fs.Arg(0), ProjectStore: store, Now: now.UTC()})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
+}
+
+func runMemoryMigration(args []string) error {
+	if len(args) == 0 || (args[0] != "preview" && args[0] != "apply") {
+		return errors.New("memory migration requires preview or apply")
+	}
+	action := args[0]
+	fs := flag.NewFlagSet("memory migration "+action, flag.ContinueOnError)
+	sourceDir := fs.String("source-dir", "", "source project directory")
+	targetDir := fs.String("target-dir", "", "target project directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	generationID := fs.String("generation-id", "", "source generation id")
+	idempotency := fs.String("idempotency-key", "", "migration idempotency key")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args[1:]); err != nil {
+		return err
+	}
+	if *sourceDir == "" || *targetDir == "" || *generationID == "" {
+		return errors.New("migration requires --source-dir, --target-dir and --generation-id")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("migration scope is invalid")
+	}
+	source, err := openExistingMemoryStore(*sourceDir, scope)
+	if err != nil {
+		return err
+	}
+	target, err := openExistingMemoryStore(*targetDir, scope)
+	if err != nil {
+		return err
+	}
+	plan, err := mem.BuildMigrationPlanFromStores(context.Background(), source, target, *generationID)
+	if err != nil {
+		return err
+	}
+	if action == "preview" {
+		return writeJSONOutput(plan)
+	}
+	if *idempotency == "" {
+		return errors.New("migration apply requires --idempotency-key")
+	}
+	result, err := mem.ApplyMigration(context.Background(), source, target, mem.MigrationApplyRequest{Plan: plan, IdempotencyKey: *idempotency})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
+}
+
+func runMemoryRollback(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
+	fs := flag.NewFlagSet("memory rollback", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	operator := fs.String("operator", "", "operator identity")
+	reason := fs.String("reason", "", "rollback reason")
+	nowText := fs.String("now", "", "explicit RFC3339 timestamp")
+	idempotency := fs.String("idempotency-key", "", "rollback idempotency key")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 || *operator == "" || *reason == "" || *nowText == "" || *idempotency == "" {
+		return errors.New("rollback requires target id, --operator, --reason, --now and --idempotency-key")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil {
+		return errors.New("rollback requires a valid --now timestamp")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("rollback scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("rollback scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	plan, err := mem.BuildRollbackPlan(context.Background(), mem.NewGenerationStore(store), fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	if !plan.Eligible {
+		return errors.New("rollback target is not eligible")
+	}
+	result, err := mem.ApplyRollbackPlan(context.Background(), mem.NewGenerationStore(store), mem.RollbackRequest{Plan: plan, Operator: *operator, Reason: *reason, Now: now, IdempotencyKey: *idempotency})
 	if err != nil {
 		return err
 	}
