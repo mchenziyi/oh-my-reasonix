@@ -1754,6 +1754,13 @@ func (g GovernanceEvent) Validate() error {
 	return validateTime(g.CreatedAt, "created_at")
 }
 
+// ValidateWithoutID validates all request-controlled fields before OMR
+// derives the immutable event identity.
+func (g GovernanceEvent) ValidateWithoutID() error {
+	g.EventID = "governance_pending"
+	return g.Validate()
+}
+
 func (g GovernanceEvent) canonMap() (map[string]any, error) {
 	basis, err := canonSlice(g.BasisRefs)
 	if err != nil {
