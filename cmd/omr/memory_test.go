@@ -148,6 +148,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"migration", "doctor"}); err == nil {
 		t.Fatal("migration doctor must require source, target and generation")
 	}
+	if err := runMemory([]string{"migration", "copy"}); err == nil {
+		t.Fatal("migration copy must require source, target and generation")
+	}
 	if err := runMemory([]string{"generalize", "apply"}); err == nil {
 		t.Fatal("generalize apply must require explicit plan and target")
 	}

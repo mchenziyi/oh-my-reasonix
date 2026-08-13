@@ -345,8 +345,8 @@ func runMemoryRetrievalAudit(args []string) error {
 }
 
 func runMemoryMigration(args []string) error {
-	if len(args) == 0 || (args[0] != "preview" && args[0] != "doctor" && args[0] != "apply") {
-		return errors.New("memory migration requires preview, doctor or apply")
+	if len(args) == 0 || (args[0] != "preview" && args[0] != "doctor" && args[0] != "copy" && args[0] != "apply") {
+		return errors.New("memory migration requires preview, doctor, copy or apply")
 	}
 	action := args[0]
 	fs := flag.NewFlagSet("memory migration "+action, flag.ContinueOnError)
@@ -387,6 +387,13 @@ func runMemoryMigration(args []string) error {
 			return err
 		}
 		return writeJSONOutput(report)
+	}
+	if action == "copy" {
+		result, err := mem.ApplyMigrationCopy(context.Background(), source, target, mem.MigrationCopyRequest{Plan: plan})
+		if err != nil {
+			return err
+		}
+		return writeJSONOutput(result)
 	}
 	if *idempotency == "" {
 		return errors.New("migration apply requires --idempotency-key")

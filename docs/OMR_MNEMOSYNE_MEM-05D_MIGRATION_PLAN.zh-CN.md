@@ -47,6 +47,19 @@ Hash，并通过正常 `Begin → PrepareFact → PrepareManifest → WriteCompi
 已覆盖复制、编译和 CAS；`CheckMigrationReadiness` 提供只读 Doctor，重新验证源 Generation/Manifest/输入事实并逐项报告目标
 事实的缺失、已存在或冲突。它不写入 FactStore、不创建 Snapshot、不切换 CURRENT。Snapshot 与真实跨项目联调仍待后续。
 
+显式复制入口：
+
+```bash
+omr memory migration copy \
+  --source-dir /path/source \
+  --target-dir /path/target \
+  --scope project \
+  --generation-id <generation-id> \
+  --json
+```
+
+`copy` 只执行已验证输入事实的同 Scope `PutBatch`，重复执行幂等；它不编译目标 Generation、创建 Snapshot 或切换 CURRENT。
+
 ## 四、TDD 验收矩阵
 
 - Project→Global 拒绝，Project→Project/Global→Global 才可进入预览；
