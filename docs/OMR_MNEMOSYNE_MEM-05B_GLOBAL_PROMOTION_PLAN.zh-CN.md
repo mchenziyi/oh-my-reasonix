@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Candidate 物化、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；Global Generation/OKF 发布事务仍未实现。协议收敛见 `OMR_MNEMOSYNE_MEM-05B_PROMOTION_CONVERGENCE.zh-CN.md`
+- 状态：✅ PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Candidate 物化、Promotion CLI、Doctor 候选检查与 Global Generation/OKF 发布事务均已实现并通过门禁（2026-08-13）。协议收敛见 `OMR_MNEMOSYNE_MEM-05B_PROMOTION_CONVERGENCE.zh-CN.md`
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 
@@ -52,7 +52,7 @@ blocked_reasons: []
 
 CLI 入口为 `omr memory promotion apply --project-dir <dir> --global-dir <dir> --plan <plan.json> --policy <policy.json> --target <revision.json>`；所有输入只读解析，Apply 仍不会自动批准或切换 Global CURRENT。
 
-Global Generation/OKF/Index 接入仍需后续事务阶段实现；正常 Promotion 不要求人工批准，顺序必须是：
+Global Generation/OKF/Index 接入已由 MEM-05B-Generation 库层事务实现；正常 Promotion 不要求人工批准，顺序必须是：
 
 真正写入 Global Revision 前必须单独实现并审计：
 
