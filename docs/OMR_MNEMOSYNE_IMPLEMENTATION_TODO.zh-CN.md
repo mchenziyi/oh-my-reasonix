@@ -217,6 +217,14 @@ omr memory index doctor
 
 要求：`--project-dir`、`--scope`、稳定 JSON、写命令 `--dry-run`、稳定错误码，并保证 `omr evolve` 行为不变。
 
+### MEM-01H：派生 Index 显式发布事务
+
+状态：🟡 设计完成，待 TDD 实现（见 `OMR_MNEMOSYNE_MEM-01H_INDEX_PUBLISH_PLAN.zh-CN.md`）
+
+当前只读 `compile/index rebuild/index doctor` 已覆盖预览和诊断；尚缺把确定性输出通过唯一
+GenerationStore 事务发布为 `CURRENT` 的显式命令。该阶段必须绑定完整请求 Hash、保护 Composite
+Generation、支持 dry-run/幂等/CAS/崩溃恢复，并且不新增 Index Fact 或第二 `CURRENT`。
+
 ## 5. MEM-02：Evolution 转换、OKF 与 Trust Gate
 
 ### MEM-02A：旧 Evolution 只读迁移预览
