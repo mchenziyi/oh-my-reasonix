@@ -76,6 +76,19 @@ func runMemory(args []string) error {
 		}
 		return runMemoryRetrievalAudit(args[2:])
 	}
+	if args[0] == "episode" {
+		if len(args) < 2 {
+			return errors.New("memory episode requires list or show")
+		}
+		switch args[1] {
+		case "list":
+			return runMemoryEpisodeList(args[2:])
+		case "show":
+			return runMemoryEpisodeShow(args[2:])
+		default:
+			return errors.New("memory episode requires list or show")
+		}
+	}
 	if args[0] == "migration" {
 		return runMemoryMigration(args[1:])
 	}
@@ -1326,6 +1339,51 @@ func runMemoryCard(args []string) error {
 				return err
 			}
 			return writeJSONOutput(v)
+		}
+	}
+	return errors.New("episode is not present in fixed index")
+}
+
+func runMemoryEpisodeList(args []string) error {
+	doc, scope, store, err := episodicFlags("memory episode list", args)
+	if err != nil {
+		return err
+	}
+	pinned, err := pinnedFrom(doc, scope)
+	if err != nil {
+		return err
+	}
+	index, err := mem.ReadEpisodicIndex(context.Background(), store, pinned)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(index)
+}
+
+func runMemoryEpisodeShow(args []string) error {
+	episodeID, args, err := extractStringFlag(args, "episode-id")
+	if err != nil || episodeID == "" {
+		return errors.New("episode-id is required")
+	}
+	doc, scope, store, err := episodicFlags("memory episode show", args)
+	if err != nil {
+		return err
+	}
+	pinned, err := pinnedFrom(doc, scope)
+	if err != nil {
+		return err
+	}
+	index, err := mem.ReadEpisodicIndex(context.Background(), store, pinned)
+	if err != nil {
+		return err
+	}
+	for _, entry := range index.Entries {
+		if entry.EpisodeRef.EpisodeID == episodeID {
+			card, err := mem.ReadEpisodeCard(context.Background(), store, pinned, entry.EpisodeRef)
+			if err != nil {
+				return err
+			}
+			return writeJSONOutput(card)
 		}
 	}
 	return errors.New("episode is not present in fixed index")

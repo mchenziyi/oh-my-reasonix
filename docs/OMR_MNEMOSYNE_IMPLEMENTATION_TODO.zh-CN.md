@@ -312,7 +312,7 @@ omr memory index doctor
 
 ### MEM-03E：检索回放与 CLI
 
-状态：🟡 `omr memory retrieval audit`、Episode 查询 CLI 已实现；Episode 回放/真实 Desktop 联调仍待完成。
+状态：✅ `omr memory retrieval audit`、`memory episode list/show`、底层固定 Context 查询 CLI 已实现；Episode 回放与真实 Desktop 联调仍待完成。
 
 新增：
 

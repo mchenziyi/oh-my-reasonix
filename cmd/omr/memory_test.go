@@ -108,6 +108,15 @@ func TestMemoryIndexRebuildRequiresExplicitRequest(t *testing.T) {
 	}
 }
 
+func TestMemoryEpisodeCommandsRequireFixedContext(t *testing.T) {
+	if err := runMemory([]string{"episode", "list"}); err == nil || !strings.Contains(err.Error(), "context-file is required") {
+		t.Fatalf("episode list must require fixed context, got %v", err)
+	}
+	if err := runMemory([]string{"episode", "show"}); err == nil || !strings.Contains(err.Error(), "episode-id is required") {
+		t.Fatalf("episode show must require episode id, got %v", err)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")
