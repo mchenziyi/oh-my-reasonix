@@ -16,7 +16,7 @@
 
 ## 已实现的协议切片
 
-`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。`omr memory web action validate --input <file>` 只做严格解析、校验和 Hash 回执；`omr memory web action apply --input <file> --project-dir <dir> --confirm` 才会在重新验证当前 MemoryRef 后委托既有 Governance API。没有 `--confirm` 时零写入，目标 Hash/Scope 过期时 fail closed，重复动作由 FactStore 幂等处理。`omr memory web serve --project-dir <dir> --now <RFC3339>` 只绑定 loopback，并提供 `/`、`/audit`、`/action/validate`、`/action/apply`。
+`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。`/manager` 页面提供 pin/unpin/freeze/archive，以及要求用户填写非空 `basis_refs` JSON 数组的 unfreeze；所有动作都先经过二次确认，仍由同一严格 API 校验。`omr memory web action validate --input <file>` 只做严格解析、校验和 Hash 回执；`omr memory web action apply --input <file> --project-dir <dir> --confirm` 才会在重新验证当前 MemoryRef 后委托既有 Governance API。没有 `--confirm` 时零写入，目标 Hash/Scope 过期时 fail closed，重复动作由 FactStore 幂等处理。`omr memory web serve --project-dir <dir> --now <RFC3339>` 只绑定 loopback，并提供 `/`、`/audit`、`/manager`、`/action/validate`、`/action/apply`。
 
 ## 分阶段实现
 
