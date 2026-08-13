@@ -117,6 +117,13 @@ func TestMemoryEpisodeCommandsRequireFixedContext(t *testing.T) {
 	}
 }
 
+func TestMemoryIndexDoctorRequiresPinnedInputs(t *testing.T) {
+	err := runMemory([]string{"index", "doctor", "--project-dir", t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "requires --index and --request") {
+		t.Fatalf("index doctor must require explicit inputs, got %v", err)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")

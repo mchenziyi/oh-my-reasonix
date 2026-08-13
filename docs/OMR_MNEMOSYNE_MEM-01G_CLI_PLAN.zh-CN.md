@@ -59,3 +59,6 @@ omr memory index rebuild \
 - 合法请求输出字节稳定，重复执行不产生任何 Store 文件变化；
 - CLI 与库级测试覆盖 Scope、Hash、路径和零写入；
 - `gofmt`、`git diff --check`、`go test`、`go vet`、`go build`、Docs Gate 全通过。
+
+`memory index doctor` 接受 `--index` 与严格 request JSON，按固定 `index_policy_ref`
+只读诊断一个 Index Tree；不修复、不读取 CURRENT、不写入任何 Store 文件。

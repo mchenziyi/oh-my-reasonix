@@ -59,10 +59,17 @@ func runMemory(args []string) error {
 		return runMemoryCompile(args[1:])
 	}
 	if args[0] == "index" {
-		if len(args) < 2 || args[1] != "rebuild" {
-			return errors.New("memory index requires rebuild")
+		if len(args) < 2 {
+			return errors.New("memory index requires rebuild or doctor")
 		}
-		return runMemoryIndexRebuild(args[2:])
+		switch args[1] {
+		case "rebuild":
+			return runMemoryIndexRebuild(args[2:])
+		case "doctor":
+			return runMemoryIndexDoctor(args[2:])
+		default:
+			return errors.New("memory index requires rebuild or doctor")
+		}
 	}
 	if args[0] == "benchmark" {
 		if len(args) < 2 || args[1] != "paired" {
@@ -589,6 +596,66 @@ func runMemoryIndexRebuild(args []string) error {
 		return err
 	}
 	return writeJSONOutput(memoryIndexRebuildOutput{Scope: scope, EvaluationTime: now.UTC().Format(time.RFC3339Nano), InputCount: len(revisions), RootEntries: len(result.RootIndex.Entries), LocalShards: len(result.LocalIndex.Shards)})
+}
+
+type memoryIndexDoctorRequest struct {
+	Scope          mem.Scope     `json:"scope"`
+	IndexPolicyRef mem.PolicyRef `json:"index_policy_ref"`
+}
+
+func runMemoryIndexDoctor(args []string) error {
+	fs := flag.NewFlagSet("memory index doctor", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	indexPath := fs.String("index", "", "index tree JSON file")
+	requestPath := fs.String("request", "", "strict index doctor request JSON")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *indexPath == "" || *requestPath == "" {
+		return errors.New("index doctor requires --index and --request")
+	}
+	b, err := readBoundedJSONFile(*requestPath)
+	if err != nil {
+		return errors.New("index doctor request is unavailable")
+	}
+	var input memoryIndexDoctorRequest
+	if err := strictJSON(b, &input); err != nil {
+		return errors.New("index doctor request is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if input.Scope != "" && input.Scope != scope {
+		return errors.New("index doctor request scope does not match --scope")
+	}
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	policy, err := mem.NewPolicyStore(store).GetPolicy(context.Background(), input.IndexPolicyRef)
+	if err != nil {
+		return err
+	}
+	if policy.Config.Index == nil {
+		return errors.New("index policy config is missing")
+	}
+	data, err := readBoundedJSONFile(*indexPath)
+	if err != nil {
+		return errors.New("index tree is unavailable")
+	}
+	diagnostics := mem.DiagnoseIndexTree(data, *policy.Config.Index)
+	return writeJSONOutput(map[string]any{"scope": scope, "healthy": len(diagnostics) == 0, "diagnostics": diagnostics})
 }
 
 func runMemoryPairedBenchmark(args []string) error {
