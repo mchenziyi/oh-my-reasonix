@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02E：Context Applicability Judgment 实现计划
 
 - 阶段：MEM-02E / MEM-02-05
-- 状态：✅ 已实现（2026-08-11，待 CTO 签收）
+- 状态：✅ 已实现并通过门禁（2026-08-11）
 - 前置：MEM-02A～MEM-02D 已实现；MEM-02 Schema Convergence Gate 已通过
 - 目标：补齐 `basis_context_refs` 协议缺口，并实现可审计、可验证、只读的 Context Applicability 判断，不建立 Context Ontology，不让 Go 程序做语义推断。
 
@@ -19,9 +19,9 @@
 4. `required_condition_ids` 可引用目标 Revision 的 `applies_when` 或
    `does_not_apply_when` 中任一已存在 `ApplicabilityCondition.condition_id`。架构只
    要求“目标 Revision 中存在”，本阶段不擅自缩窄为某一数组；
-5. Context Descriptor Fact 尚未实现。因此 `target_context_ref` 与
-   `basis_context_refs` 只执行严格 ID、去重、Scope 继承和确定性编码校验，不伪造
-   Context Fact 存在性；该缺口必须在结果和 Doctor 后续计划中显式保留。
+5. Context Descriptor Fact 已实现并可经 FactStore 精确加载。因此 `target_context_ref` 与
+   `basis_context_refs` 执行严格 ID、去重、Scope 继承、Hash 和确定性编码校验；验证器仍不
+   建立 Context Ontology，也不读取 CURRENT 猜测上下文。
 
 成功标准：
 
@@ -253,8 +253,8 @@ bash tests/docs_check.sh
    内联或自由文本条件。其他 result 不得夹带 condition IDs。
 5. 精确验证 MemoryRef、EvidenceRef、JudgmentRef、Scope、时间和 supersede 全链；
    不选择最新 Revision，不读 CURRENT。
-6. Context Descriptor Fact 未实现：只验证 Context ID/集合/Scope 继承，不伪造
-   Context 存在性，不创建 ContextRef 或 Context Ontology。
+6. Context Descriptor Fact 已实现：验证器精确检查 Context Descriptor 的 ID、Hash、Scope
+   与时间；不创建额外 Context Ontology。
 7. Go 不做语义判断；验证器只输出 verified|unavailable 并原样报告 Judgment result。
 8. 全流程只读零写入，不改 Revision/Lifecycle/Index/Prompt/CURRENT，不进入 MEM-02F。
 9. 错误静态脱敏，覆盖第七章测试，运行第八章全部门禁，并执行独立
@@ -287,6 +287,5 @@ review/security_review；[ENV]/剩余问题；明确“未进入 MEM-02F、未�
 Basis Context；新的 superseding Judgment 可以修订 Basis Context 集合。Supersede
 只锁定同一 MemoryRef 与 target Context 身份，避免阻止合法判断修订。
 
-已知协议缺口保持：Context Descriptor Fact 尚未落地，因此本阶段不验证 Context
-正文存在性，也不宣称完成 Context Ontology。该缺口不影响不可变 Judgment、条件和
+已知边界保持：验证器不构建 Context Ontology，也不把派生上下文视为规范事实。该边界不影响不可变 Judgment、条件和
 Evidence 的精确引用验证。

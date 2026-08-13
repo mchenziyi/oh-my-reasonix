@@ -351,7 +351,7 @@ grep -Fq 'BasisContextRefs []string `json:"basis_context_refs,omitempty"`' "$mem
 grep -Fq 'Legacy / Enriched 双形态' "$mem02e_doc" || fail "MEM-02E plan missing the Legacy compatibility boundary"
 grep -Fq 'exact | applicable | conditionally_applicable | not_applicable | unknown' "$mem02e_doc" || fail "MEM-02E plan missing the frozen result enum"
 grep -Fq '不把 `unavailable` 写进 Judgment' "$mem02e_doc" || fail "MEM-02E plan confuses derived unavailable with persisted result"
-grep -Fq 'Context Descriptor Fact 尚未实现' "$mem02e_doc" || fail "MEM-02E plan hides the Context Descriptor protocol gap"
+grep -Fq 'Context Descriptor Fact 已实现' "$mem02e_doc" || fail "MEM-02E plan is missing the Context Descriptor implementation status"
 grep -Fq '## 九、交给 Reasonix 的完整执行提示词' "$mem02e_doc" || fail "MEM-02E plan missing the Reasonix execution prompt"
 grep -Fq '未进入 MEM-02F、未提交、未推送' "$mem02e_doc" || fail "MEM-02E plan missing the phase boundary"
 

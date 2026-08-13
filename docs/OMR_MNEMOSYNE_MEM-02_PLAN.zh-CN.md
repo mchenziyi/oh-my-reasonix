@@ -267,7 +267,7 @@ Schema Convergence 已完成并通过 Gate；实现边界、Legacy 兼容、状�
 架构 6.2.3 的 `facts/retrieval-evaluations/` 事实（`evaluation_id、scope、
 retrieval_id、memory_context.project_generation_ref/global_generation_ref、
 evaluation_scope、judgment_ref`）与 `evaluation_scope`
-`fixture | generation_full_scan | expanded_index_scan | sampled_audit` 未实现。
+`fixture | generation_full_scan | expanded_index_scan | sampled_audit` 已由 MEM-02D 实现并经测试覆盖。
 
 实现决议：按架构 6.2.3 的双对象模型新增 `RetrievalEvaluation` Fact（新
 FactKind，进入 FactStore 路由/校验/幂等/Hash）；既有
