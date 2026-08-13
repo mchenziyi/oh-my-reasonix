@@ -75,12 +75,18 @@ func runMemory(args []string) error {
 	if args[0] == "repair" {
 		return runMemoryRepair(args[1:])
 	}
+	if args[0] == "list" {
+		return runMemoryList(args[1:])
+	}
+	if args[0] == "show" {
+		return runMemoryShow(args[1:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, benchmark, retrieval, migration, rollback, repair, episodic, usage or outcome command")
+		return errors.New("memory requires get, list, show, benchmark, retrieval, migration, rollback, repair, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -316,6 +322,83 @@ func runMemoryRepair(args []string) error {
 		return err
 	}
 	return writeJSONOutput(plan)
+}
+
+func runMemoryList(args []string) error {
+	fs := flag.NewFlagSet("memory list", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	kindText := fs.String("kind", "memory-revisions", "fact kind")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("list scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("list scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	keys, err := store.List(context.Background(), mem.FactKind(*kindText))
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Scope mem.Scope    `json:"scope"`
+		Kind  mem.FactKind `json:"kind"`
+		Keys  []string     `json:"keys"`
+	}{scope, mem.FactKind(*kindText), keys})
+}
+
+func runMemoryShow(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
+	fs := flag.NewFlagSet("memory show", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	kindText := fs.String("kind", "", "fact kind")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 || *kindText == "" {
+		return errors.New("show requires --kind and one fact key")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("show scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("show scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	data, err := store.Get(context.Background(), mem.FactKind(*kindText), fs.Arg(0))
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Scope mem.Scope       `json:"scope"`
+		Kind  mem.FactKind    `json:"kind"`
+		Key   string          `json:"key"`
+		Fact  json.RawMessage `json:"fact"`
+	}{scope, mem.FactKind(*kindText), fs.Arg(0), json.RawMessage(data)})
 }
 
 func runMemoryStatus(args []string) error {

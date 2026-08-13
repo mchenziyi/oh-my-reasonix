@@ -151,6 +151,12 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"repair", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("repair must not create a missing memory store")
 	}
+	if err := runMemory([]string{"list", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("list must not create a missing memory store")
+	}
+	if err := runMemory([]string{"show", "fact_key", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("show must require a fact kind")
+	}
 }
 
 func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
