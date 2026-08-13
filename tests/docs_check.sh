@@ -229,7 +229,7 @@ done
 
 governance_plan="docs/OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md"
 [ -f "$governance_plan" ] || fail "missing $governance_plan"
-for required in '状态：🟡 Schema Gate 已冻结，待 TDD 实现' '事件严格作用于目标 Revision' '自动冻结与 manual_freeze 分离' 'Unfreeze 硬门禁' 'Governance Event 本身不能解除自动冻结证据' '只有同时声明 `--review-mode`' '旧 Revision 的 Governance Event 不污染新 Revision' '不进入 MEM-04D'; do
+for required in '状态：🟡 TDD 分阶段实现中' '事件严格作用于目标 Revision' '自动冻结与 manual_freeze 分离' 'Unfreeze 硬门禁' 'Governance Event 本身不能解除自动冻结证据' '只有同时声明 `--review-mode`' '旧 Revision 的 Governance Event 不污染新 Revision' '不进入 MEM-04D'; do
   grep -q "$required" "$governance_plan" || fail "MEM-04C plan missing contract '$required'"
 done
 if grep -Eq '模型直接提供 `(usage_id|content_sha256)`|自动生成 `Outcome`|自动判断 helped/harmed|读取最新 CURRENT' "$usage_capture_plan"; then

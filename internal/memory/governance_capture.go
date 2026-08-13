@@ -29,9 +29,6 @@ func BuildGovernanceEvent(req GovernanceRequest) (GovernanceEvent, error) {
 	if err := req.Target.Validate(); err != nil || req.Now.IsZero() {
 		return GovernanceEvent{}, storeError(CodeDerivedInvalidInput, "governance request is invalid")
 	}
-	if req.Operation == "unfreeze" {
-		return GovernanceEvent{}, storeError(CodeDerivedInvalidInput, "unfreeze requires evidence re-derivation gate")
-	}
 	e := GovernanceEvent{SchemaVersion: SchemaVersion, Scope: req.Target.Scope, MemoryID: req.Target.MemoryID, Revision: req.Target.Revision, Operation: req.Operation, Reason: req.Reason, Source: req.Source, BasisRefs: append([]BasisRef(nil), req.BasisRefs...), CreatedAt: req.Now.UTC().Format(time.RFC3339Nano)}
 	if err := e.ValidateWithoutID(); err != nil {
 		return GovernanceEvent{}, classifyValidateError(err)
@@ -49,9 +46,7 @@ func BuildGovernanceEvent(req GovernanceRequest) (GovernanceEvent, error) {
 	return e, nil
 }
 
-// CommitGovernanceEvent appends a safe non-unfreeze event after exact target
-// verification. Unfreeze remains explicitly gated until evidence re-derive
-// and zero-write failure semantics are implemented.
+// CommitGovernanceEvent appends an event after exact target verification.
 func CommitGovernanceEvent(ctx context.Context, req GovernanceRequest) (GovernanceResult, error) {
 	if req.Store == nil {
 		return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "governance store is unavailable")
@@ -71,9 +66,98 @@ func CommitGovernanceEvent(ctx context.Context, req GovernanceRequest) (Governan
 	if rev.ContentSHA256 != req.Target.ContentSHA256 || rev.Scope != req.Target.Scope || rev.MemoryType != req.Target.MemoryType {
 		return GovernanceResult{}, storeError(CodeHashMismatch, "governance target does not match stored revision")
 	}
+	if e.Operation == "unfreeze" {
+		if err := validateGovernanceBasis(ctx, req.Store, e.Scope, e.BasisRefs); err != nil {
+			return GovernanceResult{}, err
+		}
+		states, err := DeriveState(ctx, req.Store, DerivedStateRequest{Scope: e.Scope, Revision: e.Revision, Now: req.Now})
+		if err != nil {
+			return GovernanceResult{}, err
+		}
+		if len(states.States) != 1 || states.States[0].Lifecycle != LifecycleFrozen {
+			return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "unfreeze requires a frozen revision")
+		}
+		evidenceState, err := deriveEvidenceOnly(ctx, req.Store, rev, req.Now)
+		if err != nil {
+			return GovernanceResult{}, err
+		}
+		if evidenceState == LifecycleFrozen {
+			return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "unfreeze cannot bypass automatic freeze")
+		}
+	}
 	r, err := req.Store.Put(ctx, e)
 	if err != nil {
 		return GovernanceResult{}, err
 	}
 	return GovernanceResult{Status: r.Status, Event: e}, nil
+}
+
+func deriveEvidenceOnly(ctx context.Context, store *FactStore, rev MemoryRevision, now time.Time) (Lifecycle, error) {
+	in, err := loadDerivedInputs(ctx, store)
+	if err != nil {
+		return "", err
+	}
+	in.governance = nil
+	return deriveOne(ctx, store, in, rev, defaultFreshnessPolicy, now).Lifecycle, nil
+}
+
+func validateGovernanceBasis(ctx context.Context, store *FactStore, scope Scope, refs []BasisRef) error {
+	for _, b := range refs {
+		switch {
+		case b.MemoryRef != nil:
+			if b.MemoryRef.Scope != scope {
+				return storeError(CodeScopeMismatch, "governance basis scope mismatch")
+			}
+			data, err := store.Get(ctx, FactKindMemoryRevision, b.MemoryRef.MemoryID+"/"+itoa(b.MemoryRef.Revision))
+			if err != nil {
+				return storeError(CodeDerivedInvalidInput, "governance basis is unavailable")
+			}
+			r, err := DecodeStrict[MemoryRevision](data)
+			if err != nil || r.ContentSHA256 != b.MemoryRef.ContentSHA256 {
+				return storeError(CodeDerivedInvalidInput, "governance basis is unavailable")
+			}
+		case b.JudgmentRef != nil:
+			if b.JudgmentRef.Scope != scope {
+				return storeError(CodeScopeMismatch, "governance basis scope mismatch")
+			}
+			data, err := store.Get(ctx, FactKindJudgment, b.JudgmentRef.JudgmentID)
+			if err != nil {
+				return storeError(CodeDerivedInvalidInput, "governance basis is unavailable")
+			}
+			j, err := DecodeStrict[JudgmentFact](data)
+			if err != nil || j.ContentSHA256 != b.JudgmentRef.ContentSHA256 {
+				return storeError(CodeDerivedInvalidInput, "governance basis is unavailable")
+			}
+		case b.EvidenceRef != nil:
+			if b.EvidenceRef.Scope != scope {
+				return storeError(CodeScopeMismatch, "governance basis scope mismatch")
+			}
+			keys, err := store.List(ctx, FactKindMemoryEvidenceGeneration)
+			if err != nil {
+				return err
+			}
+			found := false
+			for _, key := range keys {
+				data, getErr := store.Get(ctx, FactKindMemoryEvidenceGeneration, key)
+				if getErr != nil {
+					return getErr
+				}
+				ev, decodeErr := DecodeStrict[MemoryEvidenceGeneration](data)
+				if decodeErr != nil {
+					return classifyDecodeError(decodeErr)
+				}
+				for _, er := range ev.EvidenceRefs {
+					if er == *b.EvidenceRef {
+						found = true
+					}
+				}
+			}
+			if !found {
+				return storeError(CodeDerivedInvalidInput, "governance basis is unavailable")
+			}
+		default:
+			return storeError(CodeDerivedInvalidInput, "governance basis is invalid")
+		}
+	}
+	return nil
 }

@@ -49,3 +49,15 @@ func TestCommitGovernanceEventUnfreezeRemainsFailClosed(t *testing.T) {
 		t.Fatalf("unfreeze must remain gated, got %v", err)
 	}
 }
+
+func TestCommitGovernanceEventUnfreezeManualFreezeAllowed(t *testing.T) {
+	s := openProject(t, tempRoot(t), Options{})
+	rev := mkStrategy("mem_governance_manual_unfreeze", "governance-manual-unfreeze", 1)
+	put(t, s, rev)
+	ref := MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}
+	put(t, s, governanceEvent("governance_manual_freeze", rev, "manual_freeze", "2026-08-16T00:00:00Z"))
+	res, err := CommitGovernanceEvent(context.Background(), GovernanceRequest{Store: s, Target: ref, Operation: "unfreeze", Reason: "reviewed", Source: "local_user", BasisRefs: []BasisRef{{MemoryRef: &ref}}, Now: time.Date(2026, 8, 16, 1, 0, 0, 0, time.UTC)})
+	if err != nil || res.Status != WriteCreated {
+		t.Fatalf("manual freeze should be releasable: %+v %v", res, err)
+	}
+}
