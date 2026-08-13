@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；人工批准记录、审计事件与后续 Generation 接入仍未实现
+- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；Global Generation/OKF 发布事务仍未实现。协议收敛见 `OMR_MNEMOSYNE_MEM-05B_PROMOTION_CONVERGENCE.zh-CN.md`
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 
@@ -9,7 +9,7 @@
 
 1. Project Memory 与 Global Memory 是不同 Scope；单个项目永远不能直接生成 Global Active。
 2. Promotion 默认只产生结构化 `PromotionPlan`；显式 `ApplyPromotionPlan` 只有在调用方提供完整目标事实并通过二次校验后才写入一个 Global Revision，不切换 Global CURRENT。
-3. 只有显式人工批准或后续受控治理事件，才允许把计划转换为新的 Global Revision；原 Project Revision 永不移动、覆盖或删除。
+3. 达到 Architecture v1 门槛后可以显式物化新的 Global `probation` Revision；这不是人工批准或 `global_active`。原 Project Revision 永不移动、覆盖或删除。
 4. 所有来源必须通过 `MemoryRef`、`EvidenceRef`、`PolicyRef` 精确闭合，跨 Scope 或 Hash 不一致立即拒绝。
 5. Global 派生索引、统计和候选视图都是可重建状态，不成为第二事实源。
 
@@ -52,12 +52,12 @@ blocked_reasons: []
 
 CLI 入口为 `omr memory promotion apply --project-dir <dir> --global-dir <dir> --plan <plan.json> --policy <policy.json> --target <revision.json>`；所有输入只读解析，Apply 仍不会自动批准或切换 Global CURRENT。
 
-真正的批准记录、Promotion Governance Event、Global OKF/Index 接入仍需后续事务阶段实现，顺序必须是：
+Global Generation/OKF/Index 接入仍需后续事务阶段实现；正常 Promotion 不要求人工批准，顺序必须是：
 
 真正写入 Global Revision 前必须单独实现并审计：
 
 1. 再读取并验证不可变来源与 Policy；
-2. 创建 Snapshot 与 Promotion Governance Event；
+2. 创建事务 Snapshot（仅用于恢复，不作为 Promotion 成功前置）；
 3. 生成新的 Global MemoryID/Revision；
 4. 通过 FactStore 原子写入，旧事实零覆盖；
 5. 重建 Global OKF/Index 并做 Doctor；
