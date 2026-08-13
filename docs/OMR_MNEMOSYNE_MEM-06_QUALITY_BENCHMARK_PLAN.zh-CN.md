@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-06：Memory Quality Benchmark
 
 - 阶段：MEM-06
-- 状态：🟡 配对 Fixture/Report 自动化已实现；真实 Reasonix 临时项目配对 Benchmark 尚未执行
+- 状态：🟡 配对 Fixture/Report 自动化与只读 CLI 已实现；真实 Reasonix 临时项目配对 Benchmark 尚未执行
 - 前置：MEM-01～MEM-05 的自动门禁通过；真实 Reasonix Desktop 联调仍需用户协助
 - 目标：只报告 Mnemosyne 对检索、读取/采用和下游任务的事实指标，不宣称通用模型能力提升
 
@@ -32,6 +32,16 @@
 ## 四、验收与人工联调
 
 自动部分先验证 Fixture Schema、配对键、指标计算、报告确定性和脱敏。自动门禁通过后，用户在临时项目执行一组固定任务，分别运行有/无 Mnemosyne 两组，检查 Scope 隔离、Recall 回执、冻结读取、回滚预览和报告中的 `insufficient_evidence` 标记。
+
+只读 CLI 入口：
+
+```bash
+omr memory benchmark paired \\
+  --paired-fixture /tmp/omr-mem06/paired-fixture.json \\
+  --json
+```
+
+该命令只读取 Fixture 并输出报告；`--output <path>` 可将 JSON 写入指定文件，不创建或修改 Memory Fact、CURRENT、Lifecycle 或 Overlay。
 
 ## 五、交给 Reasonix Agent 的执行提示词
 

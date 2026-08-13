@@ -54,12 +54,18 @@ func runMemory(args []string) error {
 	if args[0] == "report" {
 		return runMemoryReport(args[1:])
 	}
+	if args[0] == "benchmark" {
+		if len(args) < 2 || args[1] != "paired" {
+			return errors.New("memory benchmark requires paired")
+		}
+		return runMemoryPairedBenchmark(args[2:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, episodic, usage or outcome command")
+		return errors.New("memory requires get, benchmark, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -104,6 +110,27 @@ func runMemoryReport(args []string) error {
 	report, err := mem.BuildLifecycleReport(context.Background(), mem.LifecycleReportRequest{Store: store, Scope: sc, Now: time.Now().UTC()})
 	if err != nil {
 		return err
+	}
+	return writeJSONOutput(report)
+}
+
+func runMemoryPairedBenchmark(args []string) error {
+	fs := flag.NewFlagSet("memory benchmark paired", flag.ContinueOnError)
+	fixture := fs.String("paired-fixture", "", "paired benchmark fixture JSON")
+	output := fs.String("output", "", "optional JSON report path")
+	_ = fs.Bool("json", false, "emit JSON")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *fixture == "" {
+		return errors.New("memory benchmark paired requires --paired-fixture")
+	}
+	report, err := mem.RunPairedBenchmarkFixture(context.Background(), *fixture)
+	if err != nil {
+		return err
+	}
+	if *output != "" {
+		return writeJSONValue(*output, "paired benchmark", report)
 	}
 	return writeJSONOutput(report)
 }

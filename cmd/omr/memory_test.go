@@ -21,6 +21,43 @@ func TestOpenExistingMemoryStoreDoesNotCreateMissingStore(t *testing.T) {
 	}
 }
 
+func TestMemoryPairedBenchmarkCLI(t *testing.T) {
+	dir := t.TempDir()
+	fixture := mem.PairedBenchmarkFixture{
+		SchemaVersion: 1,
+		FixtureID:     "paired_cli_fixture",
+		Cases: []mem.PairedBenchmarkCase{{
+			CaseID: "case_1",
+			Mnemosyne: mem.PairedBenchmarkArm{
+				RetrievalHits: 1, RetrievalCandidates: 1, Reads: 1, Adoptions: 1,
+				DownstreamSuccess: 1, DownstreamTotal: 1,
+			},
+			Native: mem.PairedBenchmarkArm{RetrievalCandidates: 1, Reads: 1, DownstreamTotal: 1},
+		}},
+	}
+	data, err := json.Marshal(fixture)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "fixture.json")
+	if err := os.WriteFile(path, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureRunOutput(func() error {
+		return runMemory([]string{"benchmark", "paired", "--paired-fixture", path, "--json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report mem.PairedBenchmarkReport
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatalf("CLI output must be JSON: %v", err)
+	}
+	if report.FixtureID != fixture.FixtureID || report.CaseCount != 1 || report.EvidenceStatus != "insufficient_evidence" {
+		t.Fatalf("unexpected paired report: %+v", report)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")
