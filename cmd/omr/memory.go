@@ -80,8 +80,11 @@ func runMemory(args []string) error {
 			return errors.New("memory promotion requires apply or candidate")
 		}
 		if args[1] == "candidate" {
-			if len(args) < 3 || args[2] != "put" {
-				return errors.New("memory promotion candidate requires put")
+			if len(args) < 3 || (args[2] != "put" && args[2] != "apply") {
+				return errors.New("memory promotion candidate requires put or apply")
+			}
+			if args[2] == "apply" {
+				return runMemoryPromotionCandidateApply(args[3:])
 			}
 			return runMemoryPromotionCandidatePut(args[3:])
 		}
@@ -123,6 +126,59 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+type promotionCandidateSourceInput struct {
+	Ref               mem.MemoryRef `json:"ref"`
+	ProjectDir        string        `json:"project_dir"`
+	FamilyFingerprint string        `json:"family_fingerprint"`
+}
+
+type promotionCandidateApplyInput struct {
+	Candidate mem.GlobalPromotionCandidate    `json:"candidate"`
+	Sources   []promotionCandidateSourceInput `json:"sources"`
+	Target    mem.MemoryRevision              `json:"target"`
+}
+
+func runMemoryPromotionCandidateApply(args []string) error {
+	fs := flag.NewFlagSet("memory promotion candidate apply", flag.ContinueOnError)
+	global := fs.String("global-dir", "", "global memory directory")
+	input := fs.String("input", "", "candidate apply request JSON file")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *global == "" || *input == "" {
+		return errors.New("promotion candidate apply requires --global-dir and --input")
+	}
+	b, err := readBoundedJSONFile(*input)
+	if err != nil {
+		return err
+	}
+	var in promotionCandidateApplyInput
+	if err := strictJSON(b, &in); err != nil || len(in.Sources) == 0 {
+		return errors.New("promotion candidate apply JSON is invalid")
+	}
+	globalStore, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+	if err != nil {
+		return err
+	}
+	sources := make([]mem.PromotionCandidateSource, 0, len(in.Sources))
+	for _, item := range in.Sources {
+		if item.ProjectDir == "" {
+			return errors.New("promotion candidate source project directory is required")
+		}
+		store, err := openExistingMemoryStore(item.ProjectDir, mem.ScopeProject)
+		if err != nil {
+			return err
+		}
+		sources = append(sources, mem.PromotionCandidateSource{Ref: item.Ref, Store: store, FamilyFingerprint: item.FamilyFingerprint})
+	}
+	result, err := mem.ApplyPromotionCandidate(context.Background(), mem.PromotionCandidateApplyRequest{Candidate: in.Candidate, Sources: sources, Target: in.Target, Global: globalStore})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryPromotionCandidatePut(args []string) error {

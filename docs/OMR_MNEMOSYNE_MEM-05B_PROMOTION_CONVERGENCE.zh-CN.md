@@ -52,6 +52,15 @@ Revision 写入 Global Store。来源 Store 不从路径或 MemoryID 推导，�
 
 该入口只创建 Global `probation` Revision，不批准、不切换 CURRENT、不生成索引，也不会把错误的跨项目绑定降级成成功。
 
+桌面/CLI 调用可使用一次性请求文件（项目目录只作为运行时输入，不会写入 Candidate）：
+
+```bash
+omr memory promotion candidate apply \
+  --global-dir /path/global \
+  --input /tmp/promotion-candidate-apply.json \
+  --json
+```
+
 ## 六、下一步实现前置
 
 下一阶段若要实现自动物化，必须先定义一个只读、显式的来源装配请求：每个 `MemoryRef` 绑定调用方提供的 Project

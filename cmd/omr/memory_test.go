@@ -160,6 +160,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"promotion", "candidate", "put"}); err == nil {
 		t.Fatal("promotion candidate put must require global store and input")
 	}
+	if err := runMemory([]string{"promotion", "candidate", "apply"}); err == nil {
+		t.Fatal("promotion candidate apply must require global store and input")
+	}
 	if err := runMemory([]string{"rollback", "generation_1", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("rollback must require explicit audit fields")
 	}
