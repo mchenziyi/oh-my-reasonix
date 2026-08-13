@@ -420,7 +420,7 @@ omr memory retrieval audit <retrieval-id>
 - 旧 Evolution 数据仍可读取；
 - 迁移不伪造缺失 Usage、Lifecycle 或 Health；
 - 多项目数据不能通过单项目迁移自动生成 Global。
-- `omr memory migration preview/apply` 与 `omr memory rollback` CLI 入口已实现，真实临时项目联调待完成。
+- `omr memory migration preview/apply` 与 `omr memory rollback` CLI 入口已实现；迁移支持 `preview --output` 保存计划、`doctor/copy/apply --plan-file` 消费固定计划，真实临时项目联调待完成。
 
 ## 9. MEM-06：Memory Quality Benchmark
 
