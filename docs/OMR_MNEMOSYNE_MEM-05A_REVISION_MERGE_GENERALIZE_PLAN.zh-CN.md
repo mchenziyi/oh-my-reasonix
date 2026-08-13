@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05A：Revision、Merge、Split 与 Generalize
 
 - 阶段：MEM-05A
-- 状态：🟡 只读计划层、Revision/Merge/Split/Generalize Apply 已实现并通过门禁（2026-08-13）；批准审计与 Global Promotion 仍需独立事务
+- 状态：✅ 只读计划层、Revision/Merge/Split/Generalize Apply 与 Global Promotion 事务已实现并通过门禁（2026-08-13）；真实跨项目联调仍待完成
 - 前置：MEM-01A～MEM-04C 自动化链已完成；MEM-04A～04B 的真实 Desktop 回执仍待联调
 - 目标：在不覆盖既有 Revision、不开启自动 Global Promotion 的前提下，定义可审计的修订、合并、拆分与泛化计划
 

@@ -92,7 +92,11 @@ func TestPublishPromotionGenerationCommitsGlobalOKF(t *testing.T) {
 }
 
 func TestPublishPromotionGenerationRequiresExplicitTime(t *testing.T) {
-	if _, err := PublishPromotionGeneration(context.Background(), PromotionGenerationRequest{}); ErrorCode(err) != CodeScopeMismatch {
-		t.Fatalf("nil request should fail before time check: %v", err)
+	global, err := OpenGlobal(tempRoot(t), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := PublishPromotionGeneration(context.Background(), PromotionGenerationRequest{Global: global}); ErrorCode(err) != CodeDerivedInvalidInput {
+		t.Fatalf("zero evaluation time must fail deterministically: %v", err)
 	}
 }

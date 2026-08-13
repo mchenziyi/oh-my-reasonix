@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05C：Repair、Rollback 与迁移前诊断
 
 - 阶段：MEM-05C
-- 状态：🟡 Repair/Rollback 计划、显式 Rollback CURRENT 事务与 `memory repair/rollback` CLI 已实现；Migration 已独立在 MEM-05D 实现，Doctor/真实联调仍待完成
+- 状态：🟡 Repair/Rollback 计划、显式 Rollback CURRENT 事务、Manifest fail-closed 校验与 `memory repair/rollback` CLI 已实现；Migration 已独立在 MEM-05D 实现，真实联调仍待完成
 - 前置：MEM-01D Generation/CURRENT/Recover、MEM-03C Composite Generation、MEM-05A/05B 只读计划
 - 目标：把损坏检测、可重建性判断和回滚预览统一为确定性只读计划，避免自动修复成为第二事实源
 

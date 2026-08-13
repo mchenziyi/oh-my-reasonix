@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-03C-04：Reasonix 接入与真实联调计划
 
-- 状态：✅ 自动化实现完成，待真实 Reasonix Desktop 联调
+- 状态：✅ 自动化实现完成，待真实 Reasonix Desktop 联调（CLI/Profile 已接入）
 - 前置：MEM-03C-01～03 已实现并推送
 - 目标：让 Reasonix 通过稳定的 OMR CLI 与 `omr-memory` Profile 使用固定世界 Episodic Recall
 
@@ -26,9 +26,9 @@ compiled output hash，同时发布 Memory OKF 与 Episodic Card/Index。旧 OKF
 Reasonix 继续提供 Agent、Subagent、bash 工具、Session 与任务执行；OMR 只提供固定记忆世界、
 读取协议和治理。第一版不要求 Reasonix 官方新增接口，也不让 OMR 代理模型调用。
 
-MEM-03C 已有 Episode/Context Fact、编译器、Reader、Receipt 与 Doctor，但尚缺 CLI。Reasonix 不应
-直接猜 `.reasonix/omr/memory/**` 私有路径或手写 JSON，因此本阶段只增加只读 CLI 与 Profile
-工作流。自动采集真实 Episode 属 MEM-04，不在本阶段偷偷实现。
+MEM-03C 已有 Episode/Context Fact、编译器、Reader、Receipt、Doctor 与只读 CLI。Reasonix 不应
+直接猜 `.reasonix/omr/memory/**` 私有路径或手写 JSON；当前剩余是 Profile 在真实 Desktop 中的联调。
+自动采集真实 Episode 属 MEM-04，不在本阶段偷偷实现。
 
 ## 三、CLI 设计
 
