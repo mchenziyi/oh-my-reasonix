@@ -1,6 +1,6 @@
 # OMR Mnemosyne 实现总 Todo
 
-> 状态：MEM-01A～MEM-01F、MEM-02A～MEM-02G 的自动化实现已完成并通过门禁；当前继续收口 MEM-03～MEM-06 与显式写入事务
+> 状态：MEM-01A～MEM-01F、MEM-02A～MEM-02G、MEM-03～MEM-06 与 WEB-01～WEB-03 的自动化实现已完成并通过针对性门禁；当前只剩真实项目/Reasonix Desktop/浏览器联调
 >
 > 规范依据：[OMR_EVOLUTION_MEMORY_OKF_ARCHITECTURE.zh-CN.md](/Users/czy/Desktop/demo/oh-my-reasonix/docs/OMR_EVOLUTION_MEMORY_OKF_ARCHITECTURE.zh-CN.md)
 
