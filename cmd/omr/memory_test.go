@@ -21,6 +21,43 @@ func TestOpenExistingMemoryStoreDoesNotCreateMissingStore(t *testing.T) {
 	}
 }
 
+func TestMemoryInitCreatesOnlyScopedStoreAndIsIdempotent(t *testing.T) {
+	project := t.TempDir()
+	out, err := captureRunOutput(func() error {
+		return runMemory([]string{"init", "--project-dir", project, "--scope", "project"})
+	})
+	if err != nil || !strings.Contains(out, `"scope":"project"`) {
+		t.Fatalf("memory init failed: %q %v", out, err)
+	}
+	if _, err := os.Stat(memoryStoreRoot(project)); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"init", "--project-dir", project, "--scope", "project"}); err != nil {
+		t.Fatalf("repeated memory init must be idempotent: %v", err)
+	}
+	var factFiles int
+	if err := filepath.Walk(memoryStoreRoot(project), func(path string, info os.FileInfo, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !info.IsDir() && strings.HasSuffix(path, ".json") {
+			factFiles++
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if factFiles != 0 {
+		t.Fatal("memory init must not create fact files")
+	}
+}
+
+func TestMemoryInitRejectsInvalidScope(t *testing.T) {
+	if err := runMemory([]string{"init", "--project-dir", t.TempDir(), "--scope", "portable"}); err == nil {
+		t.Fatal("portable memory init must be rejected")
+	}
+}
+
 func TestMemoryPairedBenchmarkCLI(t *testing.T) {
 	dir := t.TempDir()
 	fixture := mem.PairedBenchmarkFixture{

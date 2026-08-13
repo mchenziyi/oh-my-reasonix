@@ -30,3 +30,12 @@
 - 无 Reasonix 客户端也能打开只读页面和管理页面；关闭进程后无后台任务。
 - 跨 workspace 数据隔离、XSS/路径/symlink 防护、写操作幂等和失败回读均有测试。
 - 不改变既有 Memory Fact Schema；所有派生视图可从规范事实重建。
+
+## 临时项目启动
+
+```bash
+omr memory init --project-dir /tmp/omr-web-03 --scope project
+omr memory web serve --project-dir /tmp/omr-web-03 --now 2026-08-14T00:00:00Z
+```
+
+`memory init` 只创建受 Store 安全策略保护的空目录；它不伪造 Memory、Usage、Outcome 或 Generation Fact。

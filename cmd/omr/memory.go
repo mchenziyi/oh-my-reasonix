@@ -34,7 +34,10 @@ func runMemory(args []string) error {
 		return runMemoryUsageHistory(nil)
 	}
 	if len(args) < 2 {
-		return errors.New("memory requires an episodic, usage or outcome command")
+		return errors.New("memory requires init, episodic, usage or outcome command")
+	}
+	if args[0] == "init" {
+		return runMemoryInit(args[1:])
 	}
 	if args[0] == "usage" {
 		if len(args) > 1 && args[1] != "capture" {
@@ -193,7 +196,7 @@ func runMemory(args []string) error {
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, list, show, benchmark, retrieval, migration, rollback, repair, episodic, usage or outcome command")
+		return errors.New("memory requires init, get, list, show, benchmark, retrieval, migration, rollback, repair, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -209,6 +212,41 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryInit(args []string) error {
+	fs := flag.NewFlagSet("memory init", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("memory init scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory init scope directory is unavailable")
+	}
+	root := memoryStoreRoot(dir)
+	var err error
+	if scope == mem.ScopeGlobal {
+		_, err = mem.OpenGlobal(root, mem.Options{})
+	} else {
+		_, err = mem.OpenProject(root, mem.Options{})
+	}
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Scope string `json:"scope"`
+		Root  string `json:"root"`
+	}{string(scope), root})
 }
 
 type promotionCandidateSourceInput struct {
