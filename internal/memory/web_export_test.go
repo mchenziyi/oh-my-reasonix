@@ -52,7 +52,7 @@ func TestBuildMemoryWebExportDeterministicAndReadOnly(t *testing.T) {
 	if !strings.Contains(string(a), "&lt;script&gt;alert(1)&lt;/script&gt;") || strings.Contains(string(a), "<script>alert") {
 		t.Fatal("web export must HTML-escape memory text")
 	}
-	if !strings.Contains(string(a), "supports") || !strings.Contains(string(a), "mem_web_a") || !strings.Contains(string(a), "mem_web_b") {
+	if !strings.Contains(string(a), "supports") || !strings.Contains(string(a), "mem_web_a") || !strings.Contains(string(a), "mem_web_b") || !strings.Contains(string(a), "href=\"/manager\"") || !strings.Contains(string(a), "href=\"/audit\"") {
 		t.Fatal("web export must include nodes and relations")
 	}
 	after, err := store.List(context.Background(), FactKindMemoryRevision)

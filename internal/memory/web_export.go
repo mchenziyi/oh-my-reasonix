@@ -37,7 +37,7 @@ func BuildMemoryWebExport(ctx context.Context, store *FactStore, now time.Time) 
 	var b strings.Builder
 	b.WriteString("<!doctype html><html><head><meta charset=\"utf-8\"><title>OMR Mnemosyne</title>")
 	b.WriteString("<style>body{font:14px system-ui,sans-serif;margin:2rem;color:#222}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.4rem;text-align:left}h1{font-size:1.4rem}.meta{color:#666}code{font-family:ui-monospace,monospace}</style>")
-	b.WriteString("</head><body><h1>OMR Mnemosyne Memory</h1><p class=\"meta\">Read-only derived view; ")
+	b.WriteString("</head><body><h1>OMR Mnemosyne Memory</h1><p class=\"meta\">Read-only derived view; <a href=\"/manager\">Open manager</a> · <a href=\"/audit\">Open audit</a>; ")
 	b.WriteString(html.EscapeString(now.UTC().Format(time.RFC3339)))
 	b.WriteString("</p><table><thead><tr><th>Scope</th><th>Type</th><th>Memory</th><th>Revision</th><th>Policy</th><th>Title</th><th>Summary</th><th>Relations</th></tr></thead><tbody>")
 	for _, rev := range revisions {
