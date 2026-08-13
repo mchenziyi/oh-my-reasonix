@@ -74,8 +74,17 @@ go build ./cmd/omr、bash tests/docs_check.sh；完成 review/security review �
 
 ## 七、当前实现收口
 
-库层已提供 `PublishPromotionGeneration`：它先复核候选与显式来源绑定，再在 Global Store 上执行
+库层与 CLI 已提供 `PublishPromotionGeneration` / `omr memory promotion generation publish`：它先复核候选与显式来源绑定，再在 Global Store 上执行
 `CompileOKF → Begin → PrepareFact → PrepareManifest → WriteCompiledOutput → ValidateStaging → Commit`。
 Global `generalized_from` 关系允许保留指向 Project 来源的 provenance，但 Project 页面不会被纳入 Global
 Generation。重复 idempotency key 按 GenerationStore 的既有已提交冲突语义返回稳定错误；未增加 CLI、人工批准
 Fact 或新的 CURRENT 事实源。
+
+CLI 输入为显式 JSON（`candidate`、`sources`、`target`、`compile`、`evaluation_time`、`idempotency_key`），调用示例：
+
+```bash
+omr memory promotion generation publish \
+  --global-dir /path/global-memory \
+  --input /tmp/promotion-generation.json \
+  --json
+```

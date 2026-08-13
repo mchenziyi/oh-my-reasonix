@@ -88,6 +88,12 @@ func runMemory(args []string) error {
 			}
 			return runMemoryPromotionCandidatePut(args[3:])
 		}
+		if args[1] == "generation" {
+			if len(args) < 3 || args[2] != "publish" {
+				return errors.New("memory promotion generation requires publish")
+			}
+			return runMemoryPromotionGenerationPublish(args[3:])
+		}
 		if args[1] != "apply" {
 			return errors.New("memory promotion requires apply or candidate")
 		}
@@ -138,6 +144,57 @@ type promotionCandidateApplyInput struct {
 	Candidate mem.GlobalPromotionCandidate    `json:"candidate"`
 	Sources   []promotionCandidateSourceInput `json:"sources"`
 	Target    mem.MemoryRevision              `json:"target"`
+}
+
+type promotionGenerationPublishInput struct {
+	Candidate      mem.GlobalPromotionCandidate    `json:"candidate"`
+	Sources        []promotionCandidateSourceInput `json:"sources"`
+	Target         mem.MemoryRevision              `json:"target"`
+	Compile        mem.OKFCompileRequest           `json:"compile"`
+	EvaluationTime time.Time                       `json:"evaluation_time"`
+	IdempotencyKey string                          `json:"idempotency_key"`
+	BaseGeneration *string                         `json:"base_generation"`
+}
+
+func runMemoryPromotionGenerationPublish(args []string) error {
+	fs := flag.NewFlagSet("memory promotion generation publish", flag.ContinueOnError)
+	global := fs.String("global-dir", "", "global memory directory")
+	input := fs.String("input", "", "promotion generation request JSON file")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *global == "" || *input == "" {
+		return errors.New("promotion generation publish requires --global-dir and --input")
+	}
+	b, err := readBoundedJSONFile(*input)
+	if err != nil {
+		return err
+	}
+	var in promotionGenerationPublishInput
+	if err := strictJSON(b, &in); err != nil || len(in.Sources) == 0 || in.IdempotencyKey == "" || in.EvaluationTime.IsZero() {
+		return errors.New("promotion generation request JSON is invalid")
+	}
+	globalStore, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+	if err != nil {
+		return err
+	}
+	sources := make([]mem.PromotionCandidateSource, 0, len(in.Sources))
+	for _, item := range in.Sources {
+		if item.ProjectDir == "" {
+			return errors.New("promotion generation source project directory is required")
+		}
+		store, err := openExistingMemoryStore(item.ProjectDir, mem.ScopeProject)
+		if err != nil {
+			return err
+		}
+		sources = append(sources, mem.PromotionCandidateSource{Ref: item.Ref, Store: store, FamilyFingerprint: item.FamilyFingerprint})
+	}
+	result, err := mem.PublishPromotionGeneration(context.Background(), mem.PromotionGenerationRequest{Candidate: in.Candidate, Sources: sources, Target: in.Target, Global: globalStore, Compile: in.Compile, EvaluationTime: in.EvaluationTime, IdempotencyKey: in.IdempotencyKey, BaseGeneration: in.BaseGeneration})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryPromotionCandidateApply(args []string) error {
