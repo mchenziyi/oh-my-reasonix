@@ -452,7 +452,7 @@ Reasonix without Mnemosyne
 以下不进入 MEM-01～MEM-06：
 
 - WEB-01：✅ 本地只读静态 HTML 列表、详情字段和关系边导出；
-- WEB-02：人工治理、审计、Snapshot、回滚；
+- WEB-02：✅ 人工治理、审计、Snapshot、回滚只读视图已实现；
 - WEB-03：🟡 管理动作协议、严格校验、二次确认 CLI、loopback API 和 `/manager` 页面已实现（含带 basis refs 的 unfreeze）；待浏览器/桌面联调；
 
 临时项目可先执行 `omr memory init --project-dir <dir> --scope project` 创建受保护的空 Store；该命令只创建 Store 目录，不写入任何 Fact。

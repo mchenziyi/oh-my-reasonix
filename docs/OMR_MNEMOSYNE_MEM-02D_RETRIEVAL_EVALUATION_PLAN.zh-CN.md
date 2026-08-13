@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02D：Retrieval Evaluation 与 Miss Judgment 实现计划
 
 - 阶段：MEM-02D / MEM-02-04
-- 状态：✅ 已实现（2026-08-11，待 CTO 签收）
+- 状态：✅ 已实现并签收（2026-08-11）
 - 前置：MEM-02A～MEM-02C 已签收；MEM-02 Schema Convergence Gate 已通过
 - 目标：实现可重放、可审计的检索评价双对象模型，不调用模型、不猜测相关性、不修改 Memory。
 

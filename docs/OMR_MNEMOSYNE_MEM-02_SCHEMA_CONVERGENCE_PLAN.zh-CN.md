@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02 Schema Convergence 修改方案
 
 - 阶段：MEM-02 Protocol Extension / Schema Convergence
-- 状态：✅ 已完成（2026-08-11）——Protocol Extension 设计已按 D1～D12 修订，C1～C19 全部关闭，只读 Schema Gate 复核 PASS，Docs Gate 通过；3.6 observation_provenance 已按 Architecture v1 12.2 勘误；代码实现待 CTO 另行批准
+- 状态：✅ 已完成（2026-08-11）——Protocol Extension 设计已按 D1～D12 修订，C1～C19 全部关闭，只读 Schema Gate 复核 PASS，Docs Gate 通过；3.6 observation_provenance 已按 Architecture v1 12.2 勘误；对应 MEM-02A～MEM-02G 实现已完成
 - 输入：MEM-02 Protocol Extension 初稿及 Schema Gate C1～C19、D1～D12
 - 输出：与 Architecture v1、MEM-01A～MEM-01F 完全一致的协议设计文档
 - 本阶段只改文档，不实现产品代码

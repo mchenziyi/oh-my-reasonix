@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02 Protocol Extension：评估协议扩展设计
 
 - 阶段：MEM-02 Protocol Extension
-- 状态：✅ 设计定案（2026-08-11，Schema Convergence 已批准）——正文按 D1～D12 修订，C1～C19 全部关闭，只读 Schema Gate 复核 PASS；代码实现待 CTO 另行批准
+- 状态：✅ 设计与实现均已落地（2026-08-12）——正文按 D1～D12 修订，C1～C19 全部关闭，只读 Schema Gate 复核 PASS；MEM-02A～MEM-02G 已按该协议实现并通过门禁
 - 前置：MEM-01A～MEM-01F、MEM-02-01/02/06/07/08 已完成
 - 目的：为 MEM-02-03/04/05 及 Critic 条件定义可实现、可审计、可兼容的协议
 

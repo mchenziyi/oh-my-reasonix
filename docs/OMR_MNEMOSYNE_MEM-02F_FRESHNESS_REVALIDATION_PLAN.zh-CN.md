@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-02F：Freshness Judgment 与 Revalidation 加固计划
 
 - 阶段：MEM-02F / MEM-02-06
-- 状态：✅ 已实现（待 CTO 签收）
+- 状态：✅ 已实现并签收
 - 前置：MEM-02A～MEM-02E 已实现；现有只读 `EvaluateRevalidation` 可作为实现基础
 - 目标：让 Freshness Judgment、Policy、Evidence 与 supersede 链可精确验证，使 Revalidation 结果可审计、确定性、只读，同时保持 Freshness 与 Lifecycle/Health 完全隔离。
 

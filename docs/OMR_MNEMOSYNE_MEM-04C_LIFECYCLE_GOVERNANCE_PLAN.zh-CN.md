@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-04C：Lifecycle、Health 与治理事务计划
 
-- 状态：🟡 TDD 分阶段实现中；自动化实现基本完成（治理事件、Review Read、Outcome Attribution Override、Consistency Doctor、Lifecycle Report、Fake CLI 闭环已通过门禁；仅剩真实 Reasonix Desktop 联调）
+- 状态：✅ 自动化实现完成（治理事件、Review Read、Outcome Attribution Override、Consistency Doctor、Lifecycle Report、Fake CLI 闭环已通过门禁）；仅剩真实 Reasonix Desktop 联调
 - 前置：MEM-04B Enriched Outcome、MEM-02B Critic、MEM-02E Conflict Gate、既有 DerivedState/GovernanceEvent
 - 目标：把派生 Lifecycle/Health、追加式治理命令和 Frozen 读取隔离连成可验证、可审计的最小闭环
 
