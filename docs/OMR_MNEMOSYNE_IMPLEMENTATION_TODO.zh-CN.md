@@ -368,7 +368,8 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：⬜
+状态：🟡 已形成实现计划，待 Schema Gate 与 TDD 实现（见
+`OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；
 - Merge 主 ID 使用证据链完整度、创建时间、稳定 ID 排序；
