@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：🟡 只读 MigrationPlan（含已验证 Store 预览）已实现；迁移复制、编译与 CURRENT 切换仍未实现
+- 状态：🟡 只读 MigrationPlan 与同 Scope 事实复制已实现；目标 Generation 编译与 CURRENT 切换仍未实现
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 
@@ -9,7 +9,7 @@
 
 1. 迁移只允许显式的 Project→Project 或 Global→Global；Project→Global 必须走 MEM-05B Promotion，不由迁移命令隐式完成。
 2. 源 Scope、目标 Scope、Generation、Manifest 和事实集合必须显式列出并逐项校验；不能扫描“所有项目”猜测数据。
-3. 迁移第一阶段只生成 `MigrationPlan`，不复制、删除、覆盖事实，不切换任何 CURRENT。
+3. 计划生成只读；事实复制必须显式调用 `ApplyMigrationCopy`，不删除、不覆盖事实，也不切换任何 CURRENT。
 4. 复制目标必须是独立 Store 根，路径、symlink、权限、Scope 不符合要求时 fail closed。
 
 ## 二、MigrationPlan
@@ -31,7 +31,12 @@ blocked_reasons: []
 
 `BuildMigrationPlanFromStores` 仅接受两个不同根目录且 Scope 相同的已打开 Store；它会重新验证源 Generation、永久
 GenerationInputManifest 与输入数量，目标 Store 保持零写入。跨 Scope 仍稳定阻断并要求走 Promotion；任何损坏、Scope
-不匹配或缺失都 fail closed。真正复制事实、编译目标 Generation 和切换目标 CURRENT 尚未开放。
+不匹配或缺失都 fail closed。
+
+`ApplyMigrationCopy` 是显式同 Scope 复制入口：重新验证源 Generation/Manifest，优先读取已持久化 Fact；MEM-01D
+prepared 输入仍隔离时，只读取对应已提交 transaction 的精确 canonical Fact，不扫描或猜测其它事实，然后通过单锁
+`PutBatch` 写入目标。重复复制为 NOOP，冲突或任一输入失败时目标批次零生效。目标 Generation 编译、Doctor 和
+CURRENT 切换仍未开放。
 
 ## 三、后续写入事务
 
@@ -49,9 +54,11 @@ GenerationInputManifest 与输入数量，目标 Store 保持零写入。跨 Sco
 
 ```text
 执行 OMR Mnemosyne MEM-05D。先读取本计划、MEM-01D、MEM-03C、MEM-05B/05C 与 FactStore Scope/路径安全实现。
-先做 Schema Gate，不新增第二事实源、不隐式 Project→Global。严格 TDD，实现只读 MigrationPlan 预览：显式 source/target
+先做 Schema Gate，不新增第二事实源、不隐式 Project→Global。严格 TDD，实现只读 MigrationPlan 预览与显式同 Scope
+`ApplyMigrationCopy`：显式 source/target
 Scope、GenerationRef、Manifest Hash、事实集合和固定步骤；校验 Hash、Scope、权限、symlink、未来时间和输入完整性。
-计划生成零写入、不复制事实、不切 CURRENT、不调用模型/网络。真正迁移事务留到后续批准阶段。
+计划生成零写入；复制只读取已验证源事实并通过 PutBatch 写目标，不切 CURRENT、不调用模型/网络。目标编译、Doctor 与
+CURRENT 切换留到后续批准阶段。
 运行 gofmt、git diff --check、go test -race ./internal/memory/...、go test ./...、go vet、go build、docs_check；
 未获 CTO 复核前不要提交、推送或创建 Tag。
 ```

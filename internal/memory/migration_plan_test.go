@@ -31,6 +31,26 @@ func TestBuildMigrationPlanFromStoresRejectsCrossScope(t *testing.T) {
 	}
 }
 
+func TestApplyMigrationCopyIsAtomicAndIdempotent(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := openProject(t, targetRoot, Options{})
+	tx := commitOne(t, NewGenerationStore(source), "migration_copy", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, tx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	first, err := ApplyMigrationCopy(context.Background(), source, target, MigrationCopyRequest{Plan: plan})
+	if err != nil || first.Created != 2 || first.Noop != 0 {
+		t.Fatalf("unexpected copy result: %+v %v", first, err)
+	}
+	second, err := ApplyMigrationCopy(context.Background(), source, target, MigrationCopyRequest{Plan: plan})
+	if err != nil || second.Created != 0 || second.Noop != 2 {
+		t.Fatalf("copy replay must be idempotent: %+v %v", second, err)
+	}
+}
+
 func TestBuildMigrationPlanScopeAndRefGate(t *testing.T) {
 	req := MigrationRequest{SourceScope: ScopeProject, TargetScope: ScopeProject, ProjectGenerationRef: &ProjectGenerationRef{SchemaVersion: SchemaVersion, Scope: ScopeProject, GenerationID: "gen_migrate", InputManifestID: "manifest_migrate", InputManifestSHA256: "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, FactCount: 4, InputManifestSHA256: "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
 	p, err := BuildMigrationPlan(req)
