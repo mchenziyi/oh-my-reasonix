@@ -42,4 +42,4 @@ omr memory web serve --project-dir /tmp/omr-web-03 --now 2026-08-14T00:00:00Z
 
 ## 进程级联调记录
 
-2026-08-14 在隔离临时项目中构建 `omr` 二进制并启动 `memory web serve --listen 127.0.0.1:0`：`/manager` 与 `/audit` 均返回 200；管理页包含 Lifecycle、Health、Usage、Relations、Unfreeze 与审计入口；响应包含 CSP 与 `X-Content-Type-Options: nosniff`；空 Store 不产生任何 Fact。该 smoke 不替代人工浏览器点击和 Reasonix Desktop 联调。
+2026-08-14 在隔离临时项目中构建 `omr` 二进制并启动 `memory web serve --listen 127.0.0.1:0`：`/manager` 与 `/audit` 均返回 200；管理页包含 Lifecycle、Health、Usage、Relations、Unfreeze 与审计入口；响应包含 CSP、`Cache-Control: no-store` 与 `X-Content-Type-Options: nosniff`；空 Store 不产生任何 Fact。该 smoke 不替代人工浏览器点击和 Reasonix Desktop 联调。
