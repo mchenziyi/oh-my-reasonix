@@ -124,6 +124,50 @@ func TestMemoryIndexDoctorRequiresPinnedInputs(t *testing.T) {
 	}
 }
 
+func TestMemoryHistoryAndUsageRequireMemoryID(t *testing.T) {
+	if err := runMemory([]string{"history"}); err == nil || !strings.Contains(err.Error(), "requires memory id") {
+		t.Fatalf("history must require memory id, got %v", err)
+	}
+	if err := runMemory([]string{"usage"}); err == nil || !strings.Contains(err.Error(), "requires memory id") {
+		t.Fatalf("usage must require memory id, got %v", err)
+	}
+}
+
+func TestMemoryHistoryAndUsageReadExistingStore(t *testing.T) {
+	project := t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	for _, command := range []string{"history", "usage"} {
+		t.Run(command, func(t *testing.T) {
+			out, err := captureRunOutput(func() error {
+				return runMemory([]string{command, "mem_missing", "--project-dir", project, "--json"})
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var result struct {
+				Scope     mem.Scope         `json:"scope"`
+				MemoryID  string            `json:"memory_id"`
+				Revisions []json.RawMessage `json:"revisions"`
+				Usages    []json.RawMessage `json:"usages"`
+			}
+			if err := json.Unmarshal([]byte(out), &result); err != nil {
+				t.Fatal(err)
+			}
+			if result.Scope != mem.ScopeProject || result.MemoryID != "mem_missing" {
+				t.Fatalf("unexpected result identity: %+v", result)
+			}
+			if command == "history" && result.Revisions == nil {
+				t.Fatal("history must return an empty array")
+			}
+			if command == "usage" && result.Usages == nil {
+				t.Fatal("usage must return an empty array")
+			}
+		})
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")

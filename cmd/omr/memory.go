@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"syscall"
 	"time"
 
@@ -24,10 +25,19 @@ type episodicContextDocument struct {
 }
 
 func runMemory(args []string) error {
+	if len(args) == 1 && args[0] == "history" {
+		return runMemoryHistory(nil)
+	}
+	if len(args) == 1 && args[0] == "usage" {
+		return runMemoryUsageHistory(nil)
+	}
 	if len(args) < 2 {
 		return errors.New("memory requires an episodic, usage or outcome command")
 	}
 	if args[0] == "usage" {
+		if len(args) > 1 && args[1] != "capture" {
+			return runMemoryUsageHistory(args[1:])
+		}
 		if args[1] != "capture" {
 			return errors.New("memory usage requires capture")
 		}
@@ -140,6 +150,12 @@ func runMemory(args []string) error {
 	}
 	if args[0] == "show" {
 		return runMemoryShow(args[1:])
+	}
+	if args[0] == "history" {
+		return runMemoryHistory(args[1:])
+	}
+	if args[0] == "usage" {
+		return runMemoryUsageHistory(args[1:])
 	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
@@ -936,6 +952,122 @@ func runMemoryShow(args []string) error {
 		Key   string          `json:"key"`
 		Fact  json.RawMessage `json:"fact"`
 	}{scope, mem.FactKind(*kindText), fs.Arg(0), json.RawMessage(data)})
+}
+
+type memoryRevisionHistoryEntry struct {
+	MemoryID      string          `json:"memory_id"`
+	Revision      int             `json:"revision"`
+	MemoryType    mem.MemoryType  `json:"memory_type"`
+	CanonicalKey  string          `json:"canonical_key"`
+	UsagePolicy   mem.UsagePolicy `json:"usage_policy"`
+	ContentSHA256 string          `json:"content_sha256"`
+	CreatedAt     string          `json:"created_at"`
+}
+
+func openMemoryScope(args []string, name string) (*string, *mem.FactStore, error) {
+	fs := flag.NewFlagSet(name, flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return nil, nil, err
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return nil, nil, errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return nil, nil, errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return nil, nil, err
+	}
+	return scopeText, store, nil
+}
+
+func runMemoryHistory(args []string) error {
+	if len(args) == 0 {
+		return errors.New("memory history requires memory id")
+	}
+	memoryID := args[0]
+	scopeText, store, err := openMemoryScope(args[1:], "memory history")
+	if err != nil {
+		return err
+	}
+	keys, err := store.List(context.Background(), mem.FactKindMemoryRevision)
+	if err != nil {
+		return err
+	}
+	entries := []memoryRevisionHistoryEntry{}
+	for _, key := range keys {
+		if !strings.HasPrefix(key, memoryID+"/") {
+			continue
+		}
+		b, err := store.Get(context.Background(), mem.FactKindMemoryRevision, key)
+		if err != nil {
+			return err
+		}
+		rev, err := mem.DecodeStrict[mem.MemoryRevision](b)
+		if err != nil || rev.MemoryID != memoryID {
+			return errors.New("memory revision is invalid")
+		}
+		entries = append(entries, memoryRevisionHistoryEntry{rev.MemoryID, rev.Revision, rev.MemoryType, rev.CanonicalKey, rev.UsagePolicy, rev.ContentSHA256, rev.CreatedAt})
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].Revision < entries[j].Revision })
+	return writeJSONOutput(struct {
+		Scope     mem.Scope                    `json:"scope"`
+		MemoryID  string                       `json:"memory_id"`
+		Revisions []memoryRevisionHistoryEntry `json:"revisions"`
+	}{mem.Scope(*scopeText), memoryID, entries})
+}
+
+type memoryUsageHistoryEntry struct {
+	UsageID    string `json:"usage_id"`
+	Revision   int    `json:"revision"`
+	UsageStage string `json:"usage_stage"`
+	EpisodeID  string `json:"episode_id,omitempty"`
+	OccurredAt string `json:"occurred_at"`
+}
+
+func runMemoryUsageHistory(args []string) error {
+	if len(args) == 0 {
+		return errors.New("memory usage requires memory id")
+	}
+	memoryID := args[0]
+	scopeText, store, err := openMemoryScope(args[1:], "memory usage")
+	if err != nil {
+		return err
+	}
+	keys, err := store.List(context.Background(), mem.FactKindMemoryUsage)
+	if err != nil {
+		return err
+	}
+	entries := []memoryUsageHistoryEntry{}
+	for _, key := range keys {
+		b, err := store.Get(context.Background(), mem.FactKindMemoryUsage, key)
+		if err != nil {
+			return err
+		}
+		u, err := mem.DecodeStrict[mem.MemoryUsage](b)
+		if err != nil {
+			return errors.New("memory usage is invalid")
+		}
+		if u.MemoryID == memoryID {
+			entries = append(entries, memoryUsageHistoryEntry{u.UsageID, u.Revision, u.UsageStage, u.EpisodeID, u.OccurredAt})
+		}
+	}
+	sort.Slice(entries, func(i, j int) bool { return entries[i].OccurredAt < entries[j].OccurredAt })
+	return writeJSONOutput(struct {
+		Scope    mem.Scope                 `json:"scope"`
+		MemoryID string                    `json:"memory_id"`
+		Usages   []memoryUsageHistoryEntry `json:"usages"`
+	}{mem.Scope(*scopeText), memoryID, entries})
 }
 
 func runMemoryStatus(args []string) error {
