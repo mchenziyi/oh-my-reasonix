@@ -57,6 +57,6 @@ func run(args []string) int {
 }
 
 func usage() {
-	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|session|benchmark|comment-check|evolve|memory|version\n", os.Args[0])
+	fmt.Printf("%s init|upgrade|uninstall|doctor|config|profile|session|benchmark|comment-check|evolve|memory(get|episodic|usage|outcome)|version\n", os.Args[0])
 	fmt.Println("Use --help on a command for flags.")
 }

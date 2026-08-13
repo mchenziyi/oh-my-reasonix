@@ -63,6 +63,9 @@ func TestExtractStringFlagForms(t *testing.T) {
 }
 
 func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
+	if err := runMemory([]string{"get", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("missing memory id/revision must fail")
+	}
 	if err := runMemory([]string{"episodic", "card", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing episode id must fail")
 	}

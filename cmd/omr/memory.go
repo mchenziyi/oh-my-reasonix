@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	mem "github.com/mchenziyi/oh-my-reasonix/internal/memory"
 )
@@ -37,8 +38,11 @@ func runMemory(args []string) error {
 		}
 		return runMemoryOutcomeCapture(args[2:])
 	}
+	if args[0] == "get" {
+		return runMemoryGet(args[1:])
+	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires an episodic, usage or outcome command")
+		return errors.New("memory requires get, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -54,6 +58,52 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryGet(args []string) error {
+	fs := flag.NewFlagSet("memory get", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	memoryID := fs.String("memory-id", "", "memory id")
+	revision := fs.Int("revision", 0, "memory revision")
+	includeFrozen := fs.Bool("include-frozen", false, "include frozen memory")
+	reviewMode := fs.Bool("review-mode", false, "explicit review mode")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *memoryID == "" || *revision < 1 {
+		return errors.New("memory-id and revision are required")
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	b, err := store.Get(context.Background(), mem.FactKindMemoryRevision, fmt.Sprintf("%s/%d", *memoryID, *revision))
+	if err != nil {
+		return err
+	}
+	rev, err := mem.DecodeStrict[mem.MemoryRevision](b)
+	if err != nil {
+		return errors.New("memory revision is invalid")
+	}
+	got, err := mem.ReadMemoryForReview(context.Background(), mem.ReviewReadRequest{Store: store, Target: mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}, IncludeFrozen: *includeFrozen, ReviewMode: *reviewMode, Now: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(got)
 }
 
 func runMemoryOutcomeCapture(args []string) error {
