@@ -370,9 +370,17 @@ func runMemoryReport(args []string) error {
 	project := fs.String("project-dir", ".", "project directory")
 	global := fs.String("global-dir", "", "global memory directory")
 	scope := fs.String("scope", "project", "project or global")
+	nowText := fs.String("now", "", "explicit evaluation timestamp (RFC3339)")
 	_ = fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if *nowText == "" {
+		return errors.New("now is required for deterministic memory report")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil {
+		return errors.New("now must be a valid RFC3339 timestamp")
 	}
 	sc := mem.Scope(*scope)
 	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
@@ -389,7 +397,7 @@ func runMemoryReport(args []string) error {
 	if err != nil {
 		return err
 	}
-	report, err := mem.BuildLifecycleReport(context.Background(), mem.LifecycleReportRequest{Store: store, Scope: sc, Now: time.Now().UTC()})
+	report, err := mem.BuildLifecycleReport(context.Background(), mem.LifecycleReportRequest{Store: store, Scope: sc, Now: now.UTC()})
 	if err != nil {
 		return err
 	}
@@ -766,6 +774,7 @@ func runMemoryOutcomeOverride(args []string) error {
 	previous := fs.String("previous-effect", "", "current effect")
 	newEffect := fs.String("new-effect", "", "corrected effect")
 	reason := fs.String("reason", "", "override reason")
+	nowText := fs.String("now", "", "explicit evaluation timestamp (RFC3339)")
 	sourceType := fs.String("source", "local_user", "source type")
 	sourceID := fs.String("source-id", "local_user", "source id")
 	_ = fs.Bool("json", false, "JSON output")
@@ -777,6 +786,13 @@ func runMemoryOutcomeOverride(args []string) error {
 	}
 	if *outcomeID == "" || *previous == "" || *newEffect == "" || *reason == "" {
 		return errors.New("outcome-id, previous-effect, new-effect and reason are required")
+	}
+	if *nowText == "" {
+		return errors.New("now is required for deterministic outcome override")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil {
+		return errors.New("now must be a valid RFC3339 timestamp")
 	}
 	sc := mem.Scope(*scope)
 	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
@@ -793,7 +809,7 @@ func runMemoryOutcomeOverride(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := mem.CommitAttributionOverride(context.Background(), mem.AttributionOverrideRequest{Store: store, OutcomeID: *outcomeID, PreviousEffect: *previous, NewEffect: *newEffect, Reason: *reason, SourceType: *sourceType, SourceID: *sourceID, Now: time.Now().UTC()})
+	result, err := mem.CommitAttributionOverride(context.Background(), mem.AttributionOverrideRequest{Store: store, OutcomeID: *outcomeID, PreviousEffect: *previous, NewEffect: *newEffect, Reason: *reason, SourceType: *sourceType, SourceID: *sourceID, Now: now.UTC()})
 	if err != nil {
 		return err
 	}
@@ -809,12 +825,20 @@ func runMemoryGovernance(operation string, args []string) error {
 	revision := fs.Int("revision", 0, "memory revision")
 	reason := fs.String("reason", "", "governance reason")
 	source := fs.String("source", "local_user", "governance source")
+	nowText := fs.String("now", "", "explicit evaluation timestamp (RFC3339)")
 	_ = fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *memoryID == "" || *revision < 1 || *reason == "" {
 		return errors.New("memory-id, revision and reason are required")
+	}
+	if *nowText == "" {
+		return errors.New("now is required for deterministic governance")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil {
+		return errors.New("now must be a valid RFC3339 timestamp")
 	}
 	sc := mem.Scope(*scope)
 	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
@@ -844,7 +868,7 @@ func runMemoryGovernance(operation string, args []string) error {
 	if governanceOperation == "freeze" {
 		governanceOperation = "manual_freeze"
 	}
-	request := mem.GovernanceRequest{Store: store, Target: target, Operation: governanceOperation, Reason: *reason, Source: *source, Now: time.Now().UTC()}
+	request := mem.GovernanceRequest{Store: store, Target: target, Operation: governanceOperation, Reason: *reason, Source: *source, Now: now.UTC()}
 	if operation == "unfreeze" {
 		request.BasisRefs = []mem.BasisRef{{MemoryRef: &target}}
 	}
@@ -864,12 +888,24 @@ func runMemoryGet(args []string) error {
 	revision := fs.Int("revision", 0, "memory revision")
 	includeFrozen := fs.Bool("include-frozen", false, "include frozen memory")
 	reviewMode := fs.Bool("review-mode", false, "explicit review mode")
+	nowText := fs.String("now", "", "explicit evaluation timestamp (RFC3339; required for review mode)")
 	_ = fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *memoryID == "" || *revision < 1 {
 		return errors.New("memory-id and revision are required")
+	}
+	if *reviewMode && *nowText == "" {
+		return errors.New("now is required for deterministic review read")
+	}
+	now := time.Time{}
+	if *reviewMode {
+		var err error
+		now, err = time.Parse(time.RFC3339Nano, *nowText)
+		if err != nil {
+			return errors.New("now must be a valid RFC3339 timestamp")
+		}
 	}
 	sc := mem.Scope(*scope)
 	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
@@ -894,7 +930,7 @@ func runMemoryGet(args []string) error {
 	if err != nil {
 		return errors.New("memory revision is invalid")
 	}
-	got, err := mem.ReadMemoryForReview(context.Background(), mem.ReviewReadRequest{Store: store, Target: mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}, IncludeFrozen: *includeFrozen, ReviewMode: *reviewMode, Now: time.Now().UTC()})
+	got, err := mem.ReadMemoryForReview(context.Background(), mem.ReviewReadRequest{Store: store, Target: mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}, IncludeFrozen: *includeFrozen, ReviewMode: *reviewMode, Now: now.UTC()})
 	if err != nil {
 		return err
 	}

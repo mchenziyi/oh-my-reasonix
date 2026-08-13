@@ -75,6 +75,26 @@ func TestMemoryStatusRequiresExplicitNow(t *testing.T) {
 	}
 }
 
+func TestMemoryDerivedCommandsRequireExplicitNow(t *testing.T) {
+	tests := []struct {
+		name string
+		args []string
+	}{
+		{"report", []string{"report", "--project-dir", t.TempDir()}},
+		{"review get", []string{"get", "--project-dir", t.TempDir(), "--memory-id", "mem_status_01", "--revision", "1", "--review-mode"}},
+		{"outcome override", []string{"outcome", "override", "outcome_01", "--project-dir", t.TempDir(), "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review"}},
+		{"governance", []string{"freeze", "--project-dir", t.TempDir(), "--memory-id", "mem_status_01", "--revision", "1", "--reason", "test"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := runMemory(tc.args)
+			if err == nil || !strings.Contains(err.Error(), "now is required") {
+				t.Fatalf("%s must require an explicit --now, got %v", tc.name, err)
+			}
+		})
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")
@@ -258,7 +278,7 @@ func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
 
 func TestMemoryOutcomeOverrideAcceptsPositionalIDBeforeFlags(t *testing.T) {
 	project := t.TempDir()
-	err := runMemory([]string{"outcome", "override", "outcome_missing", "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review"})
+	err := runMemory([]string{"outcome", "override", "outcome_missing", "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review", "--now", "2026-08-13T00:00:00Z"})
 	if err == nil || strings.Contains(err.Error(), "outcome-id, previous-effect") {
 		t.Fatalf("positional outcome id must not stop flag parsing: %v", err)
 	}
@@ -297,14 +317,14 @@ func TestMemoryGovernanceFakeCLICycle(t *testing.T) {
 	if _, err := store.Put(nilContext(), outcome); err != nil {
 		t.Fatal(err)
 	}
-	if err := runMemory([]string{"freeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "test", "--json"}); err != nil {
+	if err := runMemory([]string{"freeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "test", "--now", "2026-08-14T00:00:00Z", "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := runMemory([]string{"get", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1"}); err == nil {
 		t.Fatal("normal get must reject frozen memory")
 	}
 	review, err := captureRunOutput(func() error {
-		return runMemory([]string{"get", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--include-frozen", "--review-mode", "--json"})
+		return runMemory([]string{"get", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--include-frozen", "--review-mode", "--now", "2026-08-14T00:00:00Z", "--json"})
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -312,14 +332,14 @@ func TestMemoryGovernanceFakeCLICycle(t *testing.T) {
 	if !strings.Contains(review, `"frozen":true`) {
 		t.Fatalf("review read did not expose frozen state: %s", review)
 	}
-	if err := runMemory([]string{"outcome", "override", outcome.OutcomeID, "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review", "--json"}); err != nil {
+	if err := runMemory([]string{"outcome", "override", outcome.OutcomeID, "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review", "--now", "2026-08-14T00:00:00Z", "--json"}); err != nil {
 		t.Fatal(err)
 	}
-	if err := runMemory([]string{"unfreeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "corrected", "--json"}); err != nil {
+	if err := runMemory([]string{"unfreeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "corrected", "--now", "2026-08-14T00:00:00Z", "--json"}); err != nil {
 		t.Fatal(err)
 	}
 	status, err := captureRunOutput(func() error {
-		return runMemory([]string{"status", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--now", "2026-08-13T00:00:00Z", "--json"})
+		return runMemory([]string{"status", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--now", "2026-08-14T00:00:00Z", "--json"})
 	})
 	if err != nil {
 		t.Fatal(err)
