@@ -16,10 +16,10 @@ type MigrationCopyRequest struct {
 }
 
 type MigrationCopyResult struct {
-	GenerationID string
-	FactCount    int
-	Created      int
-	Noop         int
+	GenerationID string `json:"generation_id"`
+	FactCount    int    `json:"fact_count"`
+	Created      int    `json:"created"`
+	Noop         int    `json:"noop"`
 }
 
 // MigrationApplyRequest enables the complete same-scope migration after a
@@ -31,9 +31,9 @@ type MigrationApplyRequest struct {
 }
 
 type MigrationApplyResult struct {
-	Copy         MigrationCopyResult
-	Commit       CommitResult
-	GenerationID string
+	Copy         MigrationCopyResult `json:"copy"`
+	Commit       CommitResult        `json:"commit"`
+	GenerationID string              `json:"generation_id"`
 }
 
 // ApplyMigration performs copy, target compilation from the source's verified

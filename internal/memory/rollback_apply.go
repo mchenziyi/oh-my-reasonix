@@ -20,12 +20,12 @@ type RollbackRequest struct {
 }
 
 type RollbackResult struct {
-	RollbackID         string
-	Status             string
-	SourceGenerationID string
-	TargetGenerationID string
-	TargetOutputHash   string
-	AuditSHA256        string
+	RollbackID         string `json:"rollback_id"`
+	Status             string `json:"status"`
+	SourceGenerationID string `json:"source_generation_id"`
+	TargetGenerationID string `json:"target_generation_id"`
+	TargetOutputHash   string `json:"target_output_hash"`
+	AuditSHA256        string `json:"audit_sha256"`
 }
 
 type rollbackRecord struct {

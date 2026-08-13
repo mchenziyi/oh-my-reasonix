@@ -100,11 +100,11 @@ func (gs *generationStore) checkOpen(tx *GenerationTx) error {
 
 // CommitResult reports the outcome of a Commit call.
 type CommitResult struct {
-	TransactionID          string
-	GenerationID           string
-	Status                 CommitStatus
-	BaseGeneration         string
-	OutputGenerationSHA256 string
+	TransactionID          string       `json:"transaction_id"`
+	GenerationID           string       `json:"generation_id"`
+	Status                 CommitStatus `json:"status"`
+	BaseGeneration         string       `json:"base_generation"`
+	OutputGenerationSHA256 string       `json:"output_generation_sha256"`
 }
 
 // CommitStatus distinguishes a fresh commit, an idempotent replay of an
@@ -129,6 +129,10 @@ func (s CommitStatus) String() string {
 	default:
 		return "unknown"
 	}
+}
+
+func (s CommitStatus) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.String())
 }
 
 // generationStore is the concrete GenerationStore bound to one scope store.

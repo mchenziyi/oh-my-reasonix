@@ -2,8 +2,10 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -66,6 +68,10 @@ func TestApplyMigrationPublishesNewTargetGeneration(t *testing.T) {
 	res, err := ApplyMigration(context.Background(), source, target, MigrationApplyRequest{Plan: plan, IdempotencyKey: "migration_apply_key"})
 	if err != nil || res.Commit.Status != CommitCommitted || res.GenerationID == sourceTx.GenerationID {
 		t.Fatalf("migration apply failed: %+v %v", res, err)
+	}
+	encoded, _ := json.Marshal(res)
+	if string(encoded) == "" || !strings.Contains(string(encoded), `"status":"committed"`) {
+		t.Fatalf("migration result must have stable JSON status: %s", encoded)
 	}
 	targetCur, err := NewGenerationStore(target).(*generationStore).readCurrent(context.Background())
 	if err != nil || targetCur.GenerationID != res.GenerationID {
