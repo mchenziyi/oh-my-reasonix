@@ -91,6 +91,19 @@ It checks temporary markers, empty comments, comment/code similarity, suspected 
 
 Run `go run ./cmd/omr benchmark quality --replay --min-qualified-rate 1 --run-id nightly-20260730` for a deterministic replay. Reports include failure classification, retry/stall/review evidence, token and cost metrics, and paired Native/OMR comparisons. OMR does not claim model-quality improvements without paired evidence.
 
+## Mnemosyne local memory
+
+Mnemosyne is OMR's local long-term engineering memory layer. Initialize a protected Store in a temporary or target project, then start the loopback manager when needed:
+
+~~~bash
+omr memory init --project-dir /tmp/omr-memory-demo --scope project
+omr memory web serve --project-dir /tmp/omr-memory-demo --now 2026-08-14T00:00:00Z
+~~~
+
+The command prints a URL bound only to `127.0.0.1`; open `/manager` to inspect memories and run pin/unpin/freeze/archive. `unfreeze` additionally requires a non-empty `basis_refs` JSON array and a second confirmation. All writes reuse the existing governance API, do not optimistically update the page, and re-read the FactStore after success. `memory init` creates protected Store directories only; it does not fabricate Memory, Usage, Outcome, or Generation facts.
+
+Real Reasonix Desktop receipts, cross-project migration, and browser acceptance remain separate temporary-project integration checks. OMR does not read private Reasonix state, and the web page is never a new source of truth.
+
 ## Structured host interfaces
 
 Where supported by the installed Reasonix version, OMR can forward read-only session, hook, task, recovery, and JSONL event queries. Examples include `omr session list --project-dir . --json`, `omr hook doctor --project-dir . --json`, `omr task list --project-dir . --json`, and `omr run --project-dir . --events-jsonl /tmp/reasonix-events.jsonl --json "run a task"`.

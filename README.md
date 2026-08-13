@@ -380,6 +380,19 @@ go run ./cmd/omr benchmark quality --replay --run-id nightly-20260730
 
 质量 Fixture 使用 JSON（也是 YAML 1.2 的有效子集），不依赖真实 Provider。Native/OMR 对照没有配对证据时会明确标记 unavailable，不会宣称 OMR 优于 Native。
 
+## Mnemosyne 本地记忆
+
+Mnemosyne 是 OMR 的本地长期工程记忆层。先在临时或目标项目初始化受保护的 Store，再按需启动 loopback 管理页：
+
+~~~bash
+omr memory init --project-dir /tmp/omr-memory-demo --scope project
+omr memory web serve --project-dir /tmp/omr-memory-demo --now 2026-08-14T00:00:00Z
+~~~
+
+终端会输出仅绑定 `127.0.0.1` 的 URL，可在浏览器打开 `/manager` 查看记忆并执行 pin/unpin/freeze/archive；`unfreeze` 还必须填写非空 `basis_refs` 并二次确认。页面写操作始终复用既有治理 API，失败时不做乐观更新，成功后重新读取 FactStore。`memory init` 只创建 Store 目录，不伪造任何 Memory、Usage、Outcome 或 Generation Fact。
+
+真实 Reasonix Desktop 回执、跨项目迁移和浏览器验收仍需在临时项目中单独联调；OMR 不读取 Reasonix 私有状态，也不把管理页面当作新的事实源。
+
 ## 安全与隐私边界
 
 - 默认只写项目目录；
