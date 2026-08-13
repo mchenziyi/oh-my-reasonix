@@ -164,8 +164,8 @@ func ValidateContextApplicability(
 9. 若有 supersede 链，逐边执行 JudgmentRef 四字段与 Context 节点身份校验；
 10. 所有协议与引用闭合后返回 `verified`，原样报告持久化 result。
 
-Context Descriptor Fact 尚未落地不是结构错误：验证器不扫描、不推断 Context
-内容。该限制不得被描述成“Context 已验证存在”。
+Context Descriptor Fact 已落地；验证器仍只按显式 Ref 精确加载和校验，不扫描、不推断
+Context 内容，也不建立 Context Ontology。
 
 ## 六、隔离、安全与确定性
 
