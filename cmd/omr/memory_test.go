@@ -68,6 +68,13 @@ func TestMemoryRetrievalAuditRequiresExplicitNowAndDoesNotCreateStore(t *testing
 	}
 }
 
+func TestMemoryStatusRequiresExplicitNow(t *testing.T) {
+	err := runMemory([]string{"status", "--memory-id", "mem_status_01", "--project-dir", t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "now is required") {
+		t.Fatalf("memory status must require an explicit --now, got %v", err)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")
@@ -312,7 +319,7 @@ func TestMemoryGovernanceFakeCLICycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	status, err := captureRunOutput(func() error {
-		return runMemory([]string{"status", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--json"})
+		return runMemory([]string{"status", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--now", "2026-08-13T00:00:00Z", "--json"})
 	})
 	if err != nil {
 		t.Fatal(err)

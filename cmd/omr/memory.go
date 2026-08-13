@@ -683,12 +683,20 @@ func runMemoryStatus(args []string) error {
 	scope := fs.String("scope", "project", "project or global")
 	memoryID := fs.String("memory-id", "", "memory id")
 	revision := fs.Int("revision", 0, "memory revision")
+	nowText := fs.String("now", "", "explicit evaluation timestamp (RFC3339)")
 	_ = fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if *memoryID == "" {
 		return errors.New("memory-id is required")
+	}
+	if *nowText == "" {
+		return errors.New("now is required for deterministic memory status")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil {
+		return errors.New("now must be a valid RFC3339 timestamp")
 	}
 	sc := mem.Scope(*scope)
 	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
@@ -705,7 +713,7 @@ func runMemoryStatus(args []string) error {
 	if err != nil {
 		return err
 	}
-	result, err := mem.DeriveState(context.Background(), store, mem.DerivedStateRequest{Scope: sc, Revision: *revision, Now: time.Now().UTC()})
+	result, err := mem.DeriveState(context.Background(), store, mem.DerivedStateRequest{Scope: sc, Revision: *revision, Now: now.UTC()})
 	if err != nil {
 		return err
 	}

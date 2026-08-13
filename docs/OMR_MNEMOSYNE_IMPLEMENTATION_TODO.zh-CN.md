@@ -204,7 +204,7 @@ Repair 第一版只能重建派生状态、清理明确孤立的临时目录或�
 新增：
 
 ```text
-omr memory status
+omr memory status --now 2026-08-13T00:00:00Z
 omr memory doctor
 omr memory list
 omr memory show <id>
