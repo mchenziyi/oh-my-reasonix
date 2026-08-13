@@ -110,6 +110,17 @@ type WriteResult struct {
 	Hash   string // content hash of the stored fact
 }
 
+type preparedBatchFact struct {
+	fact        Fact
+	kind        FactKind
+	key         string
+	comps       []string
+	path        string
+	canonical   []byte
+	hash        string
+	createdPath bool
+}
+
 // FactStore is a scope-bound, single-writer immutable fact store.
 type FactStore struct {
 	storeScope  StoreScope
@@ -240,6 +251,114 @@ func (s *FactStore) Put(ctx context.Context, fact Fact) (WriteResult, error) {
 	}
 	defer unlock()
 	return s.putLocked(ctx, fact)
+}
+
+// PutBatch atomically publishes a set of immutable facts under one store
+// lock. All facts are validated and existing identities are resolved before
+// the first new file is published. If a later publish or verification fails,
+// only files created by this batch whose bytes are still unchanged are
+// removed; pre-existing facts are never touched.
+func (s *FactStore) PutBatch(ctx context.Context, facts []Fact) ([]WriteResult, error) {
+	if len(facts) == 0 {
+		return nil, storeError(CodeSchemaInvalid, "fact batch must not be empty")
+	}
+	unlock, err := s.acquireWriteLock(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	prepared, results, err := s.prepareBatch(ctx, facts)
+	if err != nil {
+		return nil, err
+	}
+	rollback := func() {
+		for _, item := range prepared {
+			if !item.createdPath {
+				continue
+			}
+			data, readErr := os.ReadFile(item.path)
+			if readErr == nil && string(data) == string(item.canonical) {
+				_ = os.Remove(item.path)
+			}
+		}
+	}
+	for i := range prepared {
+		if results[i].Status == WriteNoop {
+			continue
+		}
+		if err := s.atomicWriteFile(prepared[i].path, prepared[i].canonical); err != nil {
+			rollback()
+			return nil, err
+		}
+		prepared[i].createdPath = true
+		results[i] = WriteResult{Status: WriteCreated, Key: prepared[i].key, Hash: prepared[i].hash}
+	}
+	for _, item := range prepared {
+		if item.createdPath {
+			if err := s.verifyCommitted(item.kind, item.comps, item.canonical); err != nil {
+				rollback()
+				return nil, err
+			}
+		}
+	}
+	return results, nil
+}
+
+func (s *FactStore) prepareBatch(ctx context.Context, facts []Fact) ([]preparedBatchFact, []WriteResult, error) {
+	prepared := make([]preparedBatchFact, len(facts))
+	results := make([]WriteResult, len(facts))
+	seen := make(map[string]int, len(facts))
+	for i, fact := range facts {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, storeError(CodeLockTimeout, "write cancelled")
+		}
+		if err := fact.Validate(); err != nil {
+			return nil, nil, classifyValidateError(err)
+		}
+		kind, key, err := factKey(fact)
+		if err != nil {
+			return nil, nil, storeError(CodeSchemaInvalid, "fact type is not storable")
+		}
+		comps, err := validateFactKey(key)
+		if err != nil {
+			return nil, nil, err
+		}
+		if scope, ok := factScope(fact); ok && !s.scopeMatches(scope) {
+			return nil, nil, storeError(CodeScopeMismatch, "fact scope does not match store scope")
+		}
+		hash, err := fact.ContentHash()
+		if err != nil {
+			return nil, nil, storeError(CodeSchemaInvalid, "fact hash cannot be computed")
+		}
+		canon, err := fact.EncodeCanonical()
+		if err != nil || int64(len(canon)) > s.maxBytes {
+			return nil, nil, storeError(CodeSchemaInvalid, "fact cannot be canonicalized")
+		}
+		path, err := secureJoin(s.root, factPathComps(kind, comps), true, true)
+		if err != nil {
+			return nil, nil, err
+		}
+		item := preparedBatchFact{fact: fact, kind: kind, key: key, comps: comps, path: path, canonical: canon, hash: hash}
+		identity := string(kind) + "\x00" + key
+		if previous, ok := seen[identity]; ok {
+			if prepared[previous].hash != hash {
+				return nil, nil, storeError(CodeIdentityConflict, "batch contains conflicting identities")
+			}
+			results[i] = WriteResult{Status: WriteNoop, Key: key, Hash: hash}
+			prepared[i] = item
+			continue
+		}
+		seen[identity] = i
+		if _, statErr := os.Lstat(path); statErr == nil {
+			result, err := s.handleExistingTarget(ctx, kind, comps, key, hash)
+			if err != nil {
+				return nil, nil, err
+			}
+			results[i] = result
+		}
+		prepared[i] = item
+	}
+	return prepared, results, nil
 }
 
 // putLocked is Put with the assumption that the caller already holds the

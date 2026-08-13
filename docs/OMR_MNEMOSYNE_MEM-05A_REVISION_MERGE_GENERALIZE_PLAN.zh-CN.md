@@ -1,14 +1,14 @@
 # OMR Mnemosyne MEM-05A：Revision、Merge、Split 与 Generalize
 
 - 阶段：MEM-05A
-- 状态：🟡 只读计划层、Revision Apply 与显式 Merge Apply 已实现并通过门禁（2026-08-13）；Split/Generalize/Global Promotion 仍需独立批准事务
+- 状态：🟡 只读计划层、Revision/Merge/Split Apply 已实现并通过门禁（2026-08-13）；Generalize/Global Promotion 仍需独立批准事务
 - 前置：MEM-01A～MEM-04C 自动化链已完成；MEM-04A～04B 的真实 Desktop 回执仍待联调
 - 目标：在不覆盖既有 Revision、不开启自动 Global Promotion 的前提下，定义可审计的修订、合并、拆分与泛化计划
 
 ## 一、不可变边界
 
 1. Revision 永不原地修改；任何修订都创建新的 `memory_id + revision` 事实。
-2. Merge、Split、Generalize 首先产生只读结构化计划；Revision/Merge Apply 只有在调用方显式提供完整目标事实并通过二次校验后才写入一个新 Revision，不切换 CURRENT 或 Global Active 状态。
+2. Merge、Split、Generalize 首先产生只读结构化计划；Revision/Merge/Split Apply 只有在调用方显式提供完整目标事实并通过二次校验后才写入新 Revision，不切换 CURRENT 或 Global Active 状态。
 3. 所有来源必须通过 `MemoryRef`/`EvidenceRef` 精确引用；引用的 Scope、Hash、Revision 不匹配时 fail closed。
 4. 项目记忆不得被移动、删除或隐式提升为 Global；Global 结果必须显式批准并独立写入。
 5. 既有 Lifecycle、Health、Usage、Judgment 和 Governance Fact 作为规范事实，任何索引或计划均为派生表示。
@@ -66,7 +66,7 @@ Generalize 只允许从至少两个相互独立的 Project Scope 来源生成候
 
 ## 六、明确不在 MEM-05A
 
-- `ApplyRevisionPlan` 是显式调用的单步写入边界：重新校验 source/target/evidence 后复用 FactStore Put；不自动批准，不切换 CURRENT，不更新 Lifecycle 或索引。
+- `ApplyRevisionPlan`、`ApplyMergePlan` 和 `ApplySplitPlan` 是显式调用的写入边界：重新校验 source/target/evidence 后复用 FactStore；Split 通过单锁 `PutBatch` 预校验并在失败时回滚本批新文件，避免留下半套分支。不自动批准，不切换 CURRENT，不更新 Lifecycle 或索引。
 - 不实现自动批准、Merge/Split/Global Promotion、跨设备同步或 Web 管理页面；
 - 不调用 Reasonix/模型，不读取 Desktop Session/Task 私有状态；
 - 不修改 Architecture v1、MEM-01A～MEM-04C 冻结 Schema；
