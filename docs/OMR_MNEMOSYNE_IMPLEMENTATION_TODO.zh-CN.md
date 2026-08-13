@@ -390,7 +390,8 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05C：Revalidation、Repair、Rollback
 
-状态：⬜
+状态：🟡 已形成实现计划，待 Schema Gate 与 TDD 实现（见
+`OMR_MNEMOSYNE_MEM-05C_REPAIR_ROLLBACK_PLAN.zh-CN.md`）
 
 - 历史 Policy/Evaluator 可重建；
 - 损坏 Generation 可由永久 Fact 和 Input Manifest 重建；
