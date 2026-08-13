@@ -28,6 +28,7 @@ const (
 	FactKindRetrievalEvaluation      FactKind = "retrieval-evaluations"
 	FactKindEpisode                  FactKind = "episodes"
 	FactKindContextDescriptor        FactKind = "context-descriptors"
+	FactKindPromotionCandidate       FactKind = "promotion-candidates"
 )
 
 var allKinds = []FactKind{
@@ -42,6 +43,7 @@ var allKinds = []FactKind{
 	FactKindRetrievalEvaluation,
 	FactKindEpisode,
 	FactKindContextDescriptor,
+	FactKindPromotionCandidate,
 }
 
 func (k FactKind) valid() bool {
@@ -727,6 +729,8 @@ func factKey(f Fact) (FactKind, string, error) {
 		return FactKindEpisode, v.EpisodeID, nil
 	case ContextDescriptorFact:
 		return FactKindContextDescriptor, v.ContextDescriptorID, nil
+	case GlobalPromotionCandidate:
+		return FactKindPromotionCandidate, v.CandidateID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -754,6 +758,8 @@ func factScope(f Fact) (Scope, bool) {
 		return v.Scope, true
 	case ContextDescriptorFact:
 		return v.Scope, true
+	case GlobalPromotionCandidate:
+		return ScopeGlobal, true
 	default:
 		return "", false
 	}
@@ -804,6 +810,8 @@ func decodeKind(kind FactKind, data []byte) (Fact, error) {
 		return DecodeStrict[EpisodeFact](data)
 	case FactKindContextDescriptor:
 		return DecodeStrict[ContextDescriptorFact](data)
+	case FactKindPromotionCandidate:
+		return DecodeStrict[GlobalPromotionCandidate](data)
 	default:
 		return nil, storeError(CodePathUnsafe, "unknown fact kind")
 	}
