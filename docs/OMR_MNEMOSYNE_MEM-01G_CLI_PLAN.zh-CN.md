@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-01G：只读编译 CLI 计划
 
 - 阶段：MEM-01G
-- 状态：✅ `memory compile` 与 `index rebuild` 只读预览均已实现；尚未提供派生 Index 发布事务
+- 状态：✅ `memory compile`、`index rebuild` 与 `index doctor` 只读命令均已实现；尚未提供派生 Index 发布事务
 - 目标：把已有确定性 OKF 编译器暴露为可审计的 CLI 预览，不隐式读取 CURRENT、不写入 Generation、不引入墙钟。
 
 ## 一、命令契约
