@@ -41,6 +41,10 @@ func runMemory(args []string) error {
 	if args[0] == "get" {
 		return runMemoryGet(args[1:])
 	}
+	switch args[0] {
+	case "pin", "unpin", "freeze", "unfreeze", "archive":
+		return runMemoryGovernance(args[0], args[1:])
+	}
 	if args[0] != "episodic" {
 		return errors.New("memory requires get, episodic, usage or outcome command")
 	}
@@ -58,6 +62,57 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryGovernance(operation string, args []string) error {
+	fs := flag.NewFlagSet("memory "+operation, flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	memoryID := fs.String("memory-id", "", "memory id")
+	revision := fs.Int("revision", 0, "memory revision")
+	reason := fs.String("reason", "", "governance reason")
+	source := fs.String("source", "local_user", "governance source")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *memoryID == "" || *revision < 1 || *reason == "" {
+		return errors.New("memory-id, revision and reason are required")
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	b, err := store.Get(context.Background(), mem.FactKindMemoryRevision, fmt.Sprintf("%s/%d", *memoryID, *revision))
+	if err != nil {
+		return err
+	}
+	rev, err := mem.DecodeStrict[mem.MemoryRevision](b)
+	if err != nil {
+		return errors.New("memory revision is invalid")
+	}
+	target := mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}
+	request := mem.GovernanceRequest{Store: store, Target: target, Operation: operation, Reason: *reason, Source: *source, Now: time.Now().UTC()}
+	if operation == "unfreeze" {
+		request.BasisRefs = []mem.BasisRef{{MemoryRef: &target}}
+	}
+	result, err := mem.CommitGovernanceEvent(context.Background(), request)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryGet(args []string) error {

@@ -120,6 +120,7 @@ omr memory get <memory-id> --revision <n> [--include-frozen --review-mode] --jso
 - `BuildGovernanceEvent`：只接收请求字段与显式 `Now`，确定性生成 `event_id`，不读取/写入 Store。
 - `CommitGovernanceEvent`：精确校验目标 Revision 的五字段后追加 `pin|unpin|manual_freeze|archive` 事件；重复提交由 FactStore 幂等处理。
 - `unfreeze` 当前明确 fail-closed，尚未开放任何绕过自动冻结证据门禁的路径。
+- CLI 已提供 `memory pin|unpin|freeze|unfreeze|archive`；`unfreeze` 自动携带目标 Revision 作为 basis，并继续接受证据重派生门禁。
 
 1. 旧 Revision 的 Governance Event 不污染新 Revision；同 Revision 顺序由 created_at + event_id 决定；
 2. pin/unpin 只改 Pinned；Pinned 不能进入 Frozen 普通索引；

@@ -66,6 +66,11 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"get", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing memory id/revision must fail")
 	}
+	for _, op := range []string{"pin", "unpin", "freeze", "unfreeze", "archive"} {
+		if err := runMemory([]string{op, "--project-dir", t.TempDir()}); err == nil {
+			t.Fatalf("missing governance arguments must fail for %s", op)
+		}
+	}
 	if err := runMemory([]string{"episodic", "card", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing episode id must fail")
 	}
