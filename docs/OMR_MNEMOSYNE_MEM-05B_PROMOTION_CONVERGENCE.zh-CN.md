@@ -44,9 +44,16 @@ Docs Gate；不得在本阶段偷偷扩展 `GovernanceEvent.operation` 枚举。
 - 不因“等待人工批准”而阻塞已满足门槛的 `global/probation` 物化；
 - 不为跨项目来源猜测路径、项目名或 Store 身份。
 
-## 五、下一步实现前置
+## 五、来源绑定物化（已实现库层）
+
+`ApplyPromotionCandidate` 已提供显式库层物化入口。调用方必须为 Candidate 的每个 `MemoryRef` 提供对应的 Project
+`FactStore` 与 Family fingerprint；函数逐项验证来源身份、Family 集合、`generalized_from` 关系、目标 Hash，并将目标
+Revision 写入 Global Store。来源 Store 不从路径或 MemoryID 推导，重复目标写入遵循 FactStore NOOP/冲突语义。
+
+该入口只创建 Global `probation` Revision，不批准、不切换 CURRENT、不生成索引，也不会把错误的跨项目绑定降级成成功。
+
+## 六、下一步实现前置
 
 下一阶段若要实现自动物化，必须先定义一个只读、显式的来源装配请求：每个 `MemoryRef` 绑定调用方提供的 Project
 FactStore 与不可逆 Family fingerprint；装配完成后才能调用现有 `ApplyPromotionPlan`。随后再设计 Global Generation/OKF
 发布事务。两者均不依赖 Reasonix 官方接口，但均需独立 Schema/事务测试。
-

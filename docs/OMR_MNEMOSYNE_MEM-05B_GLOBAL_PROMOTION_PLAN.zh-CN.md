@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；Global Generation/OKF 发布事务仍未实现。协议收敛见 `OMR_MNEMOSYNE_MEM-05B_PROMOTION_CONVERGENCE.zh-CN.md`
+- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Candidate 物化、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；Global Generation/OKF 发布事务仍未实现。协议收敛见 `OMR_MNEMOSYNE_MEM-05B_PROMOTION_CONVERGENCE.zh-CN.md`
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 
