@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：🟡 只读 MigrationPlan 与同 Scope 事实复制已实现；目标 Generation 编译与 CURRENT 切换仍未实现
+- 状态：🟡 只读 MigrationPlan、同 Scope 事实复制与目标 Generation/CURRENT 事务已实现；真实 CLI/跨项目联调仍未完成
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 
@@ -36,11 +36,15 @@ GenerationInputManifest 与输入数量，目标 Store 保持零写入。跨 Sco
 `ApplyMigrationCopy` 是显式同 Scope 复制入口：重新验证源 Generation/Manifest，优先读取已持久化 Fact；MEM-01D
 prepared 输入仍隔离时，只读取对应已提交 transaction 的精确 canonical Fact，不扫描或猜测其它事实，然后通过单锁
 `PutBatch` 写入目标。重复复制为 NOOP，冲突或任一输入失败时目标批次零生效。目标 Generation 编译、Doctor 和
-CURRENT 切换仍未开放。
+`ApplyMigration` 在复制成功后创建新的目标 Generation 事务，复用源的已验证编译输出，重新计算目标 Manifest/Generation
+Hash，并通过正常 `Begin → PrepareFact → PrepareManifest → WriteCompiledOutput → Commit` 流程执行目标 CURRENT CAS。
+源 Generation ID 不复用，源 Scope/CURRENT 不修改；目标已存在的事实按 PutBatch 幂等处理，目标编译输出或源完整性失败时
+不切换目标 CURRENT。跨 Scope 仍拒绝，必须走 Promotion。
 
 ## 三、后续写入事务
 
-真正执行必须：预览 → Snapshot → 复制不可变事实 → 编译派生 Generation → Doctor → 在目标 Scope CAS 切换 CURRENT。失败恢复目标旧入口，源 Scope 永不修改；所有动作追加审计事件并可重复执行。
+真正执行必须：预览 → Snapshot → 复制不可变事实 → 编译派生 Generation → Doctor → 在目标 Scope CAS 切换 CURRENT。`ApplyMigration`
+已覆盖复制、编译和 CAS；Snapshot/Doctor 专用审计与 CLI 入口仍待后续。失败恢复目标旧入口，源 Scope 永不修改；所有动作可重复执行。
 
 ## 四、TDD 验收矩阵
 

@@ -2,6 +2,8 @@ package memory
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -48,6 +50,53 @@ func TestApplyMigrationCopyIsAtomicAndIdempotent(t *testing.T) {
 	second, err := ApplyMigrationCopy(context.Background(), source, target, MigrationCopyRequest{Plan: plan})
 	if err != nil || second.Created != 0 || second.Noop != 2 {
 		t.Fatalf("copy replay must be idempotent: %+v %v", second, err)
+	}
+}
+
+func TestApplyMigrationPublishesNewTargetGeneration(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := openProject(t, targetRoot, Options{})
+	sourceTx := commitOne(t, NewGenerationStore(source), "migration_apply_source", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, sourceTx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	res, err := ApplyMigration(context.Background(), source, target, MigrationApplyRequest{Plan: plan, IdempotencyKey: "migration_apply_key"})
+	if err != nil || res.Commit.Status != CommitCommitted || res.GenerationID == sourceTx.GenerationID {
+		t.Fatalf("migration apply failed: %+v %v", res, err)
+	}
+	targetCur, err := NewGenerationStore(target).(*generationStore).readCurrent(context.Background())
+	if err != nil || targetCur.GenerationID != res.GenerationID {
+		t.Fatalf("target CURRENT mismatch: %+v %v", targetCur, err)
+	}
+	sourceCur, _ := NewGenerationStore(source).(*generationStore).readCurrent(context.Background())
+	if sourceCur.GenerationID != sourceTx.GenerationID {
+		t.Fatal("migration must not change source CURRENT")
+	}
+}
+
+func TestApplyMigrationRejectsCrossScopeAndTamperedSource(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := mustOpenStore(t, targetRoot, StoreScopeGlobal)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, "gen_01")
+	if err != nil || plan.Eligible {
+		t.Fatalf("cross scope preview must be blocked: %+v %v", plan, err)
+	}
+	projectTarget := openProject(t, tempRoot(t), Options{})
+	tx := commitOne(t, NewGenerationStore(source), "migration_tamper", nil)
+	plan, err = BuildMigrationPlanFromStores(context.Background(), source, projectTarget, tx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceRoot, "generations", tx.GenerationID, "generation.json"), []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ApplyMigration(context.Background(), source, projectTarget, MigrationApplyRequest{Plan: plan, IdempotencyKey: "migration_tamper_key"}); ErrorCode(err) != CodeGenerationStagingInvalid {
+		t.Fatalf("tampered source must fail closed, got %v", err)
 	}
 }
 
