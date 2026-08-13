@@ -1,7 +1,9 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
+	mem "github.com/mchenziyi/oh-my-reasonix/internal/memory"
 	"os"
 	"path/filepath"
 	"strings"
@@ -85,6 +87,24 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	}
 	if err := runMemory([]string{"doctor", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing memory store must fail for consistency doctor")
+	}
+}
+
+func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
+	project := t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureRunOutput(func() error { return runMemory([]string{"doctor", "--project-dir", project, "--json"}) })
+	if err != nil {
+		t.Fatal(err)
+	}
+	var report mem.ConsistencyReport
+	if err := json.Unmarshal([]byte(out), &report); err != nil {
+		t.Fatal(err)
+	}
+	if !report.Healthy || len(report.Findings) != 0 || report.Scope != "project" {
+		t.Fatalf("unexpected doctor report: %+v", report)
 	}
 }
 
