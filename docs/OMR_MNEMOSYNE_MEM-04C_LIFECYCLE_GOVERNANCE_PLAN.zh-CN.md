@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-04C：Lifecycle、Health 与治理事务计划
 
-- 状态：🟡 TDD 分阶段实现中（治理事件构建与安全提交已完成；unfreeze/Review Read 仍待实现）
+- 状态：🟡 TDD 分阶段实现中（治理事件、Review Read、Outcome Attribution Override 已实现；其余生命周期报表与一致性诊断仍待实现）
 - 前置：MEM-04B Enriched Outcome、MEM-02B Critic、MEM-02E Conflict Gate、既有 DerivedState/GovernanceEvent
 - 目标：把派生 Lifecycle/Health、追加式治理命令和 Frozen 读取隔离连成可验证、可审计的最小闭环
 
@@ -109,7 +109,7 @@ ReadMemoryForReview(ctx, ReviewReadRequest) (ReviewMemory, error)
 
 ```text
 omr memory pin|unpin|freeze|unfreeze|archive <memory-id> --revision <n> --reason ... --json
-omr memory outcome override <outcome-id> --effect neutral --reason ... --json
+omr memory outcome override <outcome-id> --previous-effect harmed --new-effect neutral --reason ... --json
 omr memory get <memory-id> --revision <n> [--include-frozen --review-mode] --json
 ```
 

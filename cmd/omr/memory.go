@@ -33,10 +33,14 @@ func runMemory(args []string) error {
 		return runMemoryUsageCapture(args[2:])
 	}
 	if args[0] == "outcome" {
-		if args[1] != "capture" {
-			return errors.New("memory outcome requires capture")
+		switch args[1] {
+		case "capture":
+			return runMemoryOutcomeCapture(args[2:])
+		case "override":
+			return runMemoryOutcomeOverride(args[2:])
+		default:
+			return errors.New("memory outcome requires capture or override")
 		}
-		return runMemoryOutcomeCapture(args[2:])
 	}
 	if args[0] == "get" {
 		return runMemoryGet(args[1:])
@@ -62,6 +66,49 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryOutcomeOverride(args []string) error {
+	fs := flag.NewFlagSet("memory outcome override", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	outcomeID := fs.String("outcome-id", "", "outcome id")
+	previous := fs.String("previous-effect", "", "current effect")
+	newEffect := fs.String("new-effect", "", "corrected effect")
+	reason := fs.String("reason", "", "override reason")
+	sourceType := fs.String("source", "local_user", "source type")
+	sourceID := fs.String("source-id", "local_user", "source id")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *outcomeID == "" && len(fs.Args()) > 0 {
+		*outcomeID = fs.Args()[0]
+	}
+	if *outcomeID == "" || *previous == "" || *newEffect == "" || *reason == "" {
+		return errors.New("outcome-id, previous-effect, new-effect and reason are required")
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	result, err := mem.CommitAttributionOverride(context.Background(), mem.AttributionOverrideRequest{Store: store, OutcomeID: *outcomeID, PreviousEffect: *previous, NewEffect: *newEffect, Reason: *reason, SourceType: *sourceType, SourceID: *sourceID, Now: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryGovernance(operation string, args []string) error {
