@@ -65,6 +65,12 @@ func runMemory(args []string) error {
 	if args[0] == "report" {
 		return runMemoryReport(args[1:])
 	}
+	if args[0] == "web" {
+		if len(args) < 2 || args[1] != "export" {
+			return errors.New("memory web requires export")
+		}
+		return runMemoryWebExport(args[2:])
+	}
 	if args[0] == "compile" {
 		return runMemoryCompile(args[1:])
 	}
@@ -1020,6 +1026,88 @@ func runMemoryList(args []string) error {
 		Kind  mem.FactKind `json:"kind"`
 		Keys  []string     `json:"keys"`
 	}{scope, mem.FactKind(*kindText), keys})
+}
+
+func runMemoryWebExport(args []string) error {
+	fs := flag.NewFlagSet("memory web export", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	nowText := fs.String("now", "", "explicit evaluation timestamp")
+	output := fs.String("output", "", "output HTML path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *output == "" {
+		return errors.New("web export requires --output")
+	}
+	if *nowText == "" {
+		return errors.New("web export now is required")
+	}
+	now, err := time.Parse(time.RFC3339, *nowText)
+	if err != nil {
+		return errors.New("web export now is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("web export scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("web export scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	data, err := mem.BuildMemoryWebExport(context.Background(), store, now)
+	if err != nil {
+		return err
+	}
+	if err := writeImmutableMemoryExport(*output, data); err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Scope  mem.Scope `json:"scope"`
+		Output string    `json:"output"`
+	}{scope, filepath.Clean(*output)})
+}
+
+func writeImmutableMemoryExport(path string, data []byte) error {
+	clean := filepath.Clean(path)
+	if clean == "." || clean == string(filepath.Separator) {
+		return errors.New("web export output is invalid")
+	}
+	if info, err := os.Lstat(clean); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
+			return errors.New("web export output is unsafe")
+		}
+		old, err := os.ReadFile(clean)
+		if err != nil {
+			return errors.New("web export output is unavailable")
+		}
+		if !bytes.Equal(old, data) {
+			return errors.New("web export output already exists with different content")
+		}
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return errors.New("web export output is unavailable")
+	}
+	f, err := os.OpenFile(clean, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return errors.New("web export output is unavailable")
+	}
+	defer f.Close()
+	if _, err := f.Write(data); err != nil {
+		return errors.New("web export output write failed")
+	}
+	if err := f.Sync(); err != nil {
+		return errors.New("web export output sync failed")
+	}
+	return nil
 }
 
 func runMemoryShow(args []string) error {

@@ -68,6 +68,34 @@ func TestMemoryRetrievalAuditRequiresExplicitNowAndDoesNotCreateStore(t *testing
 	}
 }
 
+func TestMemoryWebExportRequiresExplicitNowAndOutput(t *testing.T) {
+	project := t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"web", "export", "--project-dir", project, "--output", filepath.Join(project, "memory.html")}); err == nil || !strings.Contains(err.Error(), "now is required") {
+		t.Fatalf("web export must require explicit now, got %v", err)
+	}
+	if err := runMemory([]string{"web", "export", "--project-dir", project, "--now", "2026-08-14T00:00:00Z"}); err == nil || !strings.Contains(err.Error(), "requires --output") {
+		t.Fatalf("web export must require output, got %v", err)
+	}
+}
+
+func TestMemoryWebExportRejectsUnsafeOutput(t *testing.T) {
+	project, outside := t.TempDir(), t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	link := filepath.Join(project, "memory.html")
+	if err := os.Symlink(filepath.Join(outside, "outside.html"), link); err != nil {
+		t.Fatal(err)
+	}
+	err := runMemory([]string{"web", "export", "--project-dir", project, "--now", "2026-08-14T00:00:00Z", "--output", link})
+	if err == nil || !strings.Contains(err.Error(), "unsafe") {
+		t.Fatalf("web export must reject symlink output, got %v", err)
+	}
+}
+
 func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
 	sourceDir, targetDir := t.TempDir(), t.TempDir()
 	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {
