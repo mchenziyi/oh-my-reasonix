@@ -31,7 +31,8 @@ Mnemosyne 是 OMR 的长期工程记忆层。Reasonix 继续负责 Agent 推理�
 | MEM-05 修订、泛化与迁移 | v2.1.0-rc.1 | 🟡 自动化事务与 CLI 已实现，待跨项目验证 | MEM-04 | 需要跨项目验证 |
 | MEM-06 Benchmark 与稳定发布 | v2.1.0 | 🟡 配对 Fixture/Report 与只读 CLI 已实现，待真实临时项目联调 | MEM-05 | 需要正式 A/B 测试 |
 | WEB-01 只读静态记忆视图 | v2.2.0-alpha.1 | ✅ HTML 导出 MVP | MEM-06 | 不需要 |
-| WEB-02～03 本地记忆管理页面 | v2.2.x | ⏸ 后置 | WEB-01 | 需要桌面/浏览器联调 |
+| WEB-02 只读治理/审计视图 | v2.2.0-alpha.2 | ✅ HTML 审计 MVP | WEB-01 | 不需要 |
+| WEB-03 本地记忆管理页面 | v2.2.x | ⏸ 后置 | WEB-02 | 需要桌面/浏览器联调 |
 
 版本号是实施建议。每个阶段完成并经 CTO Review、全量门禁和用户确认后，才创建对应 Tag；不得提前创建 Release 或 Tag。
 

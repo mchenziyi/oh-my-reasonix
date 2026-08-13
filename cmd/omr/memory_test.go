@@ -96,6 +96,19 @@ func TestMemoryWebExportRejectsUnsafeOutput(t *testing.T) {
 	}
 }
 
+func TestMemoryWebAuditRequiresExplicitNowAndOutput(t *testing.T) {
+	project := t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"web", "audit", "--project-dir", project, "--output", filepath.Join(project, "audit.html")}); err == nil || !strings.Contains(err.Error(), "now is required") {
+		t.Fatalf("web audit must require explicit now, got %v", err)
+	}
+	if err := runMemory([]string{"web", "audit", "--project-dir", project, "--now", "2026-08-14T00:00:00Z"}); err == nil || !strings.Contains(err.Error(), "requires --output") {
+		t.Fatalf("web audit must require output, got %v", err)
+	}
+}
+
 func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
 	sourceDir, targetDir := t.TempDir(), t.TempDir()
 	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {

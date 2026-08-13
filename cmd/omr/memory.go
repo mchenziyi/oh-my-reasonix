@@ -66,10 +66,17 @@ func runMemory(args []string) error {
 		return runMemoryReport(args[1:])
 	}
 	if args[0] == "web" {
-		if len(args) < 2 || args[1] != "export" {
-			return errors.New("memory web requires export")
+		if len(args) < 2 {
+			return errors.New("memory web requires export or audit")
 		}
-		return runMemoryWebExport(args[2:])
+		switch args[1] {
+		case "export":
+			return runMemoryWebExport(args[2:])
+		case "audit":
+			return runMemoryWebAudit(args[2:])
+		default:
+			return errors.New("memory web requires export or audit")
+		}
 	}
 	if args[0] == "compile" {
 		return runMemoryCompile(args[1:])
@@ -1064,6 +1071,54 @@ func runMemoryWebExport(args []string) error {
 		return err
 	}
 	data, err := mem.BuildMemoryWebExport(context.Background(), store, now)
+	if err != nil {
+		return err
+	}
+	if err := writeImmutableMemoryExport(*output, data); err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Scope  mem.Scope `json:"scope"`
+		Output string    `json:"output"`
+	}{scope, filepath.Clean(*output)})
+}
+
+func runMemoryWebAudit(args []string) error {
+	fs := flag.NewFlagSet("memory web audit", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	nowText := fs.String("now", "", "explicit evaluation timestamp")
+	output := fs.String("output", "", "output HTML path")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *output == "" {
+		return errors.New("web audit requires --output")
+	}
+	if *nowText == "" {
+		return errors.New("web audit now is required")
+	}
+	now, err := time.Parse(time.RFC3339, *nowText)
+	if err != nil {
+		return errors.New("web audit now is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("web audit scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("web audit scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	data, err := mem.BuildMemoryAuditWebExport(context.Background(), store, now)
 	if err != nil {
 		return err
 	}
