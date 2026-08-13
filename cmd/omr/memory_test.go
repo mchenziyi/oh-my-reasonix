@@ -91,6 +91,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"status", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing memory id must fail for status")
 	}
+	if err := runMemory([]string{"report", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("missing memory store must fail for report")
+	}
 }
 
 func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {

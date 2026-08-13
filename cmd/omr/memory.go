@@ -51,6 +51,9 @@ func runMemory(args []string) error {
 	if args[0] == "status" {
 		return runMemoryStatus(args[1:])
 	}
+	if args[0] == "report" {
+		return runMemoryReport(args[1:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
@@ -72,6 +75,37 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryReport(args []string) error {
+	fs := flag.NewFlagSet("memory report", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	report, err := mem.BuildLifecycleReport(context.Background(), mem.LifecycleReportRequest{Store: store, Scope: sc, Now: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(report)
 }
 
 func runMemoryStatus(args []string) error {
