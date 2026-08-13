@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：🟡 设计计划，尚未实现迁移写入
+- 状态：✅ 只读 MigrationPlan 预览已实现并通过新增测试；迁移复制与 CURRENT 切换仍未实现
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 
