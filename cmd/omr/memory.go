@@ -69,6 +69,12 @@ func runMemory(args []string) error {
 	if args[0] == "migration" {
 		return runMemoryMigration(args[1:])
 	}
+	if args[0] == "generalize" {
+		if len(args) < 2 || args[1] != "apply" {
+			return errors.New("memory generalize requires apply")
+		}
+		return runMemoryGeneralizeApply(args[2:])
+	}
 	if args[0] == "rollback" {
 		return runMemoryRollback(args[1:])
 	}
@@ -102,6 +108,50 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryGeneralizeApply(args []string) error {
+	fs := flag.NewFlagSet("memory generalize apply", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	planPath := fs.String("plan", "", "GeneralizePlan JSON file")
+	targetPath := fs.String("target", "", "global MemoryRevision JSON file")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *global == "" || *planPath == "" || *targetPath == "" {
+		return errors.New("generalize apply requires --global-dir, --plan and --target")
+	}
+	planBytes, err := readBoundedJSONFile(*planPath)
+	if err != nil {
+		return err
+	}
+	targetBytes, err := readBoundedJSONFile(*targetPath)
+	if err != nil {
+		return err
+	}
+	var plan mem.GeneralizePlan
+	if err := strictJSON(planBytes, &plan); err != nil {
+		return errors.New("generalize plan JSON is invalid")
+	}
+	var target mem.MemoryRevision
+	if err := strictJSON(targetBytes, &target); err != nil {
+		return errors.New("generalize target JSON is invalid")
+	}
+	projectStore, err := openExistingMemoryStore(*project, mem.ScopeProject)
+	if err != nil {
+		return err
+	}
+	globalStore, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+	if err != nil {
+		return err
+	}
+	result, err := mem.ApplyGeneralizePlan(context.Background(), projectStore, globalStore, plan, target)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryReport(args []string) error {

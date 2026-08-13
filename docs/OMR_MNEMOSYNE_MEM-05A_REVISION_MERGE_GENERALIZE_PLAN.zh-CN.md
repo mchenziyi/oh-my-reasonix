@@ -66,7 +66,7 @@ Generalize 只允许从至少两个相互独立的 Project Scope 来源生成候
 
 ## 六、Generalize Apply 写入边界
 
-`ApplyGeneralizePlan` 是显式调用的 Global Revision 写入边界：重新读取并校验全部 Project 来源，要求目标事实为新的 Global `memory_id`/revision=1，并要求目标保留每个 `generalized_from` 五字段 `MemoryRef`。重复调用按 FactStore 身份幂等；失败不写入目标，不修改来源、CURRENT、Lifecycle 或 Global Active。
+`ApplyGeneralizePlan` 是显式调用的 Global Revision 写入边界：重新读取并校验全部 Project 来源，要求目标事实为新的 Global `memory_id`/revision=1，并要求目标保留每个 `generalized_from` 五字段 `MemoryRef`。重复调用按 FactStore 身份幂等；失败不写入目标，不修改来源、CURRENT、Lifecycle 或 Global Active。CLI 入口为 `omr memory generalize apply --project-dir <dir> --global-dir <dir> --plan <plan.json> --target <revision.json>`，计划和目标均只读解析。
 
 ## 七、明确不在 MEM-05A
 
