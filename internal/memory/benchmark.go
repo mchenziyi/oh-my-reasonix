@@ -156,6 +156,149 @@ type BenchmarkReport struct {
 	Metrics       BenchmarkMetrics `json:"metrics"`
 }
 
+// PairedBenchmarkArm contains only aggregate observable counts. It deliberately
+// has no prompt, command, model thought or project identity fields.
+type PairedBenchmarkArm struct {
+	RetrievalHits       int `json:"retrieval_hits"`
+	RetrievalCandidates int `json:"retrieval_candidates"`
+	Reads               int `json:"reads"`
+	Adoptions           int `json:"adoptions"`
+	WrongAdoptions      int `json:"wrong_adoptions"`
+	DownstreamSuccess   int `json:"downstream_success"`
+	DownstreamTotal     int `json:"downstream_total"`
+}
+
+type PairedBenchmarkCase struct {
+	CaseID    string             `json:"case_id"`
+	Mnemosyne PairedBenchmarkArm `json:"mnemosyne"`
+	Native    PairedBenchmarkArm `json:"native"`
+}
+
+type PairedBenchmarkFixture struct {
+	SchemaVersion int                   `json:"schema_version"`
+	FixtureID     string                `json:"fixture_id"`
+	Cases         []PairedBenchmarkCase `json:"cases"`
+}
+
+type PairedBenchmarkMetrics struct {
+	RetrievalRecall       float64 `json:"retrieval_recall"`
+	ReadingAdoptionRate   float64 `json:"reading_adoption_rate"`
+	WrongAdoptionRate     float64 `json:"wrong_adoption_rate"`
+	DownstreamSuccessRate float64 `json:"downstream_success_rate"`
+}
+
+type PairedBenchmarkReport struct {
+	SchemaVersion  int                    `json:"schema_version"`
+	FixtureID      string                 `json:"fixture_id"`
+	ProtocolOnly   bool                   `json:"protocol_only"`
+	EvidenceStatus string                 `json:"evidence_status"`
+	CaseCount      int                    `json:"case_count"`
+	Mnemosyne      PairedBenchmarkMetrics `json:"mnemosyne"`
+	Native         PairedBenchmarkMetrics `json:"native"`
+}
+
+func validatePairedArm(a PairedBenchmarkArm) error {
+	values := []int{a.RetrievalHits, a.RetrievalCandidates, a.Reads, a.Adoptions, a.WrongAdoptions, a.DownstreamSuccess, a.DownstreamTotal}
+	for _, v := range values {
+		if v < 0 {
+			return fmt.Errorf("paired benchmark: counts must not be negative")
+		}
+	}
+	if a.RetrievalHits > a.RetrievalCandidates || a.Adoptions > a.Reads || a.WrongAdoptions > a.Adoptions || a.DownstreamSuccess > a.DownstreamTotal {
+		return fmt.Errorf("paired benchmark: counts are inconsistent")
+	}
+	return nil
+}
+
+func (f PairedBenchmarkFixture) Validate() error {
+	if f.SchemaVersion != SchemaVersion {
+		return fmt.Errorf("paired benchmark: schema_version must be %d", SchemaVersion)
+	}
+	if err := validateID(f.FixtureID, "fixture_id"); err != nil {
+		return err
+	}
+	if len(f.Cases) == 0 {
+		return fmt.Errorf("paired benchmark: cases must not be empty")
+	}
+	seen := map[string]bool{}
+	for _, c := range f.Cases {
+		if err := validateID(c.CaseID, "case_id"); err != nil {
+			return err
+		}
+		if seen[c.CaseID] {
+			return fmt.Errorf("paired benchmark: duplicate case")
+		}
+		seen[c.CaseID] = true
+		if err := validatePairedArm(c.Mnemosyne); err != nil {
+			return err
+		}
+		if err := validatePairedArm(c.Native); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (f PairedBenchmarkFixture) CanonicalBytes() ([]byte, error) { return json.Marshal(f) }
+func (f PairedBenchmarkFixture) ContentHash() (string, error) {
+	b, err := f.CanonicalBytes()
+	if err != nil {
+		return "", err
+	}
+	return hashOf(b), nil
+}
+func (f PairedBenchmarkFixture) EncodeCanonical() ([]byte, error) {
+	return json.MarshalIndent(f, "", "  ")
+}
+
+func pairedMetrics(cases []PairedBenchmarkCase, arm func(PairedBenchmarkCase) PairedBenchmarkArm) PairedBenchmarkMetrics {
+	var hits, candidates, reads, adoptions, wrong, success, total int
+	for _, c := range cases {
+		a := arm(c)
+		hits += a.RetrievalHits
+		candidates += a.RetrievalCandidates
+		reads += a.Reads
+		adoptions += a.Adoptions
+		wrong += a.WrongAdoptions
+		success += a.DownstreamSuccess
+		total += a.DownstreamTotal
+	}
+	return PairedBenchmarkMetrics{RetrievalRecall: ratio(hits, candidates), ReadingAdoptionRate: ratio(adoptions, reads), WrongAdoptionRate: ratio(wrong, adoptions), DownstreamSuccessRate: ratio(success, total)}
+}
+
+func ratio(n, d int) float64 {
+	if d == 0 {
+		return 0
+	}
+	return float64(n) / float64(d)
+}
+
+// RunPairedBenchmarkFixture computes paired facts only; it never touches a
+// FactStore and requires no model or network access.
+func RunPairedBenchmarkFixture(ctx context.Context, fixturePath string) (*PairedBenchmarkReport, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, storeError(CodeLockTimeout, "paired benchmark cancelled")
+	}
+	data, err := os.ReadFile(fixturePath)
+	if err != nil {
+		return nil, storeError(CodeNotFound, "paired fixture file cannot be read")
+	}
+	fx, err := DecodeStrict[PairedBenchmarkFixture](data)
+	if err != nil {
+		return nil, classifyDecodeError(err)
+	}
+	// Validate after strict decoding so all numeric and semantic constraints are
+	// applied without exposing the input values in the error.
+	if err := fx.Validate(); err != nil {
+		return nil, storeError(CodeSchemaInvalid, "paired benchmark fixture is invalid")
+	}
+	status := "sufficient"
+	if len(fx.Cases) < 3 {
+		status = "insufficient_evidence"
+	}
+	return &PairedBenchmarkReport{SchemaVersion: SchemaVersion, FixtureID: fx.FixtureID, ProtocolOnly: true, EvidenceStatus: status, CaseCount: len(fx.Cases), Mnemosyne: pairedMetrics(fx.Cases, func(c PairedBenchmarkCase) PairedBenchmarkArm { return c.Mnemosyne }), Native: pairedMetrics(fx.Cases, func(c PairedBenchmarkCase) PairedBenchmarkArm { return c.Native })}, nil
+}
+
 // RunBenchmarkFixture loads one fixture file through the strict chain and
 // computes protocol metrics. It is deterministic: no wall clock, no random
 // source, no network.

@@ -98,7 +98,7 @@ internal/memory/canonical.go
 
 ### MEM-01B：安全 Fact Store
 
-状态：🟡 已形成 Benchmark 计划，待自动化配对实现与真实临时项目联调（见
+状态：🟡 配对 Fixture/Report 自动化已实现，待真实临时项目联调（见
 `OMR_MNEMOSYNE_MEM-06_QUALITY_BENCHMARK_PLAN.zh-CN.md`）
 
 交付：
