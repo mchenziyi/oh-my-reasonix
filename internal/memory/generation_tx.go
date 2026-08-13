@@ -84,6 +84,8 @@ func factIdentity(f Fact) (factType, factID string, err error) {
 		return "episode", v.EpisodeID, nil
 	case ContextDescriptorFact:
 		return "context_descriptor", v.ContextDescriptorID, nil
+	case GlobalPromotionCandidate:
+		return "promotion_candidate", v.CandidateID, nil
 	default:
 		return "", "", fmt.Errorf("unsupported fact type %T", f)
 	}
@@ -109,6 +111,8 @@ func factSchemaVersion(f Fact) int {
 	case EpisodeFact:
 		return v.SchemaVersion
 	case ContextDescriptorFact:
+		return v.SchemaVersion
+	case GlobalPromotionCandidate:
 		return v.SchemaVersion
 	default:
 		return 0
@@ -182,6 +186,8 @@ func resolveManifestInput(factType, factID string) (FactKind, string, error) {
 		return FactKindEpisode, factID, nil
 	case "context_descriptor":
 		return FactKindContextDescriptor, factID, nil
+	case "promotion_candidate":
+		return FactKindPromotionCandidate, factID, nil
 	default:
 		return "", "", fmt.Errorf("unknown fact type %q", factType)
 	}
