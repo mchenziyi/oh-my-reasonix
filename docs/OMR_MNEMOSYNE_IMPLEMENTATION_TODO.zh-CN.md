@@ -346,7 +346,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04C：Lifecycle、Health 与冻结
 
-状态：⬜
+状态：🟡 Schema Gate 已冻结，待 TDD 实现（见 `OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md`）
 
 - Lifecycle、Health、Pinned、Archived 均为派生状态；
 - Freeze/Unfreeze/Archive 必须追加 Governance Event；

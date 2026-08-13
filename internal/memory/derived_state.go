@@ -501,17 +501,14 @@ type governanceState struct {
 	archived bool
 }
 
-// applyGovernance applies the memory's governance events in deterministic
-// time order. Governance intent is memory-level: the event records the
-// revision it was issued against, but pin/freeze/archive apply to the memory
-// as a whole (the schema has no per-revision unpin/unfreeze/unarchive, so a
-// memory-level intent is the only consistent reading). Archived is terminal:
-// after an archive event every later pin/unpin/freeze/unfreeze intent is
-// ignored, so an archived memory can never be revived by intent.
+// applyGovernance applies the revision's governance events in deterministic
+// time order. The event's revision is part of its immutable target identity:
+// a new revision never inherits pin/freeze/archive intent from an older one.
+// Archived is terminal for that revision: later intent is ignored.
 func applyGovernance(events []GovernanceEvent, rev MemoryRevision) governanceState {
 	var mine []GovernanceEvent
 	for _, g := range events {
-		if g.MemoryID == rev.MemoryID {
+		if g.MemoryID == rev.MemoryID && g.Revision == rev.Revision {
 			mine = append(mine, g)
 		}
 	}

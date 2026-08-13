@@ -226,6 +226,12 @@ outcome_plan="docs/OMR_MNEMOSYNE_MEM-04B_ATTRIBUTION_OUTCOME_PLAN.zh-CN.md"
 for required in '状态：✅ 自动化实现完成，待真实 Reasonix Desktop Attribution 回执联调' 'AttributionReceipt 是瞬时协议' 'Outcome 采用 Legacy / Enriched 双形态' '模型不得提供 Outcome ID' '同一 `root_task_id + MemoryRef + context_signature`' '第三方失败无法触发冻结' '不读取墙钟' '当前没有自动调用 Attribution Analyst/Critic' '不得进入 MEM-04C'; do
   grep -q "$required" "$outcome_plan" || fail "MEM-04B plan missing contract '$required'"
 done
+
+governance_plan="docs/OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md"
+[ -f "$governance_plan" ] || fail "missing $governance_plan"
+for required in '状态：🟡 Schema Gate 已冻结，待 TDD 实现' '事件严格作用于目标 Revision' '自动冻结与 manual_freeze 分离' 'Unfreeze 硬门禁' 'Governance Event 本身不能解除自动冻结证据' '只有同时声明 `--review-mode`' '旧 Revision 的 Governance Event 不污染新 Revision' '不进入 MEM-04D'; do
+  grep -q "$required" "$governance_plan" || fail "MEM-04C plan missing contract '$required'"
+done
 if grep -Eq '模型直接提供 `(usage_id|content_sha256)`|自动生成 `Outcome`|自动判断 helped/harmed|读取最新 CURRENT' "$usage_capture_plan"; then
   fail "MEM-04A plan contains a forbidden Usage Capture architecture"
 fi

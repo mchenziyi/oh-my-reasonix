@@ -28,7 +28,7 @@ func attributionFixture(t *testing.T, stage string) (*FactStore, AttributionRece
 }
 
 func TestOutcomeLegacyCanonicalUnchanged(t *testing.T) {
-	o := Outcome{SchemaVersion: 1, OutcomeID: "outcome_legacy", Scope: ScopeProject, UsageID: "usage_legacy", MemoryID: "mem_legacy", Revision: 1, Effect: "neutral", ContentSHA256: testHash, CreatedAt: "2026-08-07T00:00:00Z"}
+	o := Outcome{SchemaVersion: 1, OutcomeID: "outcome_legacy", Scope: ScopeProject, UsageID: "usage_legacy", MemoryID: "mem_legacy", Revision: 1, Effect: "neutral", ContentSHA256: "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", CreatedAt: "2026-08-07T00:00:00Z"}
 	b, err := o.CanonicalBytes()
 	if err != nil {
 		t.Fatal(err)
