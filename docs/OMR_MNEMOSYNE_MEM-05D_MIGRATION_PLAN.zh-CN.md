@@ -72,10 +72,10 @@ omr memory migration copy \
 
 ```text
 执行 OMR Mnemosyne MEM-05D。先读取本计划、MEM-01D、MEM-03C、MEM-05B/05C 与 FactStore Scope/路径安全实现。
-先做 Schema Gate，不新增第二事实源、不隐式 Project→Global。严格 TDD，实现只读 MigrationPlan 预览与显式同 Scope
+先做 Schema Gate，不新增第二事实源、不隐式 Project→Global。严格 TDD，实现只读 MigrationPlan 预览、Migration Doctor 与显式同 Scope
 `ApplyMigrationCopy`：显式 source/target
 Scope、GenerationRef、Manifest Hash、事实集合和固定步骤；校验 Hash、Scope、权限、symlink、未来时间和输入完整性。
-计划生成零写入；复制只读取已验证源事实并通过 PutBatch 写目标，不切 CURRENT、不调用模型/网络。目标编译、Doctor 与
+计划生成和 Doctor 零写入；`copy` 只读取已验证源事实并通过 PutBatch 写目标，不切 CURRENT、不调用模型/网络。目标编译与
 CURRENT 切换留到后续批准阶段。
 运行 gofmt、git diff --check、go test -race ./internal/memory/...、go test ./...、go vet、go build、docs_check；
 未获 CTO 复核前不要提交、推送或创建 Tag。
