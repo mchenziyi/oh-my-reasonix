@@ -319,7 +319,7 @@ omr memory index doctor
 ```text
 omr memory context
 omr memory episode list
-omr memory episode show <episode-id>
+omr memory episode show --episode-id <episode-id>
 omr memory retrieval audit <retrieval-id>
 ```
 
