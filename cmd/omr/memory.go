@@ -22,8 +22,17 @@ type episodicContextDocument struct {
 }
 
 func runMemory(args []string) error {
-	if len(args) < 2 || args[0] != "episodic" {
-		return errors.New("memory requires episodic context, index, card, validate-receipt, or doctor")
+	if len(args) < 2 {
+		return errors.New("memory requires an episodic or usage command")
+	}
+	if args[0] == "usage" {
+		if args[1] != "capture" {
+			return errors.New("memory usage requires capture")
+		}
+		return runMemoryUsageCapture(args[2:])
+	}
+	if args[0] != "episodic" {
+		return errors.New("memory requires an episodic or usage command")
 	}
 	switch args[1] {
 	case "context":
@@ -39,6 +48,53 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryUsageCapture(args []string) error {
+	fs := flag.NewFlagSet("memory usage capture", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	librarianFile := fs.String("librarian-receipt", "", "validated Librarian receipt JSON")
+	usageFile := fs.String("usage-receipt", "", "MemoryUsage receipt JSON")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *librarianFile == "" || *usageFile == "" {
+		return errors.New("librarian-receipt and usage-receipt are required")
+	}
+	lb, err := readBoundedJSONFile(*librarianFile)
+	if err != nil {
+		return err
+	}
+	var librarian mem.LibrarianReceipt
+	if err := strictJSON(lb, &librarian); err != nil {
+		return errors.New("librarian receipt is invalid")
+	}
+	ub, err := readBoundedJSONFile(*usageFile)
+	if err != nil {
+		return err
+	}
+	usage, err := mem.DecodeStrict[mem.MemoryUsageReceipt](ub)
+	if err != nil {
+		return errors.New("usage receipt is invalid")
+	}
+	dir := *project
+	if usage.EpisodeRef.Scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, usage.EpisodeRef.Scope)
+	if err != nil {
+		return err
+	}
+	result, err := mem.CommitMemoryUsages(context.Background(), mem.CaptureUsageRequest{Store: store, LibrarianReceipt: librarian, UsageReceipt: usage})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func memoryStoreRoot(project string) string {

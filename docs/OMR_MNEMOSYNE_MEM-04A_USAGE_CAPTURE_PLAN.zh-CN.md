@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-04A：结构化 MemoryUsage 采集计划
 
-- 状态：🟡 Schema Gate 已设计，待实现
+- 状态：✅ 自动化实现完成，待真实 Reasonix Desktop 回执联调
 - 前置：MEM-03B Librarian、MEM-03C Composite/Episodic Recall、MEM-02A Anchored MemoryUsage
 - 目标：把 Reasonix 对记忆的实际使用转换为可验证、幂等、不可变的 `MemoryUsage` Fact
 
@@ -158,3 +158,20 @@ Outcome/归因/Lifecycle 逻辑，不得让模型提供 ID、时间或 Hash，�
 go build ./cmd/omr、tests/docs_check.sh，并做 review/security review。输出修改文件、Schema、ID 生成、
 事务/幂等、测试矩阵、门禁与剩余问题；不要提交、推送、创建 Tag，也不要进入 MEM-04B。
 ```
+
+## 七、实现结果与剩余边界
+
+已实现：
+
+- `MemoryUsageReceipt` 严格瞬时 Schema，未知字段和归因字段 fail closed；
+- `BuildMemoryUsages` 只从固定 LibrarianReceipt、Episode、ContextDescriptor 派生可信字段；
+- 同一候选的多阶段折叠为最高最终阶段，未声明候选记录为 `retrieved`；
+- UsageID 对 RootTask/Retrieval/完整 MemoryRef 确定性生成，Retry 重放为 NOOP；
+- 单 Scope 批量提交在写入前完成全量 identity preflight，冲突零写入；
+- `omr memory usage capture` 支持安全文件读取和稳定 JSON 结果；
+- 进程级测试真实构建 OMR，并完成 Generation → LibrarianReceipt → Episode → UsageReceipt → Fact；
+- 未产生 Outcome 时只增加 usage_count，help/harm 保持 0。
+
+剩余边界：真实 Reasonix Desktop 尚需输出符合协议的 `MemoryUsageReceipt`；知识型 LibrarianReceipt 的
+自动生成仍依赖后续 MEM-03E/宿主接入。联调前不宣称自动采集已在 Desktop 默认启用。本阶段没有实现
+Outcome、归因、Lifecycle 自动变更或跨 Store 原子提交。

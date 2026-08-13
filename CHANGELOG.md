@@ -2,6 +2,9 @@
 
 ## [Unreleased]
 
+### Added
+- **Mnemosyne MEM-04A MemoryUsage 采集**：新增严格的 `MemoryUsageReceipt`、固定世界构建器与 `omr memory usage capture`；可信 ID、时间、Context、Episode Provenance 和 Hash 全部由 OMR 从规范事实确定性生成。重复阶段只保留最高最终阶段，Retry 幂等 NOOP，冲突批次零写入；本阶段不生成 Outcome 或正负归因。
+
 ### Security
 - **Import 签名策略收紧**：`omr evolve import --trusted-key` 现在隐含 `--require-signature`，避免在未校验签名的情况下静默接受未签名经验包；`--trusted-key=`/`--input=`/`--require-signature=` 等号形式同样生效，非法 `--require-signature` 值被拒绝（不再静默忽略）。
 - **git commit 检测加固**：`IsGitCommit` 解析 git 全局选项（`-C`/`-c`/`--no-pager`/`--git-dir=`/`--config-env=` 等），`git --no-pager commit`、`git -c k=v commit`、绝对路径 git 与 env 前缀命令不再绕过 Comment Checker 守卫；未知 git 选项不再提前判非 commit；换行分隔、命令替换（`$(...)`/反引号）、shell 链（`&&`/`;`/`|`）中含 git commit 的命令按 fail-closed 处理。

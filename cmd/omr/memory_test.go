@@ -69,4 +69,25 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"episodic", "validate-receipt", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing receipt file must fail")
 	}
+	if err := runMemory([]string{"usage", "capture", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("missing usage receipt files must fail")
+	}
+}
+
+func TestMemoryUsageCLIRejectsUnknownFieldsBeforeStoreAccess(t *testing.T) {
+	dir := t.TempDir()
+	librarian := filepath.Join(dir, "librarian.json")
+	usage := filepath.Join(dir, "usage.json")
+	if err := os.WriteFile(librarian, []byte(`{"schema_version":1,"unknown":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(usage, []byte(`{"schema_version":1}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"usage", "capture", "--project-dir", dir, "--librarian-receipt", librarian, "--usage-receipt", usage}); err == nil {
+		t.Fatal("unknown field must fail")
+	}
+	if _, err := os.Stat(memoryStoreRoot(dir)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("invalid input created a memory store")
+	}
 }

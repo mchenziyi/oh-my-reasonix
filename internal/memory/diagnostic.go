@@ -47,6 +47,8 @@ const (
 	CodeIndexPolicyUnsatisfied  Code = "memory_index_policy_unsatisfied"
 	CodeLibrarianInvalidContext Code = "memory_librarian_invalid_context"
 	CodeLibrarianInvalidReceipt Code = "memory_librarian_invalid_receipt"
+	CodeUsageCaptureInvalid     Code = "memory_usage_capture_invalid"
+	CodeUsageCapturePending     Code = "memory_usage_capture_pending"
 
 	// Evaluation codes (MEM-02-01).
 	CodeEvaluationFutureReference Code = "memory_evaluation_future_reference"

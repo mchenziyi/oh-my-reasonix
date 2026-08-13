@@ -327,7 +327,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04A：结构化 MemoryUsage 回执
 
-状态：🟡 Schema Gate 已设计，待实现（见 `OMR_MNEMOSYNE_MEM-04A_USAGE_CAPTURE_PLAN.zh-CN.md`）
+状态：✅ 自动化实现完成，待真实 Reasonix Desktop 回执联调（见 `OMR_MNEMOSYNE_MEM-04A_USAGE_CAPTURE_PLAN.zh-CN.md`）
 
 - Reasonix 通过 Prompt Protocol 返回结构化回执；
 - OMR 只记录客观事件、引用和时间；
