@@ -75,10 +75,17 @@ func runMemory(args []string) error {
 		case "audit":
 			return runMemoryWebAudit(args[2:])
 		case "action":
-			if len(args) < 3 || args[2] != "validate" {
-				return errors.New("memory web action requires validate")
+			if len(args) < 3 {
+				return errors.New("memory web action requires validate or apply")
 			}
-			return runMemoryWebActionValidate(args[3:])
+			switch args[2] {
+			case "validate":
+				return runMemoryWebActionValidate(args[3:])
+			case "apply":
+				return runMemoryWebActionApply(args[3:])
+			default:
+				return errors.New("memory web action requires validate or apply")
+			}
 		default:
 			return errors.New("memory web requires export or audit")
 		}
@@ -1162,6 +1169,44 @@ func runMemoryWebActionValidate(args []string) error {
 		ActionID   string `json:"action_id"`
 		ContentSHA string `json:"content_sha256"`
 	}{true, action.ActionID, hash})
+}
+
+func runMemoryWebActionApply(args []string) error {
+	fs := flag.NewFlagSet("memory web action apply", flag.ContinueOnError)
+	input := fs.String("input", "", "action JSON file")
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global directory")
+	confirm := fs.Bool("confirm", false, "explicit second confirmation")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	data, err := readBoundedJSONFile(*input)
+	if err != nil {
+		return err
+	}
+	var action mem.WebManagementAction
+	if err := strictJSON(data, &action); err != nil || action.Validate() != nil {
+		return errors.New("web action is invalid")
+	}
+	dir := *project
+	if action.Scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("web action scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, action.Scope)
+	if err != nil {
+		return err
+	}
+	result, err := mem.ApplyWebManagementAction(context.Background(), store, action, *confirm)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(struct {
+		Status  string `json:"status"`
+		EventID string `json:"event_id"`
+	}{result.Status.String(), result.Event.EventID})
 }
 
 func writeImmutableMemoryExport(path string, data []byte) error {

@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"time"
@@ -67,4 +68,31 @@ func (a WebManagementAction) ContentHash() (string, error) {
 		return "", err
 	}
 	return NewContentHash(b), nil
+}
+
+// ApplyWebManagementAction executes a validated action only after an explicit
+// second confirmation. It delegates all persistence and lifecycle checks to
+// the existing Governance API; the web protocol adds no write path of its own.
+func ApplyWebManagementAction(ctx context.Context, store *FactStore, action WebManagementAction, confirmed bool) (GovernanceResult, error) {
+	if store == nil {
+		return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "web action store is unavailable")
+	}
+	if !confirmed {
+		return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "web action requires explicit confirmation")
+	}
+	if err := action.Validate(); err != nil {
+		return GovernanceResult{}, storeError(CodeSchemaInvalid, "web action is invalid")
+	}
+	now, err := time.Parse(time.RFC3339Nano, action.RequestedAt)
+	if err != nil {
+		return GovernanceResult{}, storeError(CodeDerivedInvalidInput, "web action timestamp is invalid")
+	}
+	operation := action.Operation
+	if operation == "freeze" {
+		operation = "manual_freeze"
+	}
+	return CommitGovernanceEvent(ctx, GovernanceRequest{
+		Store: store, Target: action.Target, Operation: operation,
+		Reason: action.Reason, Source: "local_web", BasisRefs: action.BasisRefs, Now: now.UTC(),
+	})
 }

@@ -144,6 +144,37 @@ func TestMemoryWebActionValidateCLIIsStrictAndReadOnly(t *testing.T) {
 	}
 }
 
+func TestMemoryWebActionApplyCLIRequiresConfirmation(t *testing.T) {
+	project := t.TempDir()
+	store, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev := mem.MemoryRevision{SchemaVersion: mem.SchemaVersion, MemoryID: "mem_web_cli_apply", MemoryType: mem.MemoryTypeStrategy, Scope: mem.ScopeProject, CanonicalKey: "web-cli", Revision: 1, UsagePolicy: mem.UsagePolicyOutcomeAttributed, Title: "CLI", Summary: "CLI", CreatedAt: "2026-08-14T00:00:00Z"}
+	rev.ContentSHA256, err = rev.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Put(context.Background(), rev); err != nil {
+		t.Fatal(err)
+	}
+	action := mem.WebManagementAction{SchemaVersion: mem.SchemaVersion, ActionID: "web_cli_apply_01", Scope: mem.ScopeProject, Target: mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}, Operation: "freeze", Reason: "manual review", RequestedAt: "2026-08-14T00:00:00Z"}
+	data, err := json.Marshal(action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := filepath.Join(project, "action.json")
+	if err := os.WriteFile(input, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"web", "action", "apply", "--project-dir", project, "--input", input}); err == nil {
+		t.Fatal("web action apply must require --confirm")
+	}
+	if err := runMemory([]string{"web", "action", "apply", "--project-dir", project, "--input", input, "--confirm"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
 	sourceDir, targetDir := t.TempDir(), t.TempDir()
 	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {
