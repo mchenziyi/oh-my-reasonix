@@ -368,7 +368,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：🟡 Revision/Merge/Split/Apply 已实现并通过门禁；Generalize/批准审计与真实联调仍待后续阶段（见
+状态：🟡 Revision/Merge/Split/Generalize Apply 已实现并通过门禁；批准审计与真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；

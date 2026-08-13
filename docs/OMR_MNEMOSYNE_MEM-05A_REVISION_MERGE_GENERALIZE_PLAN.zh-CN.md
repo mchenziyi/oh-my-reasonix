@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05A：Revision、Merge、Split 与 Generalize
 
 - 阶段：MEM-05A
-- 状态：🟡 只读计划层、Revision/Merge/Split Apply 已实现并通过门禁（2026-08-13）；Generalize/Global Promotion 仍需独立批准事务
+- 状态：🟡 只读计划层、Revision/Merge/Split/Generalize Apply 已实现并通过门禁（2026-08-13）；批准审计与 Global Promotion 仍需独立事务
 - 前置：MEM-01A～MEM-04C 自动化链已完成；MEM-04A～04B 的真实 Desktop 回执仍待联调
 - 目标：在不覆盖既有 Revision、不开启自动 Global Promotion 的前提下，定义可审计的修订、合并、拆分与泛化计划
 
@@ -64,7 +64,11 @@ Generalize 只允许从至少两个相互独立的 Project Scope 来源生成候
 8. 相同输入、排序变化和重复调用输出字节稳定；
 9. `go test -race ./internal/memory/...` 与全仓门禁通过。
 
-## 六、明确不在 MEM-05A
+## 六、Generalize Apply 写入边界
+
+`ApplyGeneralizePlan` 是显式调用的 Global Revision 写入边界：重新读取并校验全部 Project 来源，要求目标事实为新的 Global `memory_id`/revision=1，并要求目标保留每个 `generalized_from` 五字段 `MemoryRef`。重复调用按 FactStore 身份幂等；失败不写入目标，不修改来源、CURRENT、Lifecycle 或 Global Active。
+
+## 七、明确不在 MEM-05A
 
 - `ApplyRevisionPlan`、`ApplyMergePlan` 和 `ApplySplitPlan` 是显式调用的写入边界：重新校验 source/target/evidence 后复用 FactStore；Split 通过单锁 `PutBatch` 预校验并在失败时回滚本批新文件，避免留下半套分支。不自动批准，不切换 CURRENT，不更新 Lifecycle 或索引。
 - 不实现自动批准、Merge/Split/Global Promotion、跨设备同步或 Web 管理页面；
@@ -72,7 +76,7 @@ Generalize 只允许从至少两个相互独立的 Project Scope 来源生成候
 - 不修改 Architecture v1、MEM-01A～MEM-04C 冻结 Schema；
 - 不创建 Tag/Release；不在真实正式项目上试运行。
 
-## 七、交给 Reasonix Agent 的执行提示词
+## 八、交给 Reasonix Agent 的执行提示词
 
 ```text
 执行 OMR Mnemosyne MEM-05A。先完整读取本计划、Architecture v1、MEM-01A～MEM-04C 计划与 internal/memory
