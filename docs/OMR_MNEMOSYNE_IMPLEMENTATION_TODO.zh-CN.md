@@ -401,7 +401,8 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05D：迁移切换
 
-状态：⬜
+状态：🟡 已形成迁移预览计划，待 Schema Gate 与 TDD 实现（见
+`OMR_MNEMOSYNE_MEM-05D_MIGRATION_PLAN.zh-CN.md`）
 
 - 迁移采用预览 → Snapshot → 复制 → 编译 → Doctor → 切换；
 - 失败自动恢复旧读取入口；
