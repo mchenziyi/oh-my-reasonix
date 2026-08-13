@@ -30,7 +30,7 @@ func TestBuildMemoryAuditWebExportUsesDerivedStateAndIsReadOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(a) != string(b) || !strings.Contains(string(a), "mem_audit_01") || !strings.Contains(string(a), "probation") {
+	if string(a) != string(b) || !strings.Contains(string(a), "mem_audit_01") || !strings.Contains(string(a), "probation") || !strings.Contains(string(a), "href=\"/\"") || !strings.Contains(string(a), "href=\"/manager\"") {
 		t.Fatal("audit export must be deterministic and include derived state")
 	}
 }

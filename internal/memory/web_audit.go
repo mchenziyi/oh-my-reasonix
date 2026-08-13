@@ -33,7 +33,7 @@ func BuildMemoryAuditWebExport(ctx context.Context, store *FactStore, now time.T
 	b.WriteString(html.EscapeString(string(scope)))
 	b.WriteString("; evaluated: ")
 	b.WriteString(html.EscapeString(now.UTC().Format(time.RFC3339)))
-	b.WriteString("</p><p>Governance events: ")
+	b.WriteString("</p><p><a href=\"/\">Open memory view</a> · <a href=\"/manager\">Open manager</a></p><p>Governance events: ")
 	b.WriteString(itoa(len(eventKeys)))
 	b.WriteString("</p><table><thead><tr><th>Memory</th><th>Type</th><th>Revision</th><th>Lifecycle</th><th>Health</th><th>Freshness</th><th>Usage</th></tr></thead><tbody>")
 	for _, state := range derived.States {
