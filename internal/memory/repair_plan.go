@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"os"
 	"path/filepath"
 )
 
@@ -47,12 +46,19 @@ func BuildRepairPlan(ctx context.Context, store GenerationStore) (RepairPlan, er
 		plan.Action = "none"
 		return plan, nil
 	}
-	if _, err := os.Stat(filepath.Join(gs.store.root, "facts", string(FactKindGenerationInputManifest), cur.GenerationID+".json")); err != nil {
+	manifestData, err := gs.store.Get(ctx, FactKindGenerationInputManifest, cur.GenerationID)
+	if err != nil {
 		plan.Action = "blocked"
 		plan.BlockedReason = "generation input manifest is unavailable"
 		return plan, nil
 	}
-	if _, ok := supportedGenerationCompilers[doc.CompilerVersion]; !ok {
+	manifest, err := DecodeStrict[GenerationInputManifest](manifestData)
+	if err != nil || manifest.GenerationID != cur.GenerationID || manifest.Scope != doc.Scope || manifest.CompilerVersion != doc.CompilerVersion || manifest.CanonicalizationVersion != doc.CanonicalizationVersion || manifest.OutputSHA256 != doc.OutputGenerationSHA256 {
+		plan.Action = "blocked"
+		plan.BlockedReason = "generation input manifest is invalid"
+		return plan, nil
+	}
+	if !generationCompilerAvailable(doc.CompilerVersion, doc.CanonicalizationVersion) {
 		plan.Action = "blocked"
 		plan.BlockedReason = "generation compiler is unavailable"
 		return plan, nil

@@ -70,3 +70,27 @@ func TestBuildRollbackPlanRejectsTamperedTarget(t *testing.T) {
 		t.Fatalf("tampered target must be blocked: %+v", rb)
 	}
 }
+
+func TestBuildRepairPlanRejectsCorruptManifest(t *testing.T) {
+	root := tempRoot(t)
+	gs := openGenerationProject(t, root)
+	tx := commitOne(t, gs, "repair_manifest_corrupt", nil)
+	genDir := filepath.Join(root, "generations", tx.GenerationID)
+	if err := os.Mkdir(filepath.Join(genDir, "wiki"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(genDir, "wiki", "tampered.md"), []byte("tampered"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manifestPath := filepath.Join(root, "facts", string(FactKindGenerationInputManifest), tx.GenerationID+".json")
+	if err := os.WriteFile(manifestPath, []byte(`{}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	plan, err := BuildRepairPlan(context.Background(), gs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.Rebuildable || plan.BlockedReason != "generation input manifest is unavailable" && plan.BlockedReason != "generation input manifest is invalid" {
+		t.Fatalf("corrupt manifest must block repair: %+v", plan)
+	}
+}
