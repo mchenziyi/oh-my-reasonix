@@ -379,7 +379,8 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05B：Global Promotion
 
-状态：⬜
+状态：🟡 Schema Gate 设计中，尚未实现 Global 写入（见
+`OMR_MNEMOSYNE_MEM-05B_GLOBAL_PROMOTION_PLAN.zh-CN.md`）
 
 - Schema 先支持 Global，实际 Promotion 仍按 Usage Policy 分流；
 - 单项目不能生成 Global Active；
