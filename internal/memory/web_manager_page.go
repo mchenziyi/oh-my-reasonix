@@ -48,7 +48,7 @@ func BuildMemoryManagerPage(ctx context.Context, store *FactStore, now time.Time
 	var b strings.Builder
 	b.WriteString("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"referrer\" content=\"no-referrer\"><title>OMR Mnemosyne Manager</title>")
 	b.WriteString("<style>body{font:14px system-ui,sans-serif;margin:2rem;color:#222}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:.45rem;text-align:left}button{margin:.15rem;padding:.3rem .6rem}input{padding:.35rem;width:18rem}.meta{color:#666}</style></head><body>")
-	b.WriteString("<h1>OMR Mnemosyne Manager</h1><p class=\"meta\">Local-only manual governance. Every action is revalidated and confirmed.</p><label>Reason <input id=\"reason\" maxlength=\"512\" value=\"manual review\"></label><label>Unfreeze basis refs (JSON array) <textarea id=\"basis-refs\" rows=\"2\" cols=\"60\" placeholder=\"[{&quot;kind&quot;:&quot;memory&quot;,...}]\"></textarea></label><table><thead><tr><th>Memory</th><th>Type</th><th>Revision</th><th>Lifecycle</th><th>Health</th><th>Usage</th><th>Title</th><th>Actions</th></tr></thead><tbody>")
+	b.WriteString("<h1>OMR Mnemosyne Manager</h1><p class=\"meta\">Local-only manual governance. Every action is revalidated and confirmed. <a href=\"/audit\">Open audit view</a></p><label>Reason <input id=\"reason\" maxlength=\"512\" value=\"manual review\"></label><label>Unfreeze basis refs (JSON array) <textarea id=\"basis-refs\" rows=\"2\" cols=\"60\" placeholder=\"[{&quot;kind&quot;:&quot;memory&quot;,...}]\"></textarea></label><table><thead><tr><th>Memory</th><th>Type</th><th>Revision</th><th>Lifecycle</th><th>Health</th><th>Usage</th><th>Title</th><th>Relations</th><th>Actions</th></tr></thead><tbody>")
 	for _, rev := range revisions {
 		action := WebManagementAction{SchemaVersion: SchemaVersion, ActionID: "web_ui_pending", Scope: rev.Scope, Target: memoryRefFromRevision(rev), Operation: "freeze", Reason: "manual review", RequestedAt: now.UTC().Format(time.RFC3339Nano)}
 		data, err := json.Marshal(action)
@@ -73,6 +73,18 @@ func BuildMemoryManagerPage(ctx context.Context, store *FactStore, now time.Time
 		b.WriteString(itoa(state.Usage.UsageCount))
 		b.WriteString("</td><td>")
 		b.WriteString(html.EscapeString(rev.Title))
+		b.WriteString("</td><td>")
+		for i, rel := range rev.Relations {
+			if i > 0 {
+				b.WriteString("<br>")
+			}
+			b.WriteString(html.EscapeString(rel.Predicate))
+			b.WriteString(" → <code>")
+			b.WriteString(html.EscapeString(rel.Target.MemoryID))
+			b.WriteString("@")
+			b.WriteString(itoa(rel.Target.Revision))
+			b.WriteString("</code>")
+		}
 		b.WriteString("</td><td>")
 		b.WriteString("<button class=\"action\" data-operation=\"pin\" data-action='")
 		b.WriteString(html.EscapeString(string(data)))

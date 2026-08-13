@@ -19,6 +19,16 @@ func webHandlerFixture(t *testing.T) (http.Handler, WebManagementAction) {
 	rev := validRevision()
 	rev.MemoryID = "mem_web_handler"
 	rev.Title = "<script>bad()</script>"
+	target := validRevision()
+	target.MemoryID = "mem_web_target"
+	target.ContentSHA256, err = target.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Put(context.Background(), target); err != nil {
+		t.Fatal(err)
+	}
+	rev.Relations = []MemoryRelation{{Predicate: "related_to", Target: memoryRefFromRevision(target)}}
 	rev.ContentSHA256, err = rev.ContentHash()
 	if err != nil {
 		t.Fatal(err)
@@ -44,7 +54,7 @@ func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
 	}
 	manager := httptest.NewRecorder()
 	h.ServeHTTP(manager, httptest.NewRequest(http.MethodGet, "/manager", nil))
-	if manager.Code != http.StatusOK || !bytes.Contains(manager.Body.Bytes(), []byte("X-OMR-Confirm")) || !bytes.Contains(manager.Body.Bytes(), []byte("mem_web_handler")) || !bytes.Contains(manager.Body.Bytes(), []byte("Lifecycle")) || !bytes.Contains(manager.Body.Bytes(), []byte("probation")) || !bytes.Contains(manager.Body.Bytes(), []byte("healthy")) || !bytes.Contains(manager.Body.Bytes(), []byte("Usage")) || !bytes.Contains(manager.Body.Bytes(), []byte("Unfreeze")) || !bytes.Contains(manager.Body.Bytes(), []byte("basis-refs")) || !bytes.Contains(manager.Body.Bytes(), []byte("location.reload")) || bytes.Contains(manager.Body.Bytes(), []byte("<script>bad()")) || !bytes.Contains(manager.Body.Bytes(), []byte("&lt;script&gt;bad()")) {
+	if manager.Code != http.StatusOK || !bytes.Contains(manager.Body.Bytes(), []byte("X-OMR-Confirm")) || !bytes.Contains(manager.Body.Bytes(), []byte("/audit")) || !bytes.Contains(manager.Body.Bytes(), []byte("mem_web_handler")) || !bytes.Contains(manager.Body.Bytes(), []byte("Lifecycle")) || !bytes.Contains(manager.Body.Bytes(), []byte("probation")) || !bytes.Contains(manager.Body.Bytes(), []byte("healthy")) || !bytes.Contains(manager.Body.Bytes(), []byte("Usage")) || !bytes.Contains(manager.Body.Bytes(), []byte("Relations")) || !bytes.Contains(manager.Body.Bytes(), []byte("related_to")) || !bytes.Contains(manager.Body.Bytes(), []byte("Unfreeze")) || !bytes.Contains(manager.Body.Bytes(), []byte("basis-refs")) || !bytes.Contains(manager.Body.Bytes(), []byte("location.reload")) || bytes.Contains(manager.Body.Bytes(), []byte("<script>bad()")) || !bytes.Contains(manager.Body.Bytes(), []byte("&lt;script&gt;bad()")) {
 		t.Fatalf("manager endpoint failed: %d %s", manager.Code, manager.Body.String())
 	}
 	data, err := json.Marshal(action)

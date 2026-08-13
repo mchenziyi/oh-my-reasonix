@@ -22,7 +22,7 @@
 
 1. 静态资源与 JSON 数据协议（先做确定性 fixture 和浏览器无关测试）。
 2. ✅ 本地受限启动器（`memory web serve`，随机本地端口、仅 loopback、单 workspace）。
-3. ✅ 只读详情/关系/审计/管理页面（`/manager`），管理页展示同一固定时间点重建的 Lifecycle、Health 与 Usage。
+3. ✅ 只读详情/关系/审计/管理页面（`/manager`），管理页展示同一固定时间点重建的 Lifecycle、Health、Usage、关系与审计入口。
 4. 人工确认后的 CLI 治理操作和回滚结果刷新。
 
 ## 验收
