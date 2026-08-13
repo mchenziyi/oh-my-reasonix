@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-04C：Lifecycle、Health 与治理事务计划
 
-- 状态：🟡 TDD 分阶段实现中（治理事件、Review Read、Outcome Attribution Override、Consistency Doctor、Lifecycle Report 已实现；Fake CLI 闭环与真实 Desktop 联调仍待完成）
+- 状态：🟡 TDD 分阶段实现中；自动化实现基本完成（治理事件、Review Read、Outcome Attribution Override、Consistency Doctor、Lifecycle Report、Fake CLI 闭环已通过门禁；仅剩真实 Reasonix Desktop 联调）
 - 前置：MEM-04B Enriched Outcome、MEM-02B Critic、MEM-02E Conflict Gate、既有 DerivedState/GovernanceEvent
 - 目标：把派生 Lifecycle/Health、追加式治理命令和 Frozen 读取隔离连成可验证、可审计的最小闭环
 
@@ -136,7 +136,7 @@ omr memory doctor --scope project --project-dir . --json
 8. normal get/Librarian/Index 排除 frozen；review-mode 显式读取成功且不修改索引；
 9. 所有失败零部分写入、错误脱敏；symlink/权限/路径安全继承 FactStore；
 10. 不读墙钟（库层）、不写 Revision/CURRENT、无模型调用；
-11. Fake CLI 进程闭环：freeze → normal get 拒绝 → review get 成功 → 有效 override+basis → unfreeze；
+11. Fake CLI 闭环：freeze → normal get 拒绝 → review get 成功 → 有效 override+basis → unfreeze（✅ 已覆盖）；
 12. 全量 derive/index/compiler 字节确定性与 Legacy Outcome 兼容不回归。
 
 最终门禁：gofmt、diff check、memory/CLI race、全仓 test、vet、build、Docs Gate、review/security review。

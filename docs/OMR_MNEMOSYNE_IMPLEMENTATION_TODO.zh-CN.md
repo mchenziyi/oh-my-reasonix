@@ -292,7 +292,7 @@ omr memory index doctor
 
 ### MEM-03C：Episodic Recall
 
-状态：🟠 Schema Gate 已完成，等待 CTO 批准 D1～D10（见
+状态：✅ MEM-03C-01～04 自动化实现完成，待真实 Reasonix Desktop 联调（见
 `OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md`）
 
 - Episode Card 和 Episodic Index 只能由规范事实派生；
@@ -346,7 +346,8 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04C：Lifecycle、Health 与冻结
 
-状态：🟡 Schema Gate 已冻结，待 TDD 实现（见 `OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md`）
+状态：🟡 自动化实现基本完成，待真实 Reasonix Desktop 联调（见
+`OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md`）
 
 - Lifecycle、Health、Pinned、Archived 均为派生状态；
 - Freeze/Unfreeze/Archive 必须追加 Governance Event；
