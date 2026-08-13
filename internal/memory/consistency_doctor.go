@@ -40,17 +40,18 @@ type ConsistencyRequest struct {
 }
 
 const (
-	findingOrphanMemoryRef     = "orphan_memory_ref"
-	findingOrphanOutcomeRef    = "orphan_outcome_ref"
-	findingOrphanPolicyRef     = "orphan_policy_ref"
-	findingOrphanJudgmentRef   = "orphan_judgment_ref"
-	findingOrphanEvidenceRef   = "orphan_evidence_ref"
-	findingReferenceMismatch   = "reference_mismatch"
-	findingCrossScopeReference = "cross_scope_reference"
-	findingSupersedeCycle      = "supersede_cycle"
-	findingSubjectMismatch     = "subject_payload_mismatch"
-	findingAttributionMismatch = "attribution_override_mismatch"
-	findingCorruptFact         = "corrupt_fact"
+	findingOrphanMemoryRef      = "orphan_memory_ref"
+	findingOrphanOutcomeRef     = "orphan_outcome_ref"
+	findingOrphanPolicyRef      = "orphan_policy_ref"
+	findingOrphanJudgmentRef    = "orphan_judgment_ref"
+	findingOrphanEvidenceRef    = "orphan_evidence_ref"
+	findingReferenceMismatch    = "reference_mismatch"
+	findingCrossScopeReference  = "cross_scope_reference"
+	findingSupersedeCycle       = "supersede_cycle"
+	findingSubjectMismatch      = "subject_payload_mismatch"
+	findingAttributionMismatch  = "attribution_override_mismatch"
+	findingUsageContextMismatch = "usage_context_mismatch"
+	findingCorruptFact          = "corrupt_fact"
 )
 
 // CheckConsistency audits every fact in the store's scope. It never writes,
@@ -87,6 +88,23 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 	}
 	if err := loadPromotionCandidates(ctx, store, report); err != nil {
 		return nil, err
+	}
+	usages, err := loadMemoryUsages(ctx, store, report)
+	if err != nil {
+		return nil, err
+	}
+	usageContexts := map[string]MemoryContext{}
+	for _, usage := range usages {
+		if !usage.anchored() || usage.RetrievalID == "" || usage.MemoryContext == nil {
+			continue
+		}
+		if prior, ok := usageContexts[usage.RetrievalID]; ok {
+			if !memoryContextsEqual(prior, *usage.MemoryContext) {
+				add(report, findingUsageContextMismatch, "error", "memory_usage", usage.UsageID, "usages sharing a retrieval_id must share the same memory context")
+			}
+		} else {
+			usageContexts[usage.RetrievalID] = *usage.MemoryContext
+		}
 	}
 
 	revSet := map[string]bool{} // memory_id@revision
@@ -365,6 +383,31 @@ func loadOutcomes(ctx context.Context, store *FactStore, report *ConsistencyRepo
 			continue
 		}
 		out = append(out, o)
+	}
+	return out, nil
+}
+
+func loadMemoryUsages(ctx context.Context, store *FactStore, report *ConsistencyReport) ([]MemoryUsage, error) {
+	keys, err := store.List(ctx, FactKindMemoryUsage)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]MemoryUsage, 0, len(keys))
+	for _, key := range keys {
+		data, err := store.Get(ctx, FactKindMemoryUsage, key)
+		if err != nil {
+			if isCorruptCode(ErrorCode(err)) {
+				add(report, findingCorruptFact, "error", "memory_usage", key, "memory usage fact fails strict validation")
+				continue
+			}
+			return nil, err
+		}
+		usage, err := DecodeStrict[MemoryUsage](data)
+		if err != nil {
+			add(report, findingCorruptFact, "error", "memory_usage", key, "memory usage fact fails strict validation")
+			continue
+		}
+		out = append(out, usage)
 	}
 	return out, nil
 }

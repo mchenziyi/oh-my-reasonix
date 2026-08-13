@@ -76,7 +76,7 @@ observation_provenance: ObservationProvenance
 - `context_descriptor_ref` 是 Architecture v1 12.2 已冻结的 Context Signature 可解释性锚点；Protocol Extension 6.2 的规则已引用该字段，本计划把 YAML 示例中的遗漏显式补齐；
 - 不用 `usage_id` 或 `episode_id` 代替 `retrieval_id` / `root_task_id`；
 - 同一 Retrieval 的 `retrieved/read/adopted/affected/evaluated` 回执使用同一 `retrieval_id` 与同一 `memory_context`；
-- 本阶段不扫描其他 Usage 来强制跨记录相等；该一致性属于后续只读 Doctor/评估器；
+- 跨记录一致性不写回 Usage；现由 `CheckConsistency` 只读检查同一 `retrieval_id` 的锚定 Usage 是否共享完全相同的 `memory_context`，不一致只输出诊断，不修复、不删除；
 - `context_signature_version` MVP 只接受 `1`；`context_signature` 必须为合法 SHA-256；`context_descriptor_ref` 必须为受控 ID；
 - 新锚字段全部进入 Canonical Bytes 与 `content_sha256`。
 

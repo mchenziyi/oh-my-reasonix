@@ -31,6 +31,39 @@ func TestConsistencyDoctorCleanStore(t *testing.T) {
 	}
 }
 
+func TestConsistencyDoctorDetectsRetrievalContextMismatch(t *testing.T) {
+	root := tempRoot(t)
+	s := openProject(t, root, Options{})
+	a := anchoredUsage(t)
+	a.UsageID = "usage_context_a"
+	h, err := a.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.ContentSHA256 = h
+	if _, err := s.Put(context.Background(), a); err != nil {
+		t.Fatal(err)
+	}
+	b := anchoredUsage(t)
+	b.UsageID = "usage_context_b"
+	b.MemoryContext.ProjectGenerationRef.GenerationID = "gen_project_000011"
+	h, err = b.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.ContentSHA256 = h
+	if _, err := s.Put(context.Background(), b); err != nil {
+		t.Fatal(err)
+	}
+	report, err := CheckConsistency(context.Background(), s, ConsistencyRequest{Scope: ScopeProject})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if report.Healthy || !hasFinding(report, findingUsageContextMismatch) {
+		t.Fatalf("expected retrieval context mismatch finding, got %+v", report.Findings)
+	}
+}
+
 func TestConsistencyDoctorAttributionOverrideMismatch(t *testing.T) {
 	store, receipt, _ := attributionFixture(t, "evaluated")
 	if _, err := CommitOutcomes(context.Background(), AttributionRequest{Store: store, Receipt: receipt}); err != nil {
