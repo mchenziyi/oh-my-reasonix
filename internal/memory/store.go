@@ -275,14 +275,27 @@ func (s *FactStore) PutBatch(ctx context.Context, facts []Fact) ([]WriteResult, 
 // putBatchLocked is used by a higher-level transaction that already owns the
 // same store lock. Callers must not invoke it without that lock.
 func (s *FactStore) putBatchLocked(ctx context.Context, facts []Fact) ([]WriteResult, error) {
+	results, _, err := s.putBatchLockedWithRollback(ctx, facts)
+	return results, err
+}
+
+// putBatchLockedWithRollback is used by a higher-level transaction that must
+// be able to undo facts it created if a later transaction step fails. The
+// returned cleanup is safe to call once and never removes pre-existing facts.
+func (s *FactStore) putBatchLockedWithRollback(ctx context.Context, facts []Fact) ([]WriteResult, func(), error) {
 	if len(facts) == 0 {
-		return nil, storeError(CodeSchemaInvalid, "fact batch must not be empty")
+		return nil, func() {}, storeError(CodeSchemaInvalid, "fact batch must not be empty")
 	}
 	prepared, results, err := s.prepareBatch(ctx, facts)
 	if err != nil {
-		return nil, err
+		return nil, func() {}, err
 	}
+	cleaned := false
 	rollback := func() {
+		if cleaned {
+			return
+		}
+		cleaned = true
 		for _, item := range prepared {
 			if !item.createdPath {
 				continue
@@ -299,7 +312,7 @@ func (s *FactStore) putBatchLocked(ctx context.Context, facts []Fact) ([]WriteRe
 		}
 		if err := s.atomicWriteFile(prepared[i].path, prepared[i].canonical); err != nil {
 			rollback()
-			return nil, err
+			return nil, func() {}, err
 		}
 		prepared[i].createdPath = true
 		results[i] = WriteResult{Status: WriteCreated, Key: prepared[i].key, Hash: prepared[i].hash}
@@ -308,11 +321,11 @@ func (s *FactStore) putBatchLocked(ctx context.Context, facts []Fact) ([]WriteRe
 		if item.createdPath {
 			if err := s.verifyCommitted(item.kind, item.comps, item.canonical); err != nil {
 				rollback()
-				return nil, err
+				return nil, func() {}, err
 			}
 		}
 	}
-	return results, nil
+	return results, rollback, nil
 }
 
 func (s *FactStore) prepareBatch(ctx context.Context, facts []Fact) ([]preparedBatchFact, []WriteResult, error) {

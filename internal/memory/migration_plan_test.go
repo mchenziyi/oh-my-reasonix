@@ -124,6 +124,42 @@ func TestApplyMigrationPersistsDeterministicSnapshotBeforePublish(t *testing.T) 
 	}
 }
 
+func TestMigrationFactRollbackRemovesOnlyFactsCreatedByApply(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := openProject(t, targetRoot, Options{})
+	sourceTx := commitOne(t, NewGenerationStore(source), "migration_fact_rollback", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, sourceTx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, manifest, facts, err := loadMigrationSource(context.Background(), source, plan)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unlock, err := target.acquireWriteLock(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, rollback, err := copyMigrationFactsLockedWithRollback(context.Background(), target, facts, manifest)
+	if err != nil || result.Created != 2 {
+		unlock()
+		t.Fatalf("expected migration facts to be created before downstream failure: %+v %v", result, err)
+	}
+	rollback()
+	unlock()
+	for _, fact := range append(append([]Fact{}, facts...), manifest) {
+		kind, key, keyErr := factKey(fact)
+		if keyErr != nil {
+			t.Fatal(keyErr)
+		}
+		if _, getErr := target.Get(context.Background(), kind, key); ErrorCode(getErr) != CodeNotFound {
+			t.Fatalf("downstream failure rollback left fact %s: %v", key, getErr)
+		}
+	}
+}
+
 func TestApplyMigrationRejectsCrossScopeAndTamperedSource(t *testing.T) {
 	sourceRoot := tempRoot(t)
 	targetRoot := tempRoot(t)

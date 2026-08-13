@@ -51,6 +51,10 @@ Hash，并通过正常 `Begin → PrepareFact → PrepareManifest → WriteCompi
 `migration-snapshots/<snapshot-id>.json`。Snapshot 只保存源 Generation/Manifest、Scope、完整计划 Hash
 和目标基线 Generation，不复制事实、不成为第二事实源；同一内容重复写入为 NOOP，内容冲突或损坏均拒绝覆盖。
 
+事实复制与后续 Generation 准备共享同一目标写锁；若准备、编译、Manifest 或 Commit 在 CURRENT 切换前失败，
+事务会只撤销本次新建且字节未变化的目标事实，保留既有事实、Snapshot 和可诊断事务记录。CURRENT 切换后若进入
+PendingRecovery，则不撤销事实，交由 Recover 完成审计，避免把已生效 Generation 变成半截状态。
+
 显式复制入口：
 
 ```bash

@@ -85,6 +85,7 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 		_ = targetGS.Abort(ctx, tx, "migration apply failed")
 		return MigrationApplyResult{}, cause
 	}
+	var rollbackFacts func()
 	snapshot, err := persistMigrationSnapshot(target, req.Plan, tx.BaseGeneration)
 	if err != nil {
 		return abort(err)
@@ -93,37 +94,43 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	if err != nil {
 		return abort(err)
 	}
-	copyResult, err := copyMigrationFactsLocked(ctx, target, facts, sourceManifest)
+	var copyResult MigrationCopyResult
+	copyResult, rollbackFacts, err = copyMigrationFactsLockedWithRollback(ctx, target, facts, sourceManifest)
 	if err != nil {
 		return abort(err)
+	}
+	abortWithFacts := func(cause error) (MigrationApplyResult, error) {
+		rollbackFacts()
+		return abort(cause)
 	}
 	for _, input := range facts {
 		if err := targetGS.PrepareFact(ctx, tx, input); err != nil {
-			return abort(err)
+			return abortWithFacts(err)
 		}
 	}
 	if err := targetGS.WriteCompiledOutput(ctx, tx, outputs); err != nil {
-		return abort(err)
+		return abortWithFacts(err)
 	}
 	staging, err := targetGS.stagingDir(ctx, tx.GenerationID)
 	if err != nil {
-		return abort(err)
+		return abortWithFacts(err)
 	}
 	compiledHash, err := targetGS.compiledOutputHash(ctx, staging)
 	if err != nil {
-		return abort(err)
+		return abortWithFacts(err)
 	}
 	gen := generationDoc{SchemaVersion: SchemaVersion, GenerationID: tx.GenerationID, Scope: tx.Scope, BaseGeneration: baseOrNil(base), CompilerVersion: tx.CompilerVersion, CanonicalizationVersion: tx.CanonicalizationVersion, TransactionID: tx.TransactionID, CompiledOutputSHA256: compiledHash}
 	gen.OutputGenerationSHA256, err = gen.outputHash()
 	if err != nil {
-		return abort(err)
+		return abortWithFacts(err)
 	}
 	mf := manifestForMigration(sourceManifest, tx, gen.OutputGenerationSHA256)
 	if err := targetGS.PrepareManifest(ctx, tx, mf); err != nil {
-		return abort(err)
+		return abortWithFacts(err)
 	}
 	commit, err := targetGS.Commit(ctx, tx)
 	if err != nil && commit.Status != CommitPendingRecovery {
+		rollbackFacts()
 		return MigrationApplyResult{}, err
 	}
 	return MigrationApplyResult{Copy: copyResult, Commit: commit, GenerationID: commit.GenerationID, SnapshotID: snapshot.SnapshotID}, err
@@ -317,19 +324,30 @@ func copyMigrationFactsLocked(ctx context.Context, target *FactStore, facts []Fa
 	return copyMigrationFactsWithPut(ctx, target, facts, mf, true)
 }
 
+func copyMigrationFactsLockedWithRollback(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest) (MigrationCopyResult, func(), error) {
+	return copyMigrationFactsWithPutAndRollback(ctx, target, facts, mf, true)
+}
+
 func copyMigrationFactsWithPut(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest, locked bool) (MigrationCopyResult, error) {
+	result, _, err := copyMigrationFactsWithPutAndRollback(ctx, target, facts, mf, locked)
+	return result, err
+}
+
+func copyMigrationFactsWithPutAndRollback(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest, locked bool) (MigrationCopyResult, func(), error) {
 	all := append(append([]Fact{}, facts...), mf)
 	var (
-		results []WriteResult
-		err     error
+		results  []WriteResult
+		err      error
+		rollback func()
 	)
 	if locked {
-		results, err = target.putBatchLocked(ctx, all)
+		results, rollback, err = target.putBatchLockedWithRollback(ctx, all)
 	} else {
 		results, err = target.PutBatch(ctx, all)
+		rollback = func() {}
 	}
 	if err != nil {
-		return MigrationCopyResult{}, err
+		return MigrationCopyResult{}, func() {}, err
 	}
 	result := MigrationCopyResult{GenerationID: mf.GenerationID, FactCount: len(results)}
 	for _, item := range results {
@@ -339,7 +357,7 @@ func copyMigrationFactsWithPut(ctx context.Context, target *FactStore, facts []F
 			result.Noop++
 		}
 	}
-	return result, nil
+	return result, rollback, nil
 }
 
 func preparedMigrationFact(ctx context.Context, gs *generationStore, txID string, input ManifestInput) ([]byte, error) {
