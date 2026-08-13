@@ -44,7 +44,7 @@ func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
 	}
 	manager := httptest.NewRecorder()
 	h.ServeHTTP(manager, httptest.NewRequest(http.MethodGet, "/manager", nil))
-	if manager.Code != http.StatusOK || !bytes.Contains(manager.Body.Bytes(), []byte("X-OMR-Confirm")) || !bytes.Contains(manager.Body.Bytes(), []byte("mem_web_handler")) || !bytes.Contains(manager.Body.Bytes(), []byte("Unfreeze")) || !bytes.Contains(manager.Body.Bytes(), []byte("basis-refs")) || !bytes.Contains(manager.Body.Bytes(), []byte("location.reload")) || bytes.Contains(manager.Body.Bytes(), []byte("<script>bad()")) || !bytes.Contains(manager.Body.Bytes(), []byte("&lt;script&gt;bad()")) {
+	if manager.Code != http.StatusOK || !bytes.Contains(manager.Body.Bytes(), []byte("X-OMR-Confirm")) || !bytes.Contains(manager.Body.Bytes(), []byte("mem_web_handler")) || !bytes.Contains(manager.Body.Bytes(), []byte("Lifecycle")) || !bytes.Contains(manager.Body.Bytes(), []byte("probation")) || !bytes.Contains(manager.Body.Bytes(), []byte("healthy")) || !bytes.Contains(manager.Body.Bytes(), []byte("Usage")) || !bytes.Contains(manager.Body.Bytes(), []byte("Unfreeze")) || !bytes.Contains(manager.Body.Bytes(), []byte("basis-refs")) || !bytes.Contains(manager.Body.Bytes(), []byte("location.reload")) || bytes.Contains(manager.Body.Bytes(), []byte("<script>bad()")) || !bytes.Contains(manager.Body.Bytes(), []byte("&lt;script&gt;bad()")) {
 		t.Fatalf("manager endpoint failed: %d %s", manager.Code, manager.Body.String())
 	}
 	data, err := json.Marshal(action)
