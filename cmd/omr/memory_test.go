@@ -58,6 +58,16 @@ func TestMemoryPairedBenchmarkCLI(t *testing.T) {
 	}
 }
 
+func TestMemoryRetrievalAuditRequiresExplicitNowAndDoesNotCreateStore(t *testing.T) {
+	project := t.TempDir()
+	if err := runMemory([]string{"retrieval", "audit", "evaluation_01", "--project-dir", project}); err == nil {
+		t.Fatal("retrieval audit must require explicit --now")
+	}
+	if _, err := os.Stat(memoryStoreRoot(project)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("retrieval audit created a missing store")
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")

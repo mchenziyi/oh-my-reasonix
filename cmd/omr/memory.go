@@ -60,12 +60,18 @@ func runMemory(args []string) error {
 		}
 		return runMemoryPairedBenchmark(args[2:])
 	}
+	if args[0] == "retrieval" {
+		if len(args) < 2 || args[1] != "audit" {
+			return errors.New("memory retrieval requires audit")
+		}
+		return runMemoryRetrievalAudit(args[2:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
 	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires get, benchmark, episodic, usage or outcome command")
+		return errors.New("memory requires get, benchmark, retrieval, episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -133,6 +139,46 @@ func runMemoryPairedBenchmark(args []string) error {
 		return writeJSONValue(*output, "paired benchmark", report)
 	}
 	return writeJSONOutput(report)
+}
+
+func runMemoryRetrievalAudit(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
+	fs := flag.NewFlagSet("memory retrieval audit", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	nowText := fs.String("now", "", "explicit RFC3339 evaluation time")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if fs.NArg() != 1 {
+		return errors.New("retrieval audit requires evaluation id")
+	}
+	now, err := time.Parse(time.RFC3339Nano, *nowText)
+	if err != nil || *nowText == "" {
+		return errors.New("retrieval audit requires a valid --now timestamp")
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	result, err := mem.ValidateRetrievalEvaluation(context.Background(), store, mem.RetrievalEvaluationRequest{Scope: sc, EvaluationID: fs.Arg(0), ProjectStore: store, Now: now.UTC()})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryStatus(args []string) error {

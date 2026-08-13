@@ -24,11 +24,11 @@ Mnemosyne 是 OMR 的长期工程记忆层。Reasonix 继续负责 Agent 推理�
 | 阶段 | 建议版本 | 状态 | 依赖 | 人工协助 |
 |---|---|---|---|---|
 | Architecture v1 | — | ✅ 已冻结 | Docs Gate | 不需要 |
-| MEM-01 核心事实与 Generation | v2.1.0-alpha.1 | 🟡 进行中（MEM-01A 已签收） | Architecture v1 | 不需要 |
-| MEM-02 Evolution 转换与 OKF 编译 | v2.1.0-alpha.2 | ⬜ 未开始 | MEM-01 | 不需要 |
-| MEM-03 Librarian 与检索审计 | v2.1.0-beta.1 | ⬜ 未开始 | MEM-02 | 后期建议 |
-| MEM-04 Lifecycle、归因与 Freshness | v2.1.0-beta.2 | ⬜ 未开始 | MEM-03 | 需要真实任务抽样 |
-| MEM-05 修订、泛化与迁移 | v2.1.0-rc.1 | ⬜ 未开始 | MEM-04 | 需要跨项目验证 |
+| MEM-01 核心事实与 Generation | v2.1.0-alpha.1 | ✅ 自动化实现完成，待真实联调 | Architecture v1 | 不需要 |
+| MEM-02 Evolution 转换与 OKF 编译 | v2.1.0-alpha.2 | ✅ 自动化实现完成，待真实联调 | MEM-01 | 不需要 |
+| MEM-03 Librarian 与检索审计 | v2.1.0-beta.1 | 🟡 自动化实现完成，待 Episode 回放与 Desktop 联调 | MEM-02 | 后期建议 |
+| MEM-04 Lifecycle、归因与 Freshness | v2.1.0-beta.2 | 🟡 自动化实现完成，待真实任务抽样 | MEM-03 | 需要真实任务抽样 |
+| MEM-05 修订、泛化与迁移 | v2.1.0-rc.1 | 🟡 只读计划层完成，写入事务待后续 | MEM-04 | 需要跨项目验证 |
 | MEM-06 Benchmark 与稳定发布 | v2.1.0 | 🟡 配对 Fixture/Report 与只读 CLI 已实现，待真实临时项目联调 | MEM-05 | 需要正式 A/B 测试 |
 | WEB-01～03 本地记忆管理页面 | v2.2.x | ⏸ 后置 | MEM-06 | 需要桌面/浏览器联调 |
 
@@ -134,7 +134,7 @@ internal/memory/canonical.go
 
 ### MEM-01D：Generation 事务与唯一提交点
 
-状态：⬜
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-01D_PLAN.zh-CN.md`）
 
 交付：
 
@@ -160,7 +160,7 @@ Fact
 
 ### MEM-01E：最小 OKF 编译器
 
-状态：⬜
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-01E_PLAN.zh-CN.md`）
 
 第一版只生成：
 
@@ -183,7 +183,7 @@ memory/generations/<id>/wiki/<type>/<page>.md
 
 ### MEM-01F：Doctor 与 Repair 基础
 
-状态：⬜
+状态：✅ 已实现并通过门禁（见 `OMR_MNEMOSYNE_MEM-01F_PLAN.zh-CN.md`）
 
 Doctor 至少检查：
 
@@ -303,7 +303,7 @@ omr memory index doctor
 
 ### MEM-03D：Retrieval Evaluation
 
-状态：⬜
+状态：✅ 只读 RetrievalEvaluation 验证器已实现并通过门禁（MEM-02D）；CLI 入口见 MEM-03E。
 
 - 固定原 Retrieval 的 Project/Global Generation Pair；
 - 支持 Oracle、Critic、User Review 的 Judgment 来源区分；
@@ -313,7 +313,7 @@ omr memory index doctor
 
 ### MEM-03E：检索回放与 CLI
 
-状态：⬜
+状态：🟡 `omr memory retrieval audit` 已实现；Episode 回放/真实 Desktop 联调仍待完成。
 
 新增：
 
@@ -358,7 +358,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04D：Freshness/Revalidation
 
-状态：⬜
+状态：✅ 只读 Freshness/Revalidation 评估器与显式时间校验已实现并通过门禁（MEM-02F）。
 
 - Freshness 单独记录 Judgment、时间、PolicyRef 和依据；
 - 时间流逝不直接产生 frozen/superseded/archived；
@@ -413,7 +413,7 @@ omr memory retrieval audit <retrieval-id>
 
 ## 9. MEM-06：Memory Quality Benchmark
 
-状态：⬜
+状态：🟡 配对 Fixture/Report 与只读 CLI 已实现，待真实临时项目配对 Benchmark 联调。
 
 冻结以下内容后再运行：
 
