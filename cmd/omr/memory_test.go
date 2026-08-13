@@ -151,6 +151,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"promotion", "apply"}); err == nil {
 		t.Fatal("promotion apply must require explicit plan, policy and target")
 	}
+	if err := runMemory([]string{"promotion", "candidate", "put"}); err == nil {
+		t.Fatal("promotion candidate put must require global store and input")
+	}
 	if err := runMemory([]string{"rollback", "generation_1", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("rollback must require explicit audit fields")
 	}
@@ -164,6 +167,57 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 		t.Fatal("show must require a fact kind")
 	}
 }
+
+func TestMemoryPromotionCandidatePutCLI(t *testing.T) {
+	project := t.TempDir()
+	global := t.TempDir()
+	if _, err := mem.OpenGlobal(memoryStoreRoot(global), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	candidate := mem.GlobalPromotionCandidate{
+		SchemaVersion: mem.SchemaVersion, CandidateID: "promotion_cli_candidate", Status: "collecting",
+		UsagePolicy: mem.UsagePolicyOutcomeAttributed,
+		SourceMemoryRefs: []mem.MemoryRef{
+			{Scope: mem.ScopeProject, MemoryType: "strategy", MemoryID: "memory_cli_a", Revision: 1, ContentSHA256: testHashForCLI},
+			{Scope: mem.ScopeProject, MemoryType: "strategy", MemoryID: "memory_cli_b", Revision: 1, ContentSHA256: testHashForCLI},
+		},
+		SourceProjectFamilyFingerprints: []string{testHashForCLI, "sha256_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"},
+		OutcomeRefs:                     []string{"outcome_cli"}, EvidenceRefs: []mem.EvidenceRef{}, CriticJudgmentRefs: []mem.JudgmentRef{},
+		ProposedAppliesWhen: []mem.ApplicabilityCondition{}, ProposedDoesNotApplyWhen: []mem.ApplicabilityCondition{},
+	}
+	var err error
+	candidate.ContentSHA256, err = candidate.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := filepath.Join(project, "candidate.json")
+	b, err := candidate.EncodeCanonical()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(input, b, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := captureRunOutput(func() error {
+		return runMemory([]string{"promotion", "candidate", "put", "--global-dir", global, "--input", input, "--json"})
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := captureRunOutput(func() error {
+		return runMemory([]string{"promotion", "candidate", "put", "--global-dir", global, "--input", input, "--json"})
+	}); err != nil {
+		t.Fatalf("replaying the same candidate must be idempotent: %v", err)
+	}
+	store, err := mem.OpenGlobal(memoryStoreRoot(global), mem.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Get(context.Background(), mem.FactKindPromotionCandidate, candidate.CandidateID); err != nil {
+		t.Fatalf("candidate was not persisted: %v", err)
+	}
+}
+
+const testHashForCLI = "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
 func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
 	project := t.TempDir()

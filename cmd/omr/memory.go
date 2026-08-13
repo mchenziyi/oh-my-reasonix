@@ -76,8 +76,17 @@ func runMemory(args []string) error {
 		return runMemoryGeneralizeApply(args[2:])
 	}
 	if args[0] == "promotion" {
-		if len(args) < 2 || args[1] != "apply" {
-			return errors.New("memory promotion requires apply")
+		if len(args) < 2 {
+			return errors.New("memory promotion requires apply or candidate")
+		}
+		if args[1] == "candidate" {
+			if len(args) < 3 || args[2] != "put" {
+				return errors.New("memory promotion candidate requires put")
+			}
+			return runMemoryPromotionCandidatePut(args[3:])
+		}
+		if args[1] != "apply" {
+			return errors.New("memory promotion requires apply or candidate")
 		}
 		return runMemoryPromotionApply(args[2:])
 	}
@@ -114,6 +123,36 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryPromotionCandidatePut(args []string) error {
+	fs := flag.NewFlagSet("memory promotion candidate put", flag.ContinueOnError)
+	global := fs.String("global-dir", "", "global memory directory")
+	input := fs.String("input", "", "GlobalPromotionCandidate JSON file")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *global == "" || *input == "" {
+		return errors.New("promotion candidate put requires --global-dir and --input")
+	}
+	b, err := readBoundedJSONFile(*input)
+	if err != nil {
+		return err
+	}
+	candidate, err := mem.DecodeStrict[mem.GlobalPromotionCandidate](b)
+	if err != nil {
+		return errors.New("promotion candidate JSON is invalid")
+	}
+	store, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+	if err != nil {
+		return err
+	}
+	result, err := store.Put(context.Background(), candidate)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryPromotionApply(args []string) error {

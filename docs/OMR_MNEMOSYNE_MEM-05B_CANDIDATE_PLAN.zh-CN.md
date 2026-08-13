@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：GlobalPromotionCandidate 规范事实
 
 - 阶段：MEM-05B-Candidate
-- 状态：✅ 已实现并通过门禁（2026-08-13）；Consistency Doctor 已纳入候选事实完整性检查
+- 状态：✅ 已实现并通过门禁（2026-08-13）；Consistency Doctor 与 `memory promotion candidate put` CLI 已纳入候选事实完整性检查/写入
 - 依据：Architecture v1 §17.5/Global Promotion；现有 `PromotionPlan` 只读对象
 
 ## 目标
@@ -27,6 +27,18 @@
 
 `Put` 只接受严格 Schema、精确引用和脱敏结构化字段；同 ID 同 Hash 为 NOOP，不同 Hash fail closed。Candidate 仅由显式调用写入，不自动批准、不切换 CURRENT、不修改来源 Project Facts。
 
+CLI 写入入口：
+
+```bash
+omr memory promotion candidate put \
+  --global-dir . \
+  --input /tmp/global-promotion-candidate.json \
+  --json
+```
+
+输入文件受统一大小、symlink、严格 JSON 和 Schema 校验约束；命令只写入 Global
+FactStore，重复提交幂等，不会批准 Candidate、生成 Global MemoryRevision 或切换 CURRENT。
+
 ## 验收
 
 - Legacy/未知字段/非法策略/跨 Scope/重复 Ref/错误 Hash/策略借用全部拒绝；
@@ -34,6 +46,7 @@
 - Global/Project Store 隔离；
 - 读写、冲突、幂等、脱敏和权限复用 FactStore；
 - `go test -race ./internal/memory/...`、全量门禁和 docs gate 全绿。
+- CLI 临时目录回归：严格 JSON Candidate 写入、Global Scope 隔离和重复提交幂等。
 
 ## Reasonix Agent 执行提示词
 
