@@ -1,0 +1,79 @@
+package memory
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+)
+
+func webHandlerFixture(t *testing.T) (http.Handler, WebManagementAction) {
+	t.Helper()
+	store, err := OpenProject(tempRoot(t), Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev := validRevision()
+	rev.MemoryID = "mem_web_handler"
+	rev.ContentSHA256, err = rev.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := store.Put(context.Background(), rev); err != nil {
+		t.Fatal(err)
+	}
+	action := validWebAction()
+	action.Target = memoryRefFromRevision(rev)
+	h, err := NewMemoryWebHandler(store, time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return h, action
+}
+
+func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
+	h, action := webHandlerFixture(t)
+	get := httptest.NewRecorder()
+	h.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/", nil))
+	if get.Code != http.StatusOK || !bytes.Contains(get.Body.Bytes(), []byte("mem_web_handler")) {
+		t.Fatalf("read endpoint failed: %d %s", get.Code, get.Body.String())
+	}
+	data, err := json.Marshal(action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	validate := httptest.NewRecorder()
+	h.ServeHTTP(validate, httptest.NewRequest(http.MethodPost, "/action/validate", bytes.NewReader(data)))
+	if validate.Code != http.StatusOK || !bytes.Contains(validate.Body.Bytes(), []byte(`"valid":true`)) {
+		t.Fatalf("validate endpoint failed: %d %s", validate.Code, validate.Body.String())
+	}
+	apply := httptest.NewRecorder()
+	h.ServeHTTP(apply, httptest.NewRequest(http.MethodPost, "/action/apply", bytes.NewReader(data)))
+	if apply.Code != http.StatusPreconditionRequired {
+		t.Fatalf("apply without confirmation must be rejected: %d", apply.Code)
+	}
+	apply = httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/action/apply", bytes.NewReader(data))
+	req.Header.Set("X-OMR-Confirm", "yes")
+	h.ServeHTTP(apply, req)
+	if apply.Code != http.StatusOK {
+		t.Fatalf("confirmed apply failed: %d %s", apply.Code, apply.Body.String())
+	}
+}
+
+func TestMemoryWebHandlerRejectsUnknownRoutesAndMethods(t *testing.T) {
+	h, _ := webHandlerFixture(t)
+	r := httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest(http.MethodGet, "/missing", nil))
+	if r.Code != http.StatusNotFound {
+		t.Fatal("unknown route must be 404")
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest(http.MethodPut, "/", nil))
+	if r.Code != http.StatusMethodNotAllowed {
+		t.Fatal("unsupported method must be 405")
+	}
+}

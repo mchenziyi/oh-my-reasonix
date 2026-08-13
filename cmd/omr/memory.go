@@ -8,6 +8,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -86,8 +88,10 @@ func runMemory(args []string) error {
 			default:
 				return errors.New("memory web action requires validate or apply")
 			}
+		case "serve":
+			return runMemoryWebServe(args[2:])
 		default:
-			return errors.New("memory web requires export or audit")
+			return errors.New("memory web requires export, audit, action or serve")
 		}
 	}
 	if args[0] == "compile" {
@@ -1207,6 +1211,57 @@ func runMemoryWebActionApply(args []string) error {
 		Status  string `json:"status"`
 		EventID string `json:"event_id"`
 	}{result.Status.String(), result.Event.EventID})
+}
+
+func runMemoryWebServe(args []string) error {
+	fs := flag.NewFlagSet("memory web serve", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	nowText := fs.String("now", "", "explicit evaluation timestamp")
+	listen := fs.String("listen", "127.0.0.1:0", "loopback listen address")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *nowText == "" {
+		return errors.New("web serve now is required")
+	}
+	now, err := time.Parse(time.RFC3339, *nowText)
+	if err != nil {
+		return errors.New("web serve now is invalid")
+	}
+	host, _, err := net.SplitHostPort(*listen)
+	if err != nil || (host != "127.0.0.1" && host != "localhost" && host != "::1") {
+		return errors.New("web serve only permits loopback listen addresses")
+	}
+	scope := mem.Scope(*scopeText)
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("web serve scope is invalid")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("web serve scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	handler, err := mem.NewMemoryWebHandler(store, now)
+	if err != nil {
+		return err
+	}
+	listener, err := net.Listen("tcp", *listen)
+	if err != nil {
+		return errors.New("web serve listener is unavailable")
+	}
+	defer listener.Close()
+	if err := writeJSONOutput(map[string]any{"url": "http://" + listener.Addr().String(), "scope": scope}); err != nil {
+		return err
+	}
+	return http.Serve(listener, handler)
 }
 
 func writeImmutableMemoryExport(path string, data []byte) error {

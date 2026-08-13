@@ -1,6 +1,6 @@
 # OMR Mnemosyne WEB-03：本地管理页面计划
 
-状态：🟡 管理动作协议已实现，页面与执行器待实现
+状态：🟡 管理动作协议、CLI 执行器与 loopback API 已实现，页面资源待实现
 
 ## 目标
 
@@ -16,12 +16,12 @@
 
 ## 已实现的协议切片
 
-`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。`omr memory web action validate --input <file>` 只做严格解析、校验和 Hash 回执；`omr memory web action apply --input <file> --project-dir <dir> --confirm` 才会在重新验证当前 MemoryRef 后委托既有 Governance API。没有 `--confirm` 时零写入，目标 Hash/Scope 过期时 fail closed，重复动作由 FactStore 幂等处理。
+`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。`omr memory web action validate --input <file>` 只做严格解析、校验和 Hash 回执；`omr memory web action apply --input <file> --project-dir <dir> --confirm` 才会在重新验证当前 MemoryRef 后委托既有 Governance API。没有 `--confirm` 时零写入，目标 Hash/Scope 过期时 fail closed，重复动作由 FactStore 幂等处理。`omr memory web serve --project-dir <dir> --now <RFC3339>` 只绑定 loopback，并提供 `/`、`/audit`、`/action/validate`、`/action/apply`。
 
 ## 分阶段实现
 
 1. 静态资源与 JSON 数据协议（先做确定性 fixture 和浏览器无关测试）。
-2. 本地受限启动器（随机本地端口、仅 loopback、workspace allowlist）。
+2. ✅ 本地受限启动器（`memory web serve`，随机本地端口、仅 loopback、单 workspace）。
 3. 只读详情/关系/审计页面。
 4. 人工确认后的 CLI 治理操作和回滚结果刷新。
 

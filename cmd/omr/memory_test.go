@@ -175,6 +175,19 @@ func TestMemoryWebActionApplyCLIRequiresConfirmation(t *testing.T) {
 	}
 }
 
+func TestMemoryWebServeRequiresLoopbackAndExplicitNow(t *testing.T) {
+	project := t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"web", "serve", "--project-dir", project}); err == nil || !strings.Contains(err.Error(), "now is required") {
+		t.Fatalf("web serve must require now, got %v", err)
+	}
+	if err := runMemory([]string{"web", "serve", "--project-dir", project, "--now", "2026-08-14T00:00:00Z", "--listen", "0.0.0.0:0"}); err == nil || !strings.Contains(err.Error(), "loopback") {
+		t.Fatalf("web serve must reject non-loopback, got %v", err)
+	}
+}
+
 func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
 	sourceDir, targetDir := t.TempDir(), t.TempDir()
 	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {
