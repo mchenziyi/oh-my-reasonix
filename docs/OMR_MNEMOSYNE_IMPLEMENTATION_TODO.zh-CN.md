@@ -260,7 +260,7 @@ omr memory index doctor
 
 ### MEM-02E：Prompt Composer 接入
 
-状态：🟡 Prompt Composer 已有实现；真实 Reasonix 回执联调仍待完成
+状态：🟡 Prompt Composer 与结构化协议已实现；真实 Reasonix 回执联调仍待完成
 
 - System Prompt 只注入入口和读取协议；
 - 不把全部记忆正文塞入 Prompt；
@@ -312,7 +312,7 @@ omr memory index doctor
 
 ### MEM-03E：检索回放与 CLI
 
-状态：🟡 `omr memory retrieval audit` 已实现；Episode 回放/真实 Desktop 联调仍待完成。
+状态：🟡 `omr memory retrieval audit`、Episode 查询 CLI 已实现；Episode 回放/真实 Desktop 联调仍待完成。
 
 新增：
 
@@ -368,7 +368,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：🟡 Revision/Merge/Split/Generalize Apply 与 Generalize CLI 已实现并通过门禁；批准审计与真实联调仍待后续阶段（见
+状态：🟡 Revision/Merge/Split/Generalize Apply 与 Generalize CLI 已实现并通过门禁；真实跨项目联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；
@@ -379,7 +379,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05B：Global Promotion
 
-状态：🟡 PromotionCandidate、PromotionPlan/Gate、Global Apply、Promotion CLI 与 Doctor 候选检查已实现；批准审计、Generation 重建与真实联调仍待后续阶段（见
+状态：✅ PromotionCandidate、PromotionPlan/Gate、Global Apply、Promotion CLI、Doctor 候选检查与 Global Generation/OKF 发布事务已实现并通过门禁；真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05B_GLOBAL_PROMOTION_PLAN.zh-CN.md`）
 
 - Schema 先支持 Global，实际 Promotion 仍按 Usage Policy 分流；
@@ -390,7 +390,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05C：Revalidation、Repair、Rollback
 
-状态：🟡 RepairPlan/RollbackPlan、审计式 Rollback/CURRENT 事务与 `memory repair/rollback` CLI 已实现；Doctor/真实联调仍待后续阶段（见
+状态：🟡 RepairPlan/RollbackPlan、Manifest fail-closed 校验、审计式 Rollback/CURRENT 事务与 `memory repair/rollback` CLI 已实现；真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05C_REPAIR_ROLLBACK_PLAN.zh-CN.md`）
 
 - 历史 Policy/Evaluator 可重建；
@@ -401,7 +401,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05D：迁移切换
 
-状态：🟡 MigrationPlan、同 Scope 事实复制、目标 Generation 编译与 CURRENT CAS 已实现；CLI/快照/Doctor 联调仍待后续阶段（见
+状态：🟡 MigrationPlan、同 Scope 事实复制、目标 Generation 编译、CURRENT CAS、CLI 与 Migration Doctor 已实现；真实跨项目联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05D_MIGRATION_PLAN.zh-CN.md`）
 
 - 迁移采用预览 → Snapshot → 复制 → 编译 → Doctor → 切换；
