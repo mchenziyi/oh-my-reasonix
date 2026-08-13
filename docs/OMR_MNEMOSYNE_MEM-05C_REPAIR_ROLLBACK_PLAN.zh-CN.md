@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05C：Repair、Rollback 与迁移前诊断
 
 - 阶段：MEM-05C
-- 状态：🟡 设计计划，尚未实现 Repair/Rollback 写入命令
+- 状态：✅ 只读 RepairPlan/RollbackPlan 已实现并通过新增测试；真正回滚/迁移写入事务仍未实现
 - 前置：MEM-01D Generation/CURRENT/Recover、MEM-03C Composite Generation、MEM-05A/05B 只读计划
 - 目标：把损坏检测、可重建性判断和回滚预览统一为确定性只读计划，避免自动修复成为第二事实源
 
