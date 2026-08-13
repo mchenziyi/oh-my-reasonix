@@ -43,6 +43,8 @@ omr memory benchmark paired \\
 
 该命令只读取 Fixture 并输出报告；`--output <path>` 可将 JSON 写入指定文件，不创建或修改 Memory Fact、CURRENT、Lifecycle 或 Overlay。
 
+2026-08-14 进程级 CLI smoke：使用隔离临时目录中的人工构造三案例 fixture 执行 `omr memory benchmark paired --json`，稳定返回 `protocol_only=true`、`evidence_status=sufficient`、`case_count=3`，两组 Recall/Reading/Downstream 指标均可重现。该 smoke 只验证协议与 CLI，不替代真实 Reasonix 模型 A/B 测试，也不宣称质量提升。
+
 ## 五、交给 Reasonix Agent 的执行提示词
 
 ```text
