@@ -44,6 +44,9 @@ func PublishPromotionGeneration(ctx context.Context, req PromotionGenerationRequ
 	if err != nil {
 		return CommitResult{}, err
 	}
+	if tx.AlreadyCommitted() {
+		return gs.Commit(ctx, tx)
+	}
 	abort := func(cause error) (CommitResult, error) {
 		_ = gs.Abort(ctx, tx, "promotion generation failed")
 		return CommitResult{}, cause

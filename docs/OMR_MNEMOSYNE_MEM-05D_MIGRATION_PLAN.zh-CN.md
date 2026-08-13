@@ -50,6 +50,9 @@ Hash，并通过正常 `Begin → PrepareFact → PrepareManifest → WriteCompi
 `ApplyMigration` 现在在目标 Generation 事务 Claim 后、任何事实复制前写入
 `migration-snapshots/<snapshot-id>.json`。Snapshot 只保存源 Generation/Manifest、Scope、完整计划 Hash
 和目标基线 Generation，不复制事实、不成为第二事实源；同一内容重复写入为 NOOP，内容冲突或损坏均拒绝覆盖。
+由 Store 生成的计划会把目标 CURRENT 的 Generation ID 固定写入 `target_base_generation_id`（首代为缺失），
+并将该值纳入计划 Hash 与事务请求绑定；重复执行同一计划不会因 CURRENT 已切换而改变请求。若 Claim 对应事务已经
+存在 `commit.json`，`ApplyMigration` 直接复用原提交与 Snapshot ID，不重新复制事实或编译。
 
 事实复制与后续 Generation 准备共享同一目标写锁；若准备、编译、Manifest 或 Commit 在 CURRENT 切换前失败，
 事务会只撤销本次新建且字节未变化的目标事实，保留既有事实、Snapshot 和可诊断事务记录。CURRENT 切换后若进入
@@ -92,6 +95,7 @@ CURRENT 切换留到后续批准阶段。
 与步骤），不能只绑定 GenerationStore 的通用元数据。事务先 Claim，再读取输出并在同一目标 Store 写锁内复制
 不可变事实、准备 Generation、提交 Manifest/Generation/CURRENT；已持锁路径不得再次获取同一 Store 锁。
 同一 key 的不同计划在任何目标事实副作用前返回稳定的幂等冲突。
+同一 key、同一计划的已提交事务必须返回 `already_committed` 及原 Generation；Promotion Generation 遵循相同短路规则。
 运行 gofmt、git diff --check、go test -race ./internal/memory/...、go test ./...、go vet、go build、docs_check；
 未获 CTO 复核前不要提交、推送或创建 Tag。
 ```

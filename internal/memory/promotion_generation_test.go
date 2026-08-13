@@ -86,8 +86,8 @@ func TestPublishPromotionGenerationCommitsGlobalOKF(t *testing.T) {
 		t.Fatalf("CURRENT mismatch: %+v %v", cur, err)
 	}
 	replay, err := PublishPromotionGeneration(ctx, PromotionGenerationRequest{Candidate: candidate, Sources: sources, Target: target, Global: global, Compile: OKFCompileRequest{IndexPolicyRef: policyRefOf(policy), Revisions: []MemoryRevisionRef{{MemoryID: target.MemoryID, Revision: target.Revision, ContentSHA256: target.ContentSHA256}}, Evidence: []MemoryEvidenceRef{{MemoryID: ev.MemoryID, Revision: ev.Revision, EvidenceGeneration: ev.EvidenceGeneration, EvidenceSetSHA256: ev.EvidenceSetSHA256}}}, EvaluationTime: time.Date(2026, 8, 13, 0, 0, 0, 0, time.UTC), IdempotencyKey: "promotion_generation_1"})
-	if ErrorCode(err) != CodeGenerationTxConflict || replay.GenerationID != "" {
-		t.Fatalf("replay must fail with stable already-committed conflict: %+v %v", replay, err)
+	if err != nil || replay.Status != CommitAlreadyCommitted || replay.GenerationID != result.GenerationID {
+		t.Fatalf("replay must return the durable commit: %+v %v", replay, err)
 	}
 	changedTime := time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC)
 	changed, err := PublishPromotionGeneration(ctx, PromotionGenerationRequest{Candidate: candidate, Sources: sources, Target: target, Global: global, Compile: OKFCompileRequest{IndexPolicyRef: policyRefOf(policy), Revisions: []MemoryRevisionRef{{MemoryID: target.MemoryID, Revision: target.Revision, ContentSHA256: target.ContentSHA256}}, Evidence: []MemoryEvidenceRef{{MemoryID: ev.MemoryID, Revision: ev.Revision, EvidenceGeneration: ev.EvidenceGeneration, EvidenceSetSHA256: ev.EvidenceSetSHA256}}}, EvaluationTime: changedTime, IdempotencyKey: "promotion_generation_1"})

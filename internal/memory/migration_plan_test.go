@@ -102,6 +102,10 @@ func TestApplyMigrationPersistsDeterministicSnapshotBeforePublish(t *testing.T) 
 	if err != nil || res.SnapshotID == "" {
 		t.Fatalf("migration must publish a snapshot: %+v %v", res, err)
 	}
+	replay, err := ApplyMigration(context.Background(), source, target, MigrationApplyRequest{Plan: plan, IdempotencyKey: "migration_snapshot_key"})
+	if err != nil || replay.Commit.Status != CommitAlreadyCommitted || replay.GenerationID != res.GenerationID || replay.SnapshotID != res.SnapshotID {
+		t.Fatalf("migration replay must return the durable commit and snapshot: %+v %v", replay, err)
+	}
 	path := filepath.Join(target.root, "migration-snapshots", res.SnapshotID+".json")
 	data, err := os.ReadFile(path)
 	if err != nil {

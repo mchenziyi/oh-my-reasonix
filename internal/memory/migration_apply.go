@@ -65,14 +65,7 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	if err != nil {
 		return MigrationApplyResult{}, err
 	}
-	cur, err := targetGS.readCurrent(ctx)
-	if err != nil {
-		return MigrationApplyResult{}, err
-	}
-	var base *string
-	if cur != nil {
-		base = &cur.GenerationID
-	}
+	base := req.Plan.TargetBaseGenerationID
 	binding, err := migrationRequestBinding(req.Plan)
 	if err != nil {
 		return MigrationApplyResult{}, storeError(CodeDerivedInvalidInput, "migration request is invalid")
@@ -80,6 +73,13 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	tx, err := targetGS.Begin(ctx, BeginGenerationRequest{Scope: req.Plan.TargetScope, BaseGeneration: base, CompilerVersion: sourceGen.CompilerVersion, CanonicalizationVersion: sourceGen.CanonicalizationVersion, SchemaVersion: SchemaVersion, IdempotencyKey: req.IdempotencyKey, RequestBindingSHA256: binding})
 	if err != nil {
 		return MigrationApplyResult{}, err
+	}
+	if tx.AlreadyCommitted() {
+		commit, commitErr := targetGS.Commit(ctx, tx)
+		if commitErr != nil {
+			return MigrationApplyResult{}, commitErr
+		}
+		return MigrationApplyResult{Commit: commit, GenerationID: commit.GenerationID, SnapshotID: migrationSnapshotID(req.Plan, base)}, nil
 	}
 	abort := func(cause error) (MigrationApplyResult, error) {
 		_ = targetGS.Abort(ctx, tx, "migration apply failed")
@@ -138,14 +138,7 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 
 func persistMigrationSnapshot(store *FactStore, plan MigrationPlan, base *string) (MigrationSnapshot, error) {
 	planHash := plan.PlanHash()
-	seed, err := json.Marshal(struct {
-		PlanHash string  `json:"plan_hash"`
-		Base     *string `json:"base_generation"`
-	}{planHash, base})
-	if err != nil {
-		return MigrationSnapshot{}, storeError(CodeDerivedInvalidInput, "migration snapshot request is invalid")
-	}
-	snapshotID := "snapshot_" + hashOf(seed)
+	snapshotID := migrationSnapshotIDFromHash(planHash, base)
 	s := MigrationSnapshot{SchemaVersion: SchemaVersion, SnapshotID: snapshotID, PlanHash: planHash, SourceScope: plan.SourceScope, TargetScope: plan.TargetScope, SourceGenerationID: plan.GenerationID, SourceManifestSHA256: plan.InputManifestSHA256, TargetBaseGenerationID: base}
 	content, err := json.Marshal(struct {
 		SchemaVersion          int     `json:"schema_version"`
@@ -182,6 +175,18 @@ func persistMigrationSnapshot(store *FactStore, plan MigrationPlan, base *string
 		}
 	}
 	return s, nil
+}
+
+func migrationSnapshotID(plan MigrationPlan, base *string) string {
+	return migrationSnapshotIDFromHash(plan.PlanHash(), base)
+}
+
+func migrationSnapshotIDFromHash(planHash string, base *string) string {
+	seed, _ := json.Marshal(struct {
+		PlanHash string  `json:"plan_hash"`
+		Base     *string `json:"base_generation"`
+	}{planHash, base})
+	return "snapshot_" + hashOf(seed)
 }
 
 func migrationRequestBinding(plan MigrationPlan) (string, error) {

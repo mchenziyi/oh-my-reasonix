@@ -19,16 +19,17 @@ type MigrationRequest struct {
 // MigrationPlan is a read-only preview. It never copies facts or switches
 // CURRENT; Project->Global must use the Promotion gate instead.
 type MigrationPlan struct {
-	Operation           string   `json:"operation"`
-	SourceScope         Scope    `json:"source_scope"`
-	TargetScope         Scope    `json:"target_scope"`
-	GenerationID        string   `json:"generation_id"`
-	InputManifestSHA256 string   `json:"input_manifest_sha256"`
-	FactCount           int      `json:"fact_count"`
-	SnapshotRequired    bool     `json:"snapshot_required"`
-	Steps               []string `json:"steps"`
-	Eligible            bool     `json:"eligible"`
-	BlockedReason       string   `json:"blocked_reason,omitempty"`
+	Operation              string   `json:"operation"`
+	SourceScope            Scope    `json:"source_scope"`
+	TargetScope            Scope    `json:"target_scope"`
+	GenerationID           string   `json:"generation_id"`
+	InputManifestSHA256    string   `json:"input_manifest_sha256"`
+	FactCount              int      `json:"fact_count"`
+	SnapshotRequired       bool     `json:"snapshot_required"`
+	Steps                  []string `json:"steps"`
+	Eligible               bool     `json:"eligible"`
+	BlockedReason          string   `json:"blocked_reason,omitempty"`
+	TargetBaseGenerationID *string  `json:"target_base_generation_id,omitempty"`
 }
 
 func BuildMigrationPlan(req MigrationRequest) (MigrationPlan, error) {
@@ -97,7 +98,16 @@ func BuildMigrationPlanFromStores(ctx context.Context, source, target *FactStore
 	if err != nil || mf.GenerationID != generationID || mf.InputManifestSHA256 == "" {
 		return MigrationPlan{}, errors.New("migration plan: source manifest is invalid")
 	}
-	return MigrationPlan{Operation: "migration_preview", SourceScope: scopeOfStore(source), TargetScope: scopeOfStore(target), GenerationID: generationID, InputManifestSHA256: mf.InputManifestSHA256, FactCount: len(mf.Inputs), SnapshotRequired: true, Steps: []string{"preview", "snapshot", "copy", "compile", "doctor", "switch"}, Eligible: true}, nil
+	targetGS := NewGenerationStore(target).(*generationStore)
+	targetCurrent, err := targetGS.readCurrent(ctx)
+	if err != nil {
+		return MigrationPlan{}, errors.New("migration plan: target current is unreadable")
+	}
+	var targetBase *string
+	if targetCurrent != nil {
+		targetBase = &targetCurrent.GenerationID
+	}
+	return MigrationPlan{Operation: "migration_preview", SourceScope: scopeOfStore(source), TargetScope: scopeOfStore(target), GenerationID: generationID, InputManifestSHA256: mf.InputManifestSHA256, FactCount: len(mf.Inputs), SnapshotRequired: true, Steps: []string{"preview", "snapshot", "copy", "compile", "doctor", "switch"}, Eligible: true, TargetBaseGenerationID: targetBase}, nil
 }
 
 func scopeOfStore(s *FactStore) Scope {

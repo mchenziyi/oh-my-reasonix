@@ -67,10 +67,23 @@ type GenerationTx struct {
 	RequestSHA256           string
 
 	// internal state: the owning store and the lock release function.
-	gs       *generationStore
-	unlock   func()
-	mu       sync.Mutex
-	released bool
+	gs               *generationStore
+	unlock           func()
+	mu               sync.Mutex
+	released         bool
+	alreadyCommitted bool
+}
+
+// AlreadyCommitted reports that Begin reopened an idempotency key whose
+// transaction already has a durable commit record. Callers must skip all
+// preparation side effects and invoke Commit to replay the existing result.
+func (tx *GenerationTx) AlreadyCommitted() bool {
+	if tx == nil {
+		return false
+	}
+	tx.mu.Lock()
+	defer tx.mu.Unlock()
+	return tx.alreadyCommitted
 }
 
 // release hands the scope write lock back exactly once.
@@ -431,6 +444,11 @@ func (gs *generationStore) finalizeBegin(ctx context.Context, tx *GenerationTx, 
 	}
 	tx.TransactionID = claim.TransactionID
 	tx.GenerationID = claim.GenerationID
+	if dir, err := gs.txDir(ctx, claim.TransactionID); err == nil {
+		if _, statErr := os.Stat(filepath.Join(dir, "commit.json")); statErr == nil {
+			tx.alreadyCommitted = true
+		}
+	}
 	return nil
 }
 
