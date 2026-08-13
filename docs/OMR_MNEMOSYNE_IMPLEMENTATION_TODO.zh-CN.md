@@ -271,7 +271,7 @@ Hash、保护 Composite Generation，支持 dry-run/幂等/CAS/崩溃恢复，�
 
 ### MEM-02E：Prompt Composer 接入
 
-状态：🟡 Prompt Composer 与结构化协议已实现；真实 Reasonix 回执联调仍待完成
+状态：✅ Prompt Composer 与结构化协议已实现并通过自动门禁；真实 Reasonix 回执联调仍待完成
 
 - System Prompt 只注入入口和读取协议；
 - 不把全部记忆正文塞入 Prompt；
@@ -357,7 +357,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04C：Lifecycle、Health 与冻结
 
-状态：🟡 自动化实现基本完成，待真实 Reasonix Desktop 联调（见
+状态：✅ 治理事务、Consistency Doctor、Lifecycle Report 与 Fake CLI 闭环已实现并通过自动门禁；真实 Reasonix Desktop 联调仍待完成（见
 `OMR_MNEMOSYNE_MEM-04C_LIFECYCLE_GOVERNANCE_PLAN.zh-CN.md`）
 
 - Lifecycle、Health、Pinned、Archived 均为派生状态；
@@ -379,7 +379,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：🟡 Revision/Merge/Split/Generalize Apply 与 Generalize CLI 已实现并通过门禁；真实跨项目联调仍待后续阶段（见
+状态：✅ Revision/Merge/Split/Generalize Apply 与 Generalize CLI 已实现并通过自动门禁；真实跨项目联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；
@@ -401,7 +401,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05C：Revalidation、Repair、Rollback
 
-状态：🟡 RepairPlan/RollbackPlan、Manifest fail-closed 校验、审计式 Rollback/CURRENT 事务与 `memory repair/rollback` CLI 已实现；真实联调仍待后续阶段（见
+状态：✅ RepairPlan/RollbackPlan、Manifest fail-closed 校验、审计式 Rollback/CURRENT 事务与 `memory repair/rollback` CLI 已实现并通过自动门禁；真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05C_REPAIR_ROLLBACK_PLAN.zh-CN.md`）
 
 - 历史 Policy/Evaluator 可重建；
@@ -412,7 +412,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05D：迁移切换
 
-状态：🟡 MigrationPlan、同 Scope 事实复制、目标 Generation 编译、CURRENT CAS、CLI 与 Migration Doctor 已实现；真实跨项目联调仍待后续阶段（见
+状态：✅ MigrationPlan、同 Scope 事实复制、目标 Generation 编译、CURRENT CAS、CLI 与 Migration Doctor 已实现并通过自动门禁；真实跨项目联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05D_MIGRATION_PLAN.zh-CN.md`）
 
 - 迁移采用预览 → Snapshot → 复制 → 编译 → Doctor → 切换；
@@ -424,7 +424,7 @@ omr memory retrieval audit <retrieval-id>
 
 ## 9. MEM-06：Memory Quality Benchmark
 
-状态：🟡 配对 Fixture/Report 与只读 CLI 已实现，待真实临时项目配对 Benchmark 联调。
+状态：✅ 配对 Fixture/Report 与只读 CLI 已实现并通过自动门禁；真实临时项目配对 Benchmark 联调仍待完成。
 
 冻结以下内容后再运行：
 
