@@ -32,7 +32,7 @@ Mnemosyne 是 OMR 的长期工程记忆层。Reasonix 继续负责 Agent 推理�
 | MEM-06 Benchmark 与稳定发布 | v2.1.0 | 🟡 配对 Fixture/Report 与只读 CLI 已实现，待真实临时项目联调 | MEM-05 | 需要正式 A/B 测试 |
 | WEB-01 只读静态记忆视图 | v2.2.0-alpha.1 | ✅ HTML 导出 MVP | MEM-06 | 不需要 |
 | WEB-02 只读治理/审计视图 | v2.2.0-alpha.2 | ✅ HTML 审计 MVP | WEB-01 | 不需要 |
-| WEB-03 本地记忆管理页面 | v2.2.x | 🟡 管理动作协议/CLI/loopback API 已实现，页面待实现 | WEB-02 | 需要桌面/浏览器联调 |
+| WEB-03 本地记忆管理页面 | v2.2.x | 🟡 管理动作协议/CLI/loopback API/管理页面已实现，待真实联调 | WEB-02 | 需要桌面/浏览器联调 |
 
 版本号是实施建议。每个阶段完成并经 CTO Review、全量门禁和用户确认后，才创建对应 Tag；不得提前创建 Release 或 Tag。
 
@@ -453,7 +453,7 @@ Reasonix without Mnemosyne
 
 - WEB-01：✅ 本地只读静态 HTML 列表、详情字段和关系边导出；
 - WEB-02：人工治理、审计、Snapshot、回滚；
-- WEB-03：🟡 管理动作协议、严格校验、二次确认 CLI 和 loopback API 已实现；完整本地页面待浏览器/桌面联调；
+- WEB-03：🟡 管理动作协议、严格校验、二次确认 CLI、loopback API 和 `/manager` 页面已实现；待浏览器/桌面联调；
 - 跨设备同步、云端服务、公共记忆市场；
 - 自动修改 Reasonix/OMR 源码；
 - 自动批准高影响 Overlay。

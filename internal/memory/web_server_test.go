@@ -18,6 +18,7 @@ func webHandlerFixture(t *testing.T) (http.Handler, WebManagementAction) {
 	}
 	rev := validRevision()
 	rev.MemoryID = "mem_web_handler"
+	rev.Title = "<script>bad()</script>"
 	rev.ContentSHA256, err = rev.ContentHash()
 	if err != nil {
 		t.Fatal(err)
@@ -40,6 +41,11 @@ func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
 	h.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/", nil))
 	if get.Code != http.StatusOK || !bytes.Contains(get.Body.Bytes(), []byte("mem_web_handler")) {
 		t.Fatalf("read endpoint failed: %d %s", get.Code, get.Body.String())
+	}
+	manager := httptest.NewRecorder()
+	h.ServeHTTP(manager, httptest.NewRequest(http.MethodGet, "/manager", nil))
+	if manager.Code != http.StatusOK || !bytes.Contains(manager.Body.Bytes(), []byte("X-OMR-Confirm")) || !bytes.Contains(manager.Body.Bytes(), []byte("mem_web_handler")) || bytes.Contains(manager.Body.Bytes(), []byte("<script>bad()")) || !bytes.Contains(manager.Body.Bytes(), []byte("&lt;script&gt;bad()")) {
+		t.Fatalf("manager endpoint failed: %d %s", manager.Code, manager.Body.String())
 	}
 	data, err := json.Marshal(action)
 	if err != nil {

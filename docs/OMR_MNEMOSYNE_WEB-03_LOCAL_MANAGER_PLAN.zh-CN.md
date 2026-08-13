@@ -1,6 +1,6 @@
 # OMR Mnemosyne WEB-03：本地管理页面计划
 
-状态：🟡 管理动作协议、CLI 执行器与 loopback API 已实现，页面资源待实现
+状态：🟡 管理动作协议、CLI 执行器、loopback API 与管理页面已实现，待真实浏览器/桌面联调
 
 ## 目标
 
@@ -22,11 +22,11 @@
 
 1. 静态资源与 JSON 数据协议（先做确定性 fixture 和浏览器无关测试）。
 2. ✅ 本地受限启动器（`memory web serve`，随机本地端口、仅 loopback、单 workspace）。
-3. 只读详情/关系/审计页面。
+3. ✅ 只读详情/关系/审计/管理页面（`/manager`）。
 4. 人工确认后的 CLI 治理操作和回滚结果刷新。
 
 ## 验收
 
-- 无 Reasonix 客户端也能打开只读页面；关闭进程后无后台任务。
+- 无 Reasonix 客户端也能打开只读页面和管理页面；关闭进程后无后台任务。
 - 跨 workspace 数据隔离、XSS/路径/symlink 防护、写操作幂等和失败回读均有测试。
 - 不改变既有 Memory Fact Schema；所有派生视图可从规范事实重建。

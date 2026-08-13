@@ -42,6 +42,8 @@ func (h *MemoryWebHandler) serveGet(w http.ResponseWriter, r *http.Request) {
 		data, err = BuildMemoryWebExport(r.Context(), h.store, h.now)
 	case "/audit":
 		data, err = BuildMemoryAuditWebExport(r.Context(), h.store, h.now)
+	case "/manager":
+		data, err = BuildMemoryManagerPage(r.Context(), h.store, h.now)
 	default:
 		writeWebError(w, http.StatusNotFound)
 		return
