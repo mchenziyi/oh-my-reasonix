@@ -73,6 +73,10 @@ func (h *MemoryWebHandler) servePost(w http.ResponseWriter, r *http.Request) {
 		writeWebError(w, http.StatusBadRequest)
 		return
 	}
+	if err := dec.Decode(&struct{}{}); err != io.EOF {
+		writeWebError(w, http.StatusBadRequest)
+		return
+	}
 	if r.URL.Path == "/action/validate" {
 		hash, err := action.ContentHash()
 		if err != nil {

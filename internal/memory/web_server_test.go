@@ -56,6 +56,11 @@ func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
 	if validate.Code != http.StatusOK || !bytes.Contains(validate.Body.Bytes(), []byte(`"valid":true`)) {
 		t.Fatalf("validate endpoint failed: %d %s", validate.Code, validate.Body.String())
 	}
+	trailing := httptest.NewRecorder()
+	h.ServeHTTP(trailing, httptest.NewRequest(http.MethodPost, "/action/validate", bytes.NewReader(append(data, []byte(` {}`)...))))
+	if trailing.Code != http.StatusBadRequest {
+		t.Fatal("trailing JSON must be rejected")
+	}
 	apply := httptest.NewRecorder()
 	h.ServeHTTP(apply, httptest.NewRequest(http.MethodPost, "/action/apply", bytes.NewReader(data)))
 	if apply.Code != http.StatusPreconditionRequired {
