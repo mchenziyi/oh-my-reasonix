@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-01E：最小 OKF 编译器
 
 - 阶段：MEM-01E
-- 状态：已由 Reasonix Agent 执行完成（编译器 + GenerationStore 集成 + 回归测试全绿）
+- 状态：✅ 已完成并经 CTO Review 签收（OKF 编译器、GenerationStore 集成、发布完整性与 symlink 拒绝均已通过门禁）
 - 前置：Architecture v1、MEM-01A、MEM-01B、MEM-01C、MEM-01D 已由 CTO 签收
 - 后续：MEM-01F 派生状态与索引；MEM-02 评估与 Usage
 

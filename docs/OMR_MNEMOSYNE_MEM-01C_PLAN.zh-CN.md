@@ -3,7 +3,7 @@
 ## 任务状态
 
 - 阶段：MEM-01C
-- 状态：已由 Reasonix Agent 执行完成（Policy Fact 五类 Config Schema、PolicyStore、历史加载与测试已交付；未进入 MEM-01D）
+- 状态：✅ 已完成并经 CTO Review 签收（Policy Fact 五类 Config Schema、PolicyStore、历史加载与路径安全回归均已通过门禁）
 - 前置：Architecture v1 已冻结；MEM-01A、MEM-01B 已由 CTO 签收
 - 后续：MEM-01D Generation 事务、MEM-01E 最小 OKF 编译器
 

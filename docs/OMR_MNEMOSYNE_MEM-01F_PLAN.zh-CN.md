@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-01F：派生状态与索引
 
 - 阶段：MEM-01F
-- 状态：已由 Reasonix Agent 执行完成（MemoryUsage/Outcome 两类事实扩展、DeriveState 派生引擎、稳定排序、Root/Local/Global 索引与 OKF 快照适配器已交付；未进入 MEM-02）
+- 状态：✅ 已完成并经 CTO Review 签收（MemoryUsage/Outcome、锚字段、DeriveState、稳定索引、协议边界与 OKF 快照适配器均已通过门禁）
 - 前置：MEM-01A～MEM-01E 已签收
 - 后续：MEM-02 评估与 Usage
 
@@ -67,7 +67,7 @@
 
 - 仅从合法 MemoryUsage、Outcome 和 Attribution Judgment 计算 `usage_count`、`counted_help_count`、`counted_harm_count`、`last_used_at`。
 - MemoryUsage 使用阶段（架构 12.1：`retrieved → read → adopted → affected → evaluated`）在本阶段以严格枚举字段 `usage_stage` 落实：仅 `affected`/`evaluated` 阶段产生 attribution 证据，其余阶段计入 usage 与 recency 但不归因；字段进入 Canonical Hash、FactStore 路由、Scope 校验、幂等与测试。
-- Active 阈值要求的"独立 Episode/Root Task"以严格不可变字段 `episode_id` 落实（受控标识，非 `usage_id` 伪装）；Episode 规范事实集尚未实现，本阶段只做标识符格式校验、不做存在性校验（见"未决协议项"）。
+- Active 阈值要求的"独立 Episode/Root Task"以严格不可变字段 `episode_id` 与 Episode Fact 的 `root_task_id` 落实；派生函数不把 `usage_id` 伪装成 Episode，也不在此处扫描 CURRENT，存在性和固定世界一致性由 Episodic/Generation 校验负责。
 - 第三方失败不得自动归因于记忆；成功不抵消失败，失败也不直接删除记忆。
 - 同一 usage 事件必须幂等；重复事实不得重复计数。
 - 优先级排序顺序固定为：适用条件/Scope → Lifecycle/Health → Usage Policy 所需证据强度 → 成功复用次数 → 最近使用时间 → 稳定 ID；完全同级时使用可复现确定性随机种子，禁止机器时间或全局随机源。
@@ -159,10 +159,10 @@ bash tests/docs_check.sh
 
 ## 六之一、未决协议项（CTO Review 记录）
 
-1. **Episode 规范事实未实现**：Active 阈值要求"至少 2 个独立 Episode/Root Task"。Episode 事实集（`facts/episodes/`）属后续阶段，本阶段以严格不可变字段 `episode_id`（MemoryUsage 上，受控标识）承载独立性信号，只校验标识符形状、不校验 Episode 存在性；Root Task 语义由 Episode 承载。待 Episode 事实落地后需补充存在性与跨 Episode 引用校验。
+1. **Episode 引用校验边界**：Episode 规范事实集已由后续 MEM-03 阶段实现，`MemoryUsage.episode_id` 与 `MemoryEvidenceGeneration.root_task_refs` 在本阶段仍只做受控标识校验；跨 Episode/Root Task 的存在性与一致性由 Episodic Compiler、固定 Generation 和回放协议继续校验，不在本派生函数内读取 CURRENT。
 2. **MemoryUsage 使用阶段已纳入本阶段**：`usage_stage` 严格枚举（`retrieved|read|adopted|affected|evaluated`）落实架构 12.1 五阶段；仅 `affected`/`evaluated` 产生 attribution 证据。字段进入 Canonical Hash、FactStore 路由、Scope 校验、幂等与测试。
 3. **Health 语义**：Health 与 Lifecycle 独立，仅由"经过验证的负面证据"（非 external 的 harmed Outcome 且 usage_stage 为 affected/evaluated，含被 Override 修正的历史 harm）决定 degraded；生命周期名称本身不降级 Health。
-4. **Critic Judgment subtype 未注册（协议缺口）**：架构 11.5 要求 `evidence_validated` 晋升 Active 必须"Critic 通过"，且架构 6.2.3 明确 Critic Judgment 需"对应协议定义固定 subtype payload"；MEM-01A 未注册该 subtype，本阶段按 CTO 决策**不新增 subtype**——`evidence_validated` 恒保持 probation（缺 Critic 条件），degraded/frozen 也未启用。待后续阶段注册 Critic 协议后解除。
+4. **Conflict Fact 仍是边界**：`critic_review` subtype 已在 MEM-02B 注册并由固定 Generation Pair 验证；但 Architecture 11.5 的“无未解决冲突”仍需要独立 Conflict Fact 协议，因此 `evidence_validated` 在 Conflict Fact 完整落地前继续保持 probation，不由派生函数猜测冲突状态。
 5. **`root_task_refs` 已就绪**：`MemoryEvidenceGeneration` 新增严格不可变字段 `root_task_refs []string`（受控标识、去重、进 Canonical Hash/路由/校验/幂等），承载"独立 Root Task/正式来源"信号；架构 11.5 的 ≥2 独立来源条件可在 Critic 协议落地后启用。
 
 ## 七、交给 Reasonix Agent 的执行提示词

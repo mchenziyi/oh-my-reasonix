@@ -3,7 +3,7 @@
 ## 任务状态
 
 - 阶段：MEM-01B
-- 状态：实现完成（代码与测试已交付，待 CTO Review）
+- 状态：✅ 已完成并经 CTO Review 签收；安全边界、不可覆盖提交、权限与祖先 symlink 检查均已通过门禁
 - 前置：Architecture v1 已冻结；MEM-01A 已由 CTO 签收
 - 后续：MEM-01C Policy Store、MEM-01D Generation 事务
 
