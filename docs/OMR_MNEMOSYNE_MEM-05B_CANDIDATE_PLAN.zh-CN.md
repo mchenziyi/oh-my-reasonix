@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：GlobalPromotionCandidate 规范事实
 
 - 阶段：MEM-05B-Candidate
-- 状态：✅ 已实现并通过门禁（2026-08-13）
+- 状态：✅ 已实现并通过门禁（2026-08-13）；Consistency Doctor 已纳入候选事实完整性检查
 - 依据：Architecture v1 §17.5/Global Promotion；现有 `PromotionPlan` 只读对象
 
 ## 目标

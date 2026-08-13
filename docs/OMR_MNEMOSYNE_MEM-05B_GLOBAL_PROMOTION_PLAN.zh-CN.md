@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply 与 `memory promotion apply` CLI 已实现并通过门禁（2026-08-13）；人工批准记录、审计事件与后续 Generation 接入仍未实现
+- 状态：🟡 PromotionCandidate Fact、PromotionPlan/Gate、Global Promotion Apply、Promotion CLI 与 Doctor 候选检查已实现并通过门禁（2026-08-13）；人工批准记录、审计事件与后续 Generation 接入仍未实现
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 

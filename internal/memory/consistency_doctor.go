@@ -85,6 +85,9 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 	if err != nil {
 		return nil, err
 	}
+	if err := loadPromotionCandidates(ctx, store, report); err != nil {
+		return nil, err
+	}
 
 	revSet := map[string]bool{} // memory_id@revision
 	revRefSet := map[string]bool{}
@@ -414,4 +417,25 @@ func loadEvidenceGenerations(ctx context.Context, store *FactStore, report *Cons
 		out = append(out, generation)
 	}
 	return out, nil
+}
+
+func loadPromotionCandidates(ctx context.Context, store *FactStore, report *ConsistencyReport) error {
+	keys, err := store.List(ctx, FactKindPromotionCandidate)
+	if err != nil {
+		return err
+	}
+	for _, key := range keys {
+		data, err := store.Get(ctx, FactKindPromotionCandidate, key)
+		if err != nil {
+			if isCorruptCode(ErrorCode(err)) {
+				add(report, findingCorruptFact, "error", "promotion_candidate", key, "promotion candidate fails strict validation")
+				continue
+			}
+			return err
+		}
+		if _, err := DecodeStrict[GlobalPromotionCandidate](data); err != nil {
+			add(report, findingCorruptFact, "error", "promotion_candidate", key, "promotion candidate fails strict validation")
+		}
+	}
+	return nil
 }

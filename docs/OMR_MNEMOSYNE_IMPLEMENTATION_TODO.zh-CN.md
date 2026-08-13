@@ -379,7 +379,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05B：Global Promotion
 
-状态：🟡 PromotionCandidate、PromotionPlan/Gate、Global Apply 与 Promotion CLI 已实现；批准审计、Generation 重建与真实联调仍待后续阶段（见
+状态：🟡 PromotionCandidate、PromotionPlan/Gate、Global Apply、Promotion CLI 与 Doctor 候选检查已实现；批准审计、Generation 重建与真实联调仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05B_GLOBAL_PROMOTION_PLAN.zh-CN.md`）
 
 - Schema 先支持 Global，实际 Promotion 仍按 Usage Policy 分流；
