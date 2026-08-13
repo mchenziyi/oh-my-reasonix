@@ -16,7 +16,7 @@
 
 ## 已实现的协议切片
 
-`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。该对象不会直接调用 Store，也不会改变 Lifecycle。执行器必须再次读取当前 Fact、校验 Scope/Hash 和二次确认，再调用既有治理 API。
+`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。`omr memory web action validate --input <file>` 只做严格解析、校验和 Hash 回执，不执行动作。该对象不会直接调用 Store，也不会改变 Lifecycle。执行器必须再次读取当前 Fact、校验 Scope/Hash 和二次确认，再调用既有治理 API。
 
 ## 分阶段实现
 

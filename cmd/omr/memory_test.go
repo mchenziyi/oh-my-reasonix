@@ -109,6 +109,41 @@ func TestMemoryWebAuditRequiresExplicitNowAndOutput(t *testing.T) {
 	}
 }
 
+func TestMemoryWebActionValidateCLIIsStrictAndReadOnly(t *testing.T) {
+	dir := t.TempDir()
+	action := mem.WebManagementAction{
+		SchemaVersion: mem.SchemaVersion,
+		ActionID:      "web_action_cli_01",
+		Scope:         mem.ScopeProject,
+		Target: mem.MemoryRef{Scope: mem.ScopeProject, MemoryType: mem.MemoryTypeStrategy,
+			MemoryID: "mem_cli_01", Revision: 1, ContentSHA256: testHashForCLI},
+		Operation:   "freeze",
+		Reason:      "manual review",
+		RequestedAt: "2026-08-14T00:00:00Z",
+	}
+	data, err := json.Marshal(action)
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := filepath.Join(dir, "action.json")
+	if err := os.WriteFile(input, data, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := captureRunOutput(func() error {
+		return runMemory([]string{"web", "action", "validate", "--input", input})
+	})
+	if err != nil || !strings.Contains(out, "web_action_cli_01") {
+		t.Fatalf("valid web action should be accepted: %q %v", out, err)
+	}
+	bad := filepath.Join(dir, "bad.json")
+	if err := os.WriteFile(bad, []byte(`{"schema_version":1,"action_id":"web_action_cli_01","unknown":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"web", "action", "validate", "--input", bad}); err == nil {
+		t.Fatal("unknown web action fields must be rejected")
+	}
+}
+
 func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
 	sourceDir, targetDir := t.TempDir(), t.TempDir()
 	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {

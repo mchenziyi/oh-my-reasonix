@@ -74,6 +74,11 @@ func runMemory(args []string) error {
 			return runMemoryWebExport(args[2:])
 		case "audit":
 			return runMemoryWebAudit(args[2:])
+		case "action":
+			if len(args) < 3 || args[2] != "validate" {
+				return errors.New("memory web action requires validate")
+			}
+			return runMemoryWebActionValidate(args[3:])
 		default:
 			return errors.New("memory web requires export or audit")
 		}
@@ -1129,6 +1134,34 @@ func runMemoryWebAudit(args []string) error {
 		Scope  mem.Scope `json:"scope"`
 		Output string    `json:"output"`
 	}{scope, filepath.Clean(*output)})
+}
+
+func runMemoryWebActionValidate(args []string) error {
+	fs := flag.NewFlagSet("memory web action validate", flag.ContinueOnError)
+	input := fs.String("input", "", "action JSON file")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	data, err := readBoundedJSONFile(*input)
+	if err != nil {
+		return err
+	}
+	var action mem.WebManagementAction
+	if err := strictJSON(data, &action); err != nil {
+		return errors.New("web action JSON is invalid")
+	}
+	if err := action.Validate(); err != nil {
+		return errors.New("web action is invalid")
+	}
+	hash, err := action.ContentHash()
+	if err != nil {
+		return errors.New("web action is invalid")
+	}
+	return writeJSONOutput(struct {
+		Valid      bool   `json:"valid"`
+		ActionID   string `json:"action_id"`
+		ContentSHA string `json:"content_sha256"`
+	}{true, action.ActionID, hash})
 }
 
 func writeImmutableMemoryExport(path string, data []byte) error {
