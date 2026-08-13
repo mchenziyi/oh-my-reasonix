@@ -60,6 +60,14 @@ Memory-only 或 Episode-only Generation 冒充为 Composite Generation，也不�
 6. 禁止 Librarian 写代码、修改记忆、切 CURRENT、读取 frozen Memory 或输出完整轨迹；
 7. Episode 命中不等于 Memory 被采用，不产生 help/harm。
 
+### 4.1 任务完成后的回执交接
+
+Profile 仍保持只读。Librarian 只输出 `LibrarianReceipt`；父 Agent 读取推荐页面并完成任务后，
+按 MEM-04A/04B 的瞬时协议分别生成 `MemoryUsageReceipt` 与（需要时）`AttributionReceipt`，
+再显式调用 `omr memory usage capture` 和 `omr memory outcome capture`。OMR 重新验证固定
+Generation、Episode、Evidence、Scope 与 Hash，Profile 不获得 Store 写权限，也不直接判断
+help/harm。采集失败只记录脱敏诊断，不覆盖原始任务结果。
+
 Profile 仍是 Prompt/Workflow 层，不复制 Reasonix Subagent Runtime。
 
 ## 五、自动化端到端
@@ -113,4 +121,6 @@ install 测试与 race、全量 test、vet、build、Docs Gate。自动门禁通
 - 上下文与回执文件拒绝未知字段、符号链接、非普通文件和超过 1 MiB 的输入；
 - 缺失 Store 的只读命令零创建；
 - `omr-memory` Profile 已改为通过只读 OMR 命令渐进读取 Episode Index/Card；
+- `omr-memory` Profile 已补充 Usage/Attribution 回执交接协议；真实 Desktop 是否能稳定产生两类
+  回执仍待临时项目联调，不能据此宣称自动采集已默认启用；
 - Composite 事务、CURRENT 固定、Reader、CLI 输入安全与 Profile 安装均由自动测试覆盖。

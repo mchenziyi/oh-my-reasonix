@@ -30,10 +30,6 @@ func PublishIndexGeneration(ctx context.Context, store *FactStore, req IndexPubl
 	if err := validateID(req.IdempotencyKey, "idempotency_key"); err != nil {
 		return IndexPublishResult{}, storeError(CodeDerivedInvalidInput, "index publish idempotency key is invalid")
 	}
-	compiled, err := CompileOKF(ctx, store, req.OKF)
-	if err != nil {
-		return IndexPublishResult{}, err
-	}
 	binding, err := indexPublishRequestHash(req)
 	if err != nil {
 		return IndexPublishResult{}, storeError(CodeDerivedInvalidInput, "index publish request is invalid")
@@ -68,6 +64,12 @@ func PublishIndexGeneration(ctx context.Context, store *FactStore, req IndexPubl
 	abort := func(e error) (IndexPublishResult, error) {
 		_ = gs.Abort(ctx, tx, "index publish failed")
 		return IndexPublishResult{}, e
+	}
+	// Claim before compiling so a changed replay gets the stable idempotency
+	// error even when its payload is otherwise invalid.
+	compiled, err := CompileOKF(ctx, store, req.OKF)
+	if err != nil {
+		return abort(err)
 	}
 	for _, input := range compiled.Inputs {
 		fact, readErr := readManifestInput(ctx, store, input)
