@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion Generation 发布计划
 
 - 阶段：MEM-05B-Generation
-- 状态：🟡 设计完成，待实现
+- 状态：✅ 库层发布事务已实现（CLI/Global Generation UI 待后续阶段）
 - 前置：GlobalPromotionCandidate、`ApplyPromotionCandidate`、MEM-01D Generation 事务、OKF Compiler
 - 不依赖：Reasonix 官方接口、人工批准、模型调用
 
@@ -14,7 +14,7 @@ GenerationStore 的 Manifest/CAS/Recover 事务发布派生 OKF。该阶段不�
 ## 二、请求模型
 
 ```text
-GlobalPromotionGenerationRequest:
+PromotionGenerationRequest:
   candidate: GlobalPromotionCandidate       # status=eligible
   target: MemoryRevision                    # Scope=global, Revision=1
   source_bindings: [PromotionCandidateSource]
@@ -72,3 +72,10 @@ Global Revision 只能保持 probation，不得自动 active。覆盖成功、�
 go build ./cmd/omr、bash tests/docs_check.sh；完成 review/security review 后再报告，不要自行创建 Tag。
 ```
 
+## 七、当前实现收口
+
+库层已提供 `PublishPromotionGeneration`：它先复核候选与显式来源绑定，再在 Global Store 上执行
+`CompileOKF → Begin → PrepareFact → PrepareManifest → WriteCompiledOutput → ValidateStaging → Commit`。
+Global `generalized_from` 关系允许保留指向 Project 来源的 provenance，但 Project 页面不会被纳入 Global
+Generation。重复 idempotency key 按 GenerationStore 的既有已提交冲突语义返回稳定错误；未增加 CLI、人工批准
+Fact 或新的 CURRENT 事实源。

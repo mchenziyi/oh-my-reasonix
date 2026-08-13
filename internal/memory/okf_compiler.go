@@ -765,6 +765,13 @@ func compileOKFRelations(scope Scope, pages []okfPage, inputs map[string]MemoryR
 	for _, p := range pages {
 		for _, r := range sortedRelations(p.revision.Relations) {
 			if r.Target.Scope != scope {
+				// Global promotion keeps generalized_from provenance to the
+				// project memories that contributed the candidate. Those source
+				// pages are intentionally not part of the Global generation.
+				if scope == ScopeGlobal && r.Predicate == "generalized_from" && r.Target.Scope == ScopeProject {
+					doc.Relations = append(doc.Relations, okfRelation{Predicate: r.Predicate, Source: okfRelationRef{MemoryID: p.revision.MemoryID, MemoryType: string(p.revision.MemoryType), Revision: p.revision.Revision}, Target: r.Target})
+					continue
+				}
 				return nil, storeError(CodeOKFCompileError, "relation target crosses the generation scope")
 			}
 			target, ok := inputs[relationTargetKey(r.Target.Scope, r.Target.MemoryType, r.Target.MemoryID, r.Target.Revision)]
