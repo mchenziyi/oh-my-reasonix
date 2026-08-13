@@ -43,12 +43,13 @@ const (
 	CodeOKFInvalidInput Code = "memory_okf_invalid_input"
 	CodeOKFCompileError Code = "memory_okf_compile_error"
 
-	CodeDerivedInvalidInput     Code = "memory_derived_invalid_input"
-	CodeIndexPolicyUnsatisfied  Code = "memory_index_policy_unsatisfied"
-	CodeLibrarianInvalidContext Code = "memory_librarian_invalid_context"
-	CodeLibrarianInvalidReceipt Code = "memory_librarian_invalid_receipt"
-	CodeUsageCaptureInvalid     Code = "memory_usage_capture_invalid"
-	CodeUsageCapturePending     Code = "memory_usage_capture_pending"
+	CodeDerivedInvalidInput       Code = "memory_derived_invalid_input"
+	CodeIndexPolicyUnsatisfied    Code = "memory_index_policy_unsatisfied"
+	CodeLibrarianInvalidContext   Code = "memory_librarian_invalid_context"
+	CodeLibrarianInvalidReceipt   Code = "memory_librarian_invalid_receipt"
+	CodeUsageCaptureInvalid       Code = "memory_usage_capture_invalid"
+	CodeUsageCapturePending       Code = "memory_usage_capture_pending"
+	CodeAttributionCaptureInvalid Code = "memory_attribution_capture_invalid"
 
 	// Evaluation codes (MEM-02-01).
 	CodeEvaluationFutureReference Code = "memory_evaluation_future_reference"

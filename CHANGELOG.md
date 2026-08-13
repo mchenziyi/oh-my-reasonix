@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Added
+- **Mnemosyne MEM-04B Attribution/Outcome**：新增严格瞬时 `AttributionReceipt`、Legacy/Enriched Outcome 双形态与 `omr memory outcome capture`。OMR 从固定 Episode、Anchored Usage 和 Evidence 生成 ID/时间/Hash/计分结果；未获 Critic 支持的 harm 降级为 unknown，外部失败不计 help/harm，同一 Root Task Retry 幂等 NOOP。
 - **Mnemosyne MEM-04A MemoryUsage 采集**：新增严格的 `MemoryUsageReceipt`、固定世界构建器与 `omr memory usage capture`；可信 ID、时间、Context、Episode Provenance 和 Hash 全部由 OMR 从规范事实确定性生成。重复阶段只保留最高最终阶段，Retry 幂等 NOOP，冲突批次零写入；本阶段不生成 Outcome 或正负归因。
 
 ### Security

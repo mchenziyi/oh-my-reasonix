@@ -72,6 +72,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"usage", "capture", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("missing usage receipt files must fail")
 	}
+	if err := runMemory([]string{"outcome", "capture", "--project-dir", t.TempDir()}); err == nil {
+		t.Fatal("missing attribution receipt must fail")
+	}
 }
 
 func TestMemoryUsageCLIRejectsUnknownFieldsBeforeStoreAccess(t *testing.T) {

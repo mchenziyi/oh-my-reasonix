@@ -336,7 +336,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04B：Attribution Analyst 与 Outcome
 
-状态：⬜
+状态：✅ 自动化实现完成，待真实 Reasonix Desktop Attribution 回执联调（见 `OMR_MNEMOSYNE_MEM-04B_ATTRIBUTION_OUTCOME_PLAN.zh-CN.md`）
 
 - 模型分析只输出候选归因；
 - OMR Attribution Gate 校验上下文、证据和任务边界；

@@ -745,6 +745,9 @@ func hasHarmedOutcome(in *derivedInputs, rev MemoryRevision, usageByID map[strin
 		if o.ExternalFailure {
 			continue
 		}
+		if o.enriched() && (o.CountedAsHarm == nil || !*o.CountedAsHarm) {
+			continue
+		}
 		if o.Effect != "harmed" {
 			continue
 		}
@@ -919,8 +922,17 @@ func deriveUsage(in *derivedInputs, rev MemoryRevision) (UsageStats, int, map[st
 		if o.ExternalFailure {
 			continue // third-party failure is never auto-attributed
 		}
+		effect := effective[o.OutcomeID]
+		if o.enriched() {
+			if o.Evaluated == nil || !*o.Evaluated || o.Attribution != "confirmed" {
+				continue
+			}
+			if effect == "harmed" && o.Critic != "supported" {
+				continue
+			}
+		}
 		attributed = true
-		switch effective[o.OutcomeID] {
+		switch effect {
 		case "helped":
 			stats.CountedHelpCount++
 			if u.EpisodeID != "" {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 )
 
 // MemoryUsage records one concrete use of a memory revision by a task. It is
@@ -240,6 +241,30 @@ type Outcome struct {
 	ExternalFailure bool   `json:"external_failure"`
 	ContentSHA256   string `json:"content_sha256"`
 	CreatedAt       string `json:"created_at"`
+
+	// MEM-04B attribution anchors. Legacy Outcomes omit every field below;
+	// Enriched Outcomes carry the complete set and are created only by the
+	// deterministic Attribution Gate.
+	EpisodeID               string        `json:"episode_id,omitempty"`
+	RootTaskID              string        `json:"root_task_id,omitempty"`
+	ContextSignatureVersion int           `json:"context_signature_version,omitempty"`
+	ContextSignature        string        `json:"context_signature,omitempty"`
+	ContextDescriptorRef    string        `json:"context_descriptor_ref,omitempty"`
+	TaskOutcome             string        `json:"task_outcome,omitempty"`
+	FailureCauseMemoryID    string        `json:"failure_cause_memory_id,omitempty"`
+	MemoryStage             string        `json:"memory_stage,omitempty"`
+	Evaluated               *bool         `json:"evaluated,omitempty"`
+	Attribution             string        `json:"attribution,omitempty"`
+	Critic                  string        `json:"critic,omitempty"`
+	EvidenceRefs            []EvidenceRef `json:"evidence_refs,omitempty"`
+	CountedAsHelp           *bool         `json:"counted_as_help,omitempty"`
+	CountedAsHarm           *bool         `json:"counted_as_harm,omitempty"`
+}
+
+func (o Outcome) enriched() bool {
+	return o.EpisodeID != "" || o.RootTaskID != "" || o.ContextSignatureVersion != 0 || o.ContextSignature != "" ||
+		o.ContextDescriptorRef != "" || o.TaskOutcome != "" || o.FailureCauseMemoryID != "" || o.MemoryStage != "" ||
+		o.Attribution != "" || o.Critic != "" || o.EvidenceRefs != nil || o.Evaluated != nil || o.CountedAsHelp != nil || o.CountedAsHarm != nil
 }
 
 func (o Outcome) Validate() error {
@@ -267,7 +292,50 @@ func (o Outcome) Validate() error {
 	if err := validateHash(o.ContentSHA256, "content_sha256"); err != nil {
 		return fmt.Errorf("outcome: %w", err)
 	}
-	return validateTime(o.CreatedAt, "created_at")
+	if err := validateTime(o.CreatedAt, "created_at"); err != nil {
+		return err
+	}
+	if !o.enriched() {
+		return nil
+	}
+	if validateID(o.EpisodeID, "episode_id") != nil || validateID(o.RootTaskID, "root_task_id") != nil || o.ContextSignatureVersion != 1 || validateHash(o.ContextSignature, "context_signature") != nil || validateID(o.ContextDescriptorRef, "context_descriptor_ref") != nil {
+		return errors.New("outcome: attribution anchors are invalid")
+	}
+	if o.TaskOutcome != "succeeded" && o.TaskOutcome != "failed" && o.TaskOutcome != "cancelled" && o.TaskOutcome != "unknown" {
+		return errors.New("outcome: task_outcome is invalid")
+	}
+	if o.Evaluated == nil || !usageStageAttributed(o.MemoryStage) || (*o.Evaluated != (o.MemoryStage == "evaluated")) {
+		return errors.New("outcome: memory stage is invalid")
+	}
+	if o.Attribution != "confirmed" && o.Attribution != "likely" && o.Attribution != "uncertain" {
+		return errors.New("outcome: attribution is invalid")
+	}
+	if o.Critic != "supported" && o.Critic != "unsupported" && o.Critic != "not_required" && o.Critic != "unavailable" {
+		return errors.New("outcome: critic is invalid")
+	}
+	if o.FailureCauseMemoryID != "" && validateID(o.FailureCauseMemoryID, "failure_cause_memory_id") != nil {
+		return errors.New("outcome: failure cause is invalid")
+	}
+	seen := map[string]bool{}
+	if o.EvidenceRefs == nil || o.CountedAsHelp == nil || o.CountedAsHarm == nil {
+		return errors.New("outcome: attribution anchors are incomplete")
+	}
+	for _, ref := range o.EvidenceRefs {
+		if ref.Validate() != nil || ref.Scope != o.Scope {
+			return errors.New("outcome: evidence reference is invalid")
+		}
+		key := evidenceRefKey(ref)
+		if seen[key] {
+			return errors.New("outcome: evidence reference is duplicated")
+		}
+		seen[key] = true
+	}
+	wantHelp := *o.Evaluated && o.Effect == "helped" && o.Attribution == "confirmed" && !o.ExternalFailure
+	wantHarm := *o.Evaluated && o.Effect == "harmed" && o.Attribution == "confirmed" && o.Critic == "supported" && !o.ExternalFailure
+	if *o.CountedAsHelp != wantHelp || *o.CountedAsHarm != wantHarm || (*o.CountedAsHelp && *o.CountedAsHarm) {
+		return errors.New("outcome: counted attribution is invalid")
+	}
+	return nil
 }
 
 func (o Outcome) canonMap() (map[string]any, error) {
@@ -275,7 +343,7 @@ func (o Outcome) canonMap() (map[string]any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return map[string]any{
+	m := map[string]any{
 		"schema_version":   o.SchemaVersion,
 		"outcome_id":       o.OutcomeID,
 		"scope":            string(o.Scope),
@@ -286,7 +354,29 @@ func (o Outcome) canonMap() (map[string]any, error) {
 		"external_failure": o.ExternalFailure,
 		"content_sha256":   o.ContentSHA256,
 		"created_at":       created,
-	}, nil
+	}
+	if o.enriched() {
+		if o.Evaluated == nil || o.CountedAsHelp == nil || o.CountedAsHarm == nil || o.EvidenceRefs == nil {
+			return nil, errors.New("outcome: incomplete attribution anchors cannot be canonicalized")
+		}
+		refs := append([]EvidenceRef(nil), o.EvidenceRefs...)
+		sort.Slice(refs, func(i, j int) bool { return evidenceRefKey(refs[i]) < evidenceRefKey(refs[j]) })
+		m["episode_id"] = o.EpisodeID
+		m["root_task_id"] = o.RootTaskID
+		m["context_signature_version"] = o.ContextSignatureVersion
+		m["context_signature"] = o.ContextSignature
+		m["context_descriptor_ref"] = o.ContextDescriptorRef
+		m["task_outcome"] = o.TaskOutcome
+		m["failure_cause_memory_id"] = o.FailureCauseMemoryID
+		m["memory_stage"] = o.MemoryStage
+		m["evaluated"] = *o.Evaluated
+		m["attribution"] = o.Attribution
+		m["critic"] = o.Critic
+		m["evidence_refs"] = refs
+		m["counted_as_help"] = *o.CountedAsHelp
+		m["counted_as_harm"] = *o.CountedAsHarm
+	}
+	return m, nil
 }
 
 func (o Outcome) CanonicalBytes() ([]byte, error) {

@@ -59,6 +59,7 @@ func TestMemoryUsageCaptureCLIProcess(t *testing.T) {
 		t.Fatal(err)
 	}
 	store, lr, receipt, _ := usageCaptureFixtureAt(t, storeRoot)
+	receipt.Usages[0].UsageStage = "evaluated"
 	librarianFile := filepath.Join(project, "librarian.json")
 	usageFile := filepath.Join(project, "usage.json")
 	lb, _ := json.Marshal(lr)
@@ -90,6 +91,26 @@ func TestMemoryUsageCaptureCLIProcess(t *testing.T) {
 	keys, err := store.List(context.Background(), FactKindMemoryUsage)
 	if err != nil || len(keys) != 1 || keys[0] != result.UsageIDs[0] {
 		t.Fatalf("CLI did not persist one usage: %v %v", keys, err)
+	}
+	attributionFile := filepath.Join(project, "attribution.json")
+	attributionEvidence := EvidenceRef{Scope: receipt.EpisodeRef.Scope, EvidenceType: "episode", EvidenceID: receipt.EpisodeRef.EpisodeID, ContentSHA256: receipt.EpisodeRef.ContentSHA256}
+	attribution := AttributionReceipt{SchemaVersion: 1, EpisodeRef: receipt.EpisodeRef, RootTaskID: receipt.RootTaskID, Candidates: []OutcomeCandidate{{UsageID: result.UsageIDs[0], TaskOutcome: "succeeded", MemoryEffect: "helped", Attribution: "confirmed", Critic: "not_required", EvidenceRefs: []EvidenceRef{attributionEvidence}}}}
+	ab, _ := attribution.EncodeCanonical()
+	if err := os.WriteFile(attributionFile, ab, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd = exec.Command(binary, "memory", "outcome", "capture", "--project-dir", project, "--attribution-receipt", attributionFile, "--json")
+	out, err = cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("outcome CLI: %v\n%s", err, out)
+	}
+	var outcomeResult CaptureOutcomeResult
+	if err := json.Unmarshal(out, &outcomeResult); err != nil || outcomeResult.Created != 1 || len(outcomeResult.OutcomeIDs) != 1 {
+		t.Fatalf("unexpected outcome CLI result: %s (%v)", out, err)
+	}
+	outcomeKeys, err := store.List(context.Background(), FactKindOutcome)
+	if err != nil || len(outcomeKeys) != 1 || outcomeKeys[0] != outcomeResult.OutcomeIDs[0] {
+		t.Fatalf("CLI did not persist one outcome: %v %v", outcomeKeys, err)
 	}
 }
 

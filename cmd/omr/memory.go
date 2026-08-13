@@ -23,7 +23,7 @@ type episodicContextDocument struct {
 
 func runMemory(args []string) error {
 	if len(args) < 2 {
-		return errors.New("memory requires an episodic or usage command")
+		return errors.New("memory requires an episodic, usage or outcome command")
 	}
 	if args[0] == "usage" {
 		if args[1] != "capture" {
@@ -31,8 +31,14 @@ func runMemory(args []string) error {
 		}
 		return runMemoryUsageCapture(args[2:])
 	}
+	if args[0] == "outcome" {
+		if args[1] != "capture" {
+			return errors.New("memory outcome requires capture")
+		}
+		return runMemoryOutcomeCapture(args[2:])
+	}
 	if args[0] != "episodic" {
-		return errors.New("memory requires an episodic or usage command")
+		return errors.New("memory requires an episodic, usage or outcome command")
 	}
 	switch args[1] {
 	case "context":
@@ -48,6 +54,45 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryOutcomeCapture(args []string) error {
+	fs := flag.NewFlagSet("memory outcome capture", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	receiptFile := fs.String("attribution-receipt", "", "Attribution receipt JSON")
+	external := fs.Bool("external-failure", false, "task failed for an externally verified reason")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *receiptFile == "" {
+		return errors.New("attribution-receipt is required")
+	}
+	b, err := readBoundedJSONFile(*receiptFile)
+	if err != nil {
+		return err
+	}
+	receipt, err := mem.DecodeStrict[mem.AttributionReceipt](b)
+	if err != nil {
+		return errors.New("attribution receipt is invalid")
+	}
+	dir := *project
+	if receipt.EpisodeRef.Scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, receipt.EpisodeRef.Scope)
+	if err != nil {
+		return err
+	}
+	result, err := mem.CommitOutcomes(context.Background(), mem.AttributionRequest{Store: store, Receipt: receipt, ExternalFailure: *external})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryUsageCapture(args []string) error {
