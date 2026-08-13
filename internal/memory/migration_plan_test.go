@@ -24,6 +24,27 @@ func TestBuildMigrationPlanFromStoresIsVerifiedAndReadOnly(t *testing.T) {
 	}
 }
 
+func TestBuildMigrationPlanBindsTargetBaseGeneration(t *testing.T) {
+	source := openProject(t, tempRoot(t), Options{})
+	target := openProject(t, tempRoot(t), Options{})
+	sourceTx := commitOne(t, NewGenerationStore(source), "migration_plan_base_source", nil)
+	targetTx := commitOne(t, NewGenerationStore(target), "migration_plan_base_target", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, sourceTx.GenerationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plan.TargetBaseGenerationID == nil || *plan.TargetBaseGenerationID != targetTx.GenerationID {
+		t.Fatalf("plan must bind the target CURRENT generation: %+v", plan)
+	}
+	planHash := plan.PlanHash()
+	changed := plan
+	otherBase := "gen_01K7A9X2TARGET"
+	changed.TargetBaseGenerationID = &otherBase
+	if changed.PlanHash() == planHash {
+		t.Fatal("target base generation must participate in the plan hash")
+	}
+}
+
 func TestBuildMigrationPlanFromStoresRejectsCrossScope(t *testing.T) {
 	sourceRoot := tempRoot(t)
 	targetRoot := tempRoot(t)
