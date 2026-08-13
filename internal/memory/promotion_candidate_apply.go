@@ -22,6 +22,14 @@ type PromotionCandidateApplyRequest struct {
 // probation revision. It is not an approval operation and never changes
 // Project facts, Lifecycle, Global CURRENT, or any derived index.
 func ApplyPromotionCandidate(ctx context.Context, req PromotionCandidateApplyRequest) (WriteResult, error) {
+	return applyPromotionCandidate(ctx, req, false)
+}
+
+func applyPromotionCandidateLocked(ctx context.Context, req PromotionCandidateApplyRequest) (WriteResult, error) {
+	return applyPromotionCandidate(ctx, req, true)
+}
+
+func applyPromotionCandidate(ctx context.Context, req PromotionCandidateApplyRequest, locked bool) (WriteResult, error) {
 	if req.Global == nil || !req.Global.scopeMatches(ScopeGlobal) {
 		return WriteResult{}, storeError(CodeScopeMismatch, "promotion candidate global store mismatch")
 	}
@@ -90,6 +98,9 @@ func ApplyPromotionCandidate(ctx context.Context, req PromotionCandidateApplyReq
 		if err := verifyEvidenceRefsAcrossStores(ctx, stores, req.Candidate.EvidenceRefs); err != nil {
 			return WriteResult{}, err
 		}
+	}
+	if locked {
+		return req.Global.putLocked(ctx, req.Target)
 	}
 	return req.Global.Put(ctx, req.Target)
 }

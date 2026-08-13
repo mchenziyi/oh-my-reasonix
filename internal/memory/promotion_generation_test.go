@@ -89,6 +89,11 @@ func TestPublishPromotionGenerationCommitsGlobalOKF(t *testing.T) {
 	if ErrorCode(err) != CodeGenerationTxConflict || replay.GenerationID != "" {
 		t.Fatalf("replay must fail with stable already-committed conflict: %+v %v", replay, err)
 	}
+	changedTime := time.Date(2026, 8, 14, 0, 0, 0, 0, time.UTC)
+	changed, err := PublishPromotionGeneration(ctx, PromotionGenerationRequest{Candidate: candidate, Sources: sources, Target: target, Global: global, Compile: OKFCompileRequest{IndexPolicyRef: policyRefOf(policy), Revisions: []MemoryRevisionRef{{MemoryID: target.MemoryID, Revision: target.Revision, ContentSHA256: target.ContentSHA256}}, Evidence: []MemoryEvidenceRef{{MemoryID: ev.MemoryID, Revision: ev.Revision, EvidenceGeneration: ev.EvidenceGeneration, EvidenceSetSHA256: ev.EvidenceSetSHA256}}}, EvaluationTime: changedTime, IdempotencyKey: "promotion_generation_1"})
+	if ErrorCode(err) != CodeGenerationIdempotency || changed.GenerationID != "" {
+		t.Fatalf("changed promotion request with same key must fail closed before reuse: %+v %v", changed, err)
+	}
 }
 
 func TestPublishPromotionGenerationRequiresExplicitTime(t *testing.T) {

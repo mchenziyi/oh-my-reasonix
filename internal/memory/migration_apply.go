@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -48,14 +49,6 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	if err != nil {
 		return MigrationApplyResult{}, err
 	}
-	copyResult, err := copyMigrationFacts(ctx, target, facts, sourceManifest)
-	if err != nil {
-		return MigrationApplyResult{}, err
-	}
-	outputs, err := readCompiledOutputs(sourceDir)
-	if err != nil {
-		return MigrationApplyResult{}, err
-	}
 	cur, err := targetGS.readCurrent(ctx)
 	if err != nil {
 		return MigrationApplyResult{}, err
@@ -64,46 +57,64 @@ func ApplyMigration(ctx context.Context, source, target *FactStore, req Migratio
 	if cur != nil {
 		base = &cur.GenerationID
 	}
-	tx, err := targetGS.Begin(ctx, BeginGenerationRequest{Scope: req.Plan.TargetScope, BaseGeneration: base, CompilerVersion: sourceGen.CompilerVersion, CanonicalizationVersion: sourceGen.CanonicalizationVersion, SchemaVersion: SchemaVersion, IdempotencyKey: req.IdempotencyKey})
+	binding, err := migrationRequestBinding(req.Plan)
+	if err != nil {
+		return MigrationApplyResult{}, storeError(CodeDerivedInvalidInput, "migration request is invalid")
+	}
+	tx, err := targetGS.Begin(ctx, BeginGenerationRequest{Scope: req.Plan.TargetScope, BaseGeneration: base, CompilerVersion: sourceGen.CompilerVersion, CanonicalizationVersion: sourceGen.CanonicalizationVersion, SchemaVersion: SchemaVersion, IdempotencyKey: req.IdempotencyKey, RequestBindingSHA256: binding})
 	if err != nil {
 		return MigrationApplyResult{}, err
+	}
+	abort := func(cause error) (MigrationApplyResult, error) {
+		_ = targetGS.Abort(ctx, tx, "migration apply failed")
+		return MigrationApplyResult{}, cause
+	}
+	outputs, err := readCompiledOutputs(sourceDir)
+	if err != nil {
+		return abort(err)
+	}
+	copyResult, err := copyMigrationFactsLocked(ctx, target, facts, sourceManifest)
+	if err != nil {
+		return abort(err)
 	}
 	for _, input := range facts {
 		if err := targetGS.PrepareFact(ctx, tx, input); err != nil {
-			_ = targetGS.Abort(ctx, tx, "migration prepare failed")
-			return MigrationApplyResult{}, err
+			return abort(err)
 		}
 	}
 	if err := targetGS.WriteCompiledOutput(ctx, tx, outputs); err != nil {
-		_ = targetGS.Abort(ctx, tx, "migration output staging failed")
-		return MigrationApplyResult{}, err
+		return abort(err)
 	}
 	staging, err := targetGS.stagingDir(ctx, tx.GenerationID)
 	if err != nil {
-		_ = targetGS.Abort(ctx, tx, "migration staging path failed")
-		return MigrationApplyResult{}, err
+		return abort(err)
 	}
 	compiledHash, err := targetGS.compiledOutputHash(ctx, staging)
 	if err != nil {
-		_ = targetGS.Abort(ctx, tx, "migration output hash failed")
-		return MigrationApplyResult{}, err
+		return abort(err)
 	}
 	gen := generationDoc{SchemaVersion: SchemaVersion, GenerationID: tx.GenerationID, Scope: tx.Scope, BaseGeneration: baseOrNil(base), CompilerVersion: tx.CompilerVersion, CanonicalizationVersion: tx.CanonicalizationVersion, TransactionID: tx.TransactionID, CompiledOutputSHA256: compiledHash}
 	gen.OutputGenerationSHA256, err = gen.outputHash()
 	if err != nil {
-		_ = targetGS.Abort(ctx, tx, "migration generation hash failed")
-		return MigrationApplyResult{}, err
+		return abort(err)
 	}
 	mf := manifestForMigration(sourceManifest, tx, gen.OutputGenerationSHA256)
 	if err := targetGS.PrepareManifest(ctx, tx, mf); err != nil {
-		_ = targetGS.Abort(ctx, tx, "migration manifest failed")
-		return MigrationApplyResult{}, err
+		return abort(err)
 	}
 	commit, err := targetGS.Commit(ctx, tx)
 	if err != nil && commit.Status != CommitPendingRecovery {
 		return MigrationApplyResult{}, err
 	}
 	return MigrationApplyResult{Copy: copyResult, Commit: commit, GenerationID: commit.GenerationID}, err
+}
+
+func migrationRequestBinding(plan MigrationPlan) (string, error) {
+	b, err := json.Marshal(plan)
+	if err != nil {
+		return "", err
+	}
+	return hashOf(b), nil
 }
 
 func baseOrNil(base *string) any {
@@ -231,8 +242,24 @@ func loadMigrationSource(ctx context.Context, source *FactStore, plan MigrationP
 }
 
 func copyMigrationFacts(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest) (MigrationCopyResult, error) {
+	return copyMigrationFactsWithPut(ctx, target, facts, mf, false)
+}
+
+func copyMigrationFactsLocked(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest) (MigrationCopyResult, error) {
+	return copyMigrationFactsWithPut(ctx, target, facts, mf, true)
+}
+
+func copyMigrationFactsWithPut(ctx context.Context, target *FactStore, facts []Fact, mf GenerationInputManifest, locked bool) (MigrationCopyResult, error) {
 	all := append(append([]Fact{}, facts...), mf)
-	results, err := target.PutBatch(ctx, all)
+	var (
+		results []WriteResult
+		err     error
+	)
+	if locked {
+		results, err = target.putBatchLocked(ctx, all)
+	} else {
+		results, err = target.PutBatch(ctx, all)
+	}
 	if err != nil {
 		return MigrationCopyResult{}, err
 	}

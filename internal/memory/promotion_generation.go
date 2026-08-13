@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 )
@@ -29,16 +30,34 @@ func PublishPromotionGeneration(ctx context.Context, req PromotionGenerationRequ
 	if req.EvaluationTime.IsZero() {
 		return CommitResult{}, storeError(CodeDerivedInvalidInput, "promotion generation requires an explicit evaluation time")
 	}
-	if _, err := ApplyPromotionCandidate(ctx, PromotionCandidateApplyRequest{Candidate: req.Candidate, Sources: req.Sources, Target: req.Target, Global: req.Global}); err != nil {
-		return CommitResult{}, err
+	binding, err := promotionGenerationRequestBinding(req)
+	if err != nil {
+		return CommitResult{}, storeError(CodeDerivedInvalidInput, "promotion generation request is invalid")
 	}
-	raw, err := req.Global.Get(ctx, FactKindPromotionCandidate, req.Candidate.CandidateID)
+	gs := NewGenerationStore(req.Global)
+	tx, err := gs.Begin(ctx, BeginGenerationRequest{
+		Scope: ScopeGlobal, BaseGeneration: req.BaseGeneration,
+		CompilerVersion: OKFCompilerVersion, CanonicalizationVersion: OKFCanonicalizationVersion,
+		SchemaVersion: SchemaVersion, IdempotencyKey: req.IdempotencyKey,
+		RequestBindingSHA256: binding,
+	})
 	if err != nil {
 		return CommitResult{}, err
 	}
+	abort := func(cause error) (CommitResult, error) {
+		_ = gs.Abort(ctx, tx, "promotion generation failed")
+		return CommitResult{}, cause
+	}
+	if _, err := applyPromotionCandidateLocked(ctx, PromotionCandidateApplyRequest{Candidate: req.Candidate, Sources: req.Sources, Target: req.Target, Global: req.Global}); err != nil {
+		return abort(err)
+	}
+	raw, err := req.Global.Get(ctx, FactKindPromotionCandidate, req.Candidate.CandidateID)
+	if err != nil {
+		return abort(err)
+	}
 	candidate, err := DecodeStrict[GlobalPromotionCandidate](raw)
 	if err != nil || candidate.ContentSHA256 != req.Candidate.ContentSHA256 {
-		return CommitResult{}, storeError(CodeHashMismatch, "promotion candidate hash mismatch")
+		return abort(storeError(CodeHashMismatch, "promotion candidate hash mismatch"))
 	}
 	compileReq := req.Compile
 	compileReq.Scope = ScopeGlobal
@@ -46,20 +65,7 @@ func PublishPromotionGeneration(ctx context.Context, req PromotionGenerationRequ
 	compileReq.BaseGeneration = req.BaseGeneration
 	compiled, err := CompileOKF(ctx, req.Global, compileReq)
 	if err != nil {
-		return CommitResult{}, err
-	}
-	gs := NewGenerationStore(req.Global)
-	tx, err := gs.Begin(ctx, BeginGenerationRequest{
-		Scope: ScopeGlobal, BaseGeneration: req.BaseGeneration,
-		CompilerVersion: OKFCompilerVersion, CanonicalizationVersion: OKFCanonicalizationVersion,
-		SchemaVersion: SchemaVersion, IdempotencyKey: req.IdempotencyKey,
-	})
-	if err != nil {
-		return CommitResult{}, err
-	}
-	abort := func(cause error) (CommitResult, error) {
-		_ = gs.Abort(ctx, tx, cause.Error())
-		return CommitResult{}, cause
+		return abort(err)
 	}
 	inputs := append([]ManifestInput{}, compiled.Inputs...)
 	candidateType, candidateID, err := factIdentity(candidate)
@@ -107,6 +113,29 @@ func PublishPromotionGeneration(ctx context.Context, req PromotionGenerationRequ
 		return result, err
 	}
 	return result, nil
+}
+
+func promotionGenerationRequestBinding(req PromotionGenerationRequest) (string, error) {
+	sources := make([]struct {
+		Ref               MemoryRef
+		FamilyFingerprint string
+	}, len(req.Sources))
+	for i, source := range req.Sources {
+		sources[i].Ref = source.Ref
+		sources[i].FamilyFingerprint = source.FamilyFingerprint
+	}
+	b, err := json.Marshal(struct {
+		Candidate      GlobalPromotionCandidate
+		Sources        any
+		Target         MemoryRevision
+		Compile        OKFCompileRequest
+		EvaluationTime time.Time
+		BaseGeneration *string
+	}{req.Candidate, sources, req.Target, req.Compile, req.EvaluationTime.UTC(), req.BaseGeneration})
+	if err != nil {
+		return "", err
+	}
+	return hashOf(b), nil
 }
 
 func manifestForPromotionGeneration(tx *GenerationTx, inputs []ManifestInput, now time.Time) GenerationInputManifest {

@@ -45,6 +45,8 @@ Fact、Policy、Evidence、Candidate Hash 和 `generalized_from` 关系，不能
 - 输出 Hash、Manifest Hash、Generation Hash、CURRENT 均可从规范事实确定性重建；
 - 不读取 Project Store 的 CURRENT，不扫描未声明的项目，也不把路径写入任何事实；
 - 重复请求同 key 同请求 Hash 可重放，不同 Hash fail closed；base 变化触发 CAS 冲突；
+- Claim 在 Candidate 物化和编译前完成，并绑定 Candidate、Source bindings、Target、Compile 输入、评估时间与 base；
+  同 key 不同 Promotion 请求在任何 Global 事实副作用前返回稳定幂等冲突；持锁写入复用已持锁路径，禁止锁重入；
 - OKF 编译失败、来源漂移、symlink、未来时间和 Policy 不满足均在 CURRENT 切换前失败；
 - 发布后页面篡改、删除或 symlink 必须由现有 `verifyPublished`/Recover 拒绝。
 

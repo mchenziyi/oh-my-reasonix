@@ -81,6 +81,11 @@ func TestApplyMigrationPublishesNewTargetGeneration(t *testing.T) {
 	if sourceCur.GenerationID != sourceTx.GenerationID {
 		t.Fatal("migration must not change source CURRENT")
 	}
+	changed := plan
+	changed.FactCount++
+	if _, err := ApplyMigration(context.Background(), source, target, MigrationApplyRequest{Plan: changed, IdempotencyKey: "migration_apply_key"}); ErrorCode(err) != CodeGenerationIdempotency {
+		t.Fatalf("changed migration plan with same key must fail closed before reuse, got %v", err)
+	}
 }
 
 func TestApplyMigrationRejectsCrossScopeAndTamperedSource(t *testing.T) {

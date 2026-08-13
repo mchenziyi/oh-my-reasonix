@@ -269,6 +269,15 @@ func (s *FactStore) PutBatch(ctx context.Context, facts []Fact) ([]WriteResult, 
 		return nil, err
 	}
 	defer unlock()
+	return s.putBatchLocked(ctx, facts)
+}
+
+// putBatchLocked is used by a higher-level transaction that already owns the
+// same store lock. Callers must not invoke it without that lock.
+func (s *FactStore) putBatchLocked(ctx context.Context, facts []Fact) ([]WriteResult, error) {
+	if len(facts) == 0 {
+		return nil, storeError(CodeSchemaInvalid, "fact batch must not be empty")
+	}
 	prepared, results, err := s.prepareBatch(ctx, facts)
 	if err != nil {
 		return nil, err

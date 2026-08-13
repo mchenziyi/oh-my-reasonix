@@ -77,6 +77,13 @@ omr memory migration copy \
 Scope、GenerationRef、Manifest Hash、事实集合和固定步骤；校验 Hash、Scope、权限、symlink、未来时间和输入完整性。
 计划生成和 Doctor 零写入；`copy` 只读取已验证源事实并通过 PutBatch 写目标，不切 CURRENT、不调用模型/网络。目标编译与
 CURRENT 切换留到后续批准阶段。
+
+### 3.1 幂等 Claim 与锁顺序收口
+
+`migration apply` 的幂等 Claim 必须绑定完整 `MigrationPlan`（Generation、Manifest Hash、Scope、FactCount
+与步骤），不能只绑定 GenerationStore 的通用元数据。事务先 Claim，再读取输出并在同一目标 Store 写锁内复制
+不可变事实、准备 Generation、提交 Manifest/Generation/CURRENT；已持锁路径不得再次获取同一 Store 锁。
+同一 key 的不同计划在任何目标事实副作用前返回稳定的幂等冲突。
 运行 gofmt、git diff --check、go test -race ./internal/memory/...、go test ./...、go vet、go build、docs_check；
 未获 CTO 复核前不要提交、推送或创建 Tag。
 ```
