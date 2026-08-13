@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05A：Revision、Merge、Split 与 Generalize
 
 - 阶段：MEM-05A
-- 状态：✅ 只读计划层已实现并通过门禁（2026-08-13）；Revision/Merge/Split/Generalize 仍不自动写入规范事实
+- 状态：🟡 只读计划层与显式 Revision Apply 已实现并通过门禁（2026-08-13）；Merge/Split/Generalize/Global Promotion 仍需独立批准事务
 - 前置：MEM-01A～MEM-04C 自动化链已完成；MEM-04A～04B 的真实 Desktop 回执仍待联调
 - 目标：在不覆盖既有 Revision、不开启自动 Global Promotion 的前提下，定义可审计的修订、合并、拆分与泛化计划
 
@@ -66,7 +66,8 @@ Generalize 只允许从至少两个相互独立的 Project Scope 来源生成候
 
 ## 六、明确不在 MEM-05A
 
-- 不实现自动批准、Global Promotion、跨设备同步或 Web 管理页面；
+- `ApplyRevisionPlan` 是显式调用的单步写入边界：重新校验 source/target/evidence 后复用 FactStore Put；不自动批准，不切换 CURRENT，不更新 Lifecycle 或索引。
+- 不实现自动批准、Merge/Split/Global Promotion、跨设备同步或 Web 管理页面；
 - 不调用 Reasonix/模型，不读取 Desktop Session/Task 私有状态；
 - 不修改 Architecture v1、MEM-01A～MEM-04C 冻结 Schema；
 - 不创建 Tag/Release；不在真实正式项目上试运行。
