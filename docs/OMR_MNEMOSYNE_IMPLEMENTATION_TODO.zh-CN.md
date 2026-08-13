@@ -29,7 +29,7 @@ Mnemosyne 是 OMR 的长期工程记忆层。Reasonix 继续负责 Agent 推理�
 | MEM-03 Librarian 与检索审计 | v2.1.0-beta.1 | ⬜ 未开始 | MEM-02 | 后期建议 |
 | MEM-04 Lifecycle、归因与 Freshness | v2.1.0-beta.2 | ⬜ 未开始 | MEM-03 | 需要真实任务抽样 |
 | MEM-05 修订、泛化与迁移 | v2.1.0-rc.1 | ⬜ 未开始 | MEM-04 | 需要跨项目验证 |
-| MEM-06 Benchmark 与稳定发布 | v2.1.0 | ⬜ 未开始 | MEM-05 | 需要正式 A/B 测试 |
+| MEM-06 Benchmark 与稳定发布 | v2.1.0 | 🟡 已形成 Benchmark 计划，待自动化配对实现与真实临时项目联调 | MEM-05 | 需要正式 A/B 测试 |
 | WEB-01～03 本地记忆管理页面 | v2.2.x | ⏸ 后置 | MEM-06 | 需要桌面/浏览器联调 |
 
 版本号是实施建议。每个阶段完成并经 CTO Review、全量门禁和用户确认后，才创建对应 Tag；不得提前创建 Release 或 Tag。
@@ -98,7 +98,8 @@ internal/memory/canonical.go
 
 ### MEM-01B：安全 Fact Store
 
-状态：⬜
+状态：🟡 已形成 Benchmark 计划，待自动化配对实现与真实临时项目联调（见
+`OMR_MNEMOSYNE_MEM-06_QUALITY_BENCHMARK_PLAN.zh-CN.md`）
 
 交付：
 
