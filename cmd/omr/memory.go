@@ -58,6 +58,12 @@ func runMemory(args []string) error {
 	if args[0] == "compile" {
 		return runMemoryCompile(args[1:])
 	}
+	if args[0] == "index" {
+		if len(args) < 2 || args[1] != "rebuild" {
+			return errors.New("memory index requires rebuild")
+		}
+		return runMemoryIndexRebuild(args[2:])
+	}
 	if args[0] == "benchmark" {
 		if len(args) < 2 || args[1] != "paired" {
 			return errors.New("memory benchmark requires paired")
@@ -175,6 +181,14 @@ type memoryCompileOutput struct {
 	InputCount              int       `json:"input_count"`
 	OutputPaths             []string  `json:"output_paths"`
 	CompiledSHA256          string    `json:"compiled_sha256"`
+}
+
+type memoryIndexRebuildOutput struct {
+	Scope          mem.Scope `json:"scope"`
+	EvaluationTime string    `json:"evaluation_time"`
+	InputCount     int       `json:"input_count"`
+	RootEntries    int       `json:"root_entries"`
+	LocalShards    int       `json:"local_shards"`
 }
 
 type promotionCandidateApplyInput struct {
@@ -505,6 +519,63 @@ func runMemoryCompile(args []string) error {
 	}
 	sort.Strings(paths)
 	return writeJSONOutput(memoryCompileOutput{Scope: scope, CompilerVersion: mem.OKFCompilerVersion, CanonicalizationVersion: mem.OKFCanonicalizationVersion, EvaluationTime: now.UTC().Format(time.RFC3339Nano), InputCount: len(result.Inputs), OutputPaths: paths, CompiledSHA256: result.CompiledSHA256})
+}
+
+func runMemoryIndexRebuild(args []string) error {
+	fs := flag.NewFlagSet("memory index rebuild", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	requestPath := fs.String("request", "", "strict index rebuild request JSON")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *requestPath == "" {
+		return errors.New("index rebuild requires --request")
+	}
+	b, err := readBoundedJSONFile(*requestPath)
+	if err != nil {
+		return errors.New("index rebuild request is unavailable")
+	}
+	var input memoryCompileRequestInput
+	if err := strictJSON(b, &input); err != nil {
+		return errors.New("index rebuild request is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if input.Scope != "" && input.Scope != scope {
+		return errors.New("index rebuild request scope does not match --scope")
+	}
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	now, err := time.Parse(time.RFC3339Nano, input.EvaluationTime)
+	if err != nil || now.IsZero() {
+		return errors.New("index rebuild request evaluation_time must be a valid RFC3339 timestamp")
+	}
+	if len(input.DerivationInputs) == 0 || len(input.Revisions) == 0 {
+		return errors.New("index rebuild request requires explicit inputs")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	revisions := make([]mem.MemoryRevisionRef, 0, len(input.Revisions))
+	for _, ref := range input.Revisions {
+		revisions = append(revisions, mem.MemoryRevisionRef{MemoryID: ref.MemoryID, Revision: ref.Revision, ContentSHA256: ref.ContentSHA256})
+	}
+	result, err := mem.RebuildIndexPreview(context.Background(), store, mem.IndexRebuildRequest{Scope: scope, EvaluationTime: now.UTC(), IndexPolicyRef: input.IndexPolicyRef, DerivationInputs: input.DerivationInputs, Revisions: revisions})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(memoryIndexRebuildOutput{Scope: scope, EvaluationTime: now.UTC().Format(time.RFC3339Nano), InputCount: len(revisions), RootEntries: len(result.RootIndex.Entries), LocalShards: len(result.LocalIndex.Shards)})
 }
 
 func runMemoryPairedBenchmark(args []string) error {

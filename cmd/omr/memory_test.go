@@ -101,6 +101,13 @@ func TestMemoryCompileRequiresExplicitRequest(t *testing.T) {
 	}
 }
 
+func TestMemoryIndexRebuildRequiresExplicitRequest(t *testing.T) {
+	err := runMemory([]string{"index", "rebuild", "--project-dir", t.TempDir()})
+	if err == nil || !strings.Contains(err.Error(), "requires --request") {
+		t.Fatalf("index rebuild must require an explicit request, got %v", err)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")
