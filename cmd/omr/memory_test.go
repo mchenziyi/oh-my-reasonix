@@ -95,6 +95,12 @@ func TestMemoryDerivedCommandsRequireExplicitNow(t *testing.T) {
 	}
 }
 
+func TestMemoryCompileRequiresExplicitRequest(t *testing.T) {
+	if err := runMemory([]string{"compile", "--project-dir", t.TempDir()}); err == nil || !strings.Contains(err.Error(), "--request") {
+		t.Fatalf("compile must require an explicit request file, got %v", err)
+	}
+}
+
 func TestReadBoundedJSONFileRejectsUnsafeInput(t *testing.T) {
 	dir := t.TempDir()
 	target := filepath.Join(dir, "context.json")

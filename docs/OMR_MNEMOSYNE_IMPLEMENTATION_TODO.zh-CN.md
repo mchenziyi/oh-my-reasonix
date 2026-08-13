@@ -199,7 +199,7 @@ Repair 第一版只能重建派生状态、清理明确孤立的临时目录或�
 
 ### MEM-01G：CLI 接入
 
-状态：🟡 status/doctor/list/show、repair、migration、rollback 等主要 CLI 已实现；compile/index rebuild 与真实联调仍待后续
+状态：🟡 status/doctor/list/show、compile、repair、migration、rollback 等主要 CLI 已实现；index rebuild 与真实联调仍待后续
 
 新增：
 
@@ -208,7 +208,7 @@ omr memory status --now 2026-08-13T00:00:00Z
 omr memory doctor
 omr memory list
 omr memory show <id>
-omr memory compile
+omr memory compile --request /path/to/okf-compile-request.json
 omr memory index rebuild
 omr memory index doctor
 ```

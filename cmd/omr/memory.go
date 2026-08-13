@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"syscall"
 	"time"
 
@@ -53,6 +54,9 @@ func runMemory(args []string) error {
 	}
 	if args[0] == "report" {
 		return runMemoryReport(args[1:])
+	}
+	if args[0] == "compile" {
+		return runMemoryCompile(args[1:])
 	}
 	if args[0] == "benchmark" {
 		if len(args) < 2 || args[1] != "paired" {
@@ -138,6 +142,39 @@ type promotionCandidateSourceInput struct {
 	Ref               mem.MemoryRef `json:"ref"`
 	ProjectDir        string        `json:"project_dir"`
 	FamilyFingerprint string        `json:"family_fingerprint"`
+}
+
+type memoryCompileRequestInput struct {
+	Scope            mem.Scope                `json:"scope"`
+	BaseGeneration   *string                  `json:"base_generation"`
+	IndexPolicyRef   mem.PolicyRef            `json:"index_policy_ref"`
+	EvaluationTime   string                   `json:"evaluation_time"`
+	DerivationInputs []mem.ManifestInput      `json:"derivation_inputs"`
+	Revisions        []memoryRevisionRefInput `json:"revisions"`
+	Evidence         []memoryEvidenceRefInput `json:"evidence"`
+}
+
+type memoryRevisionRefInput struct {
+	MemoryID      string `json:"memory_id"`
+	Revision      int    `json:"revision"`
+	ContentSHA256 string `json:"content_sha256"`
+}
+
+type memoryEvidenceRefInput struct {
+	MemoryID           string `json:"memory_id"`
+	Revision           int    `json:"revision"`
+	EvidenceGeneration int    `json:"evidence_generation"`
+	EvidenceSetSHA256  string `json:"evidence_set_sha256"`
+}
+
+type memoryCompileOutput struct {
+	Scope                   mem.Scope `json:"scope"`
+	CompilerVersion         string    `json:"compiler_version"`
+	CanonicalizationVersion int       `json:"canonicalization_version"`
+	EvaluationTime          string    `json:"evaluation_time"`
+	InputCount              int       `json:"input_count"`
+	OutputPaths             []string  `json:"output_paths"`
+	CompiledSHA256          string    `json:"compiled_sha256"`
 }
 
 type promotionCandidateApplyInput struct {
@@ -402,6 +439,72 @@ func runMemoryReport(args []string) error {
 		return err
 	}
 	return writeJSONOutput(report)
+}
+
+func runMemoryCompile(args []string) error {
+	fs := flag.NewFlagSet("memory compile", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	requestPath := fs.String("request", "", "strict OKF compile request JSON")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *requestPath == "" {
+		return errors.New("compile requires --request")
+	}
+	b, err := readBoundedJSONFile(*requestPath)
+	if err != nil {
+		return errors.New("compile request is unavailable")
+	}
+	var input memoryCompileRequestInput
+	if err := strictJSON(b, &input); err != nil {
+		return errors.New("compile request is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if input.Scope != "" && input.Scope != scope {
+		return errors.New("compile request scope does not match --scope")
+	}
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	now, err := time.Parse(time.RFC3339Nano, input.EvaluationTime)
+	if err != nil || now.IsZero() {
+		return errors.New("compile request evaluation_time must be a valid RFC3339 timestamp")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	revisions := make([]mem.MemoryRevisionRef, 0, len(input.Revisions))
+	for _, ref := range input.Revisions {
+		revisions = append(revisions, mem.MemoryRevisionRef{MemoryID: ref.MemoryID, Revision: ref.Revision, ContentSHA256: ref.ContentSHA256})
+	}
+	evidence := make([]mem.MemoryEvidenceRef, 0, len(input.Evidence))
+	for _, ref := range input.Evidence {
+		evidence = append(evidence, mem.MemoryEvidenceRef{MemoryID: ref.MemoryID, Revision: ref.Revision, EvidenceGeneration: ref.EvidenceGeneration, EvidenceSetSHA256: ref.EvidenceSetSHA256})
+	}
+	result, err := mem.CompileOKF(context.Background(), store, mem.OKFCompileRequest{
+		Scope: scope, BaseGeneration: input.BaseGeneration, IndexPolicyRef: input.IndexPolicyRef,
+		EvaluationTime: now.UTC(), DerivationInputs: input.DerivationInputs, Revisions: revisions, Evidence: evidence,
+	})
+	if err != nil {
+		return err
+	}
+	paths := make([]string, 0, len(result.Outputs))
+	for path := range result.Outputs {
+		paths = append(paths, path)
+	}
+	sort.Strings(paths)
+	return writeJSONOutput(memoryCompileOutput{Scope: scope, CompilerVersion: mem.OKFCompilerVersion, CanonicalizationVersion: mem.OKFCanonicalizationVersion, EvaluationTime: now.UTC().Format(time.RFC3339Nano), InputCount: len(result.Inputs), OutputPaths: paths, CompiledSHA256: result.CompiledSHA256})
 }
 
 func runMemoryPairedBenchmark(args []string) error {
