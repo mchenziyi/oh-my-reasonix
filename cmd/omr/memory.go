@@ -824,12 +824,14 @@ func runMemoryMigration(args []string) error {
 	scopeText := fs.String("scope", "project", "project or global")
 	generationID := fs.String("generation-id", "", "source generation id")
 	idempotency := fs.String("idempotency-key", "", "migration idempotency key")
+	planFile := fs.String("plan-file", "", "persisted migration preview JSON")
+	output := fs.String("output", "", "optional JSON output path")
 	_ = fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(args[1:]); err != nil {
 		return err
 	}
-	if *sourceDir == "" || *targetDir == "" || *generationID == "" {
-		return errors.New("migration requires --source-dir, --target-dir and --generation-id")
+	if *sourceDir == "" || *targetDir == "" || (*generationID == "" && *planFile == "") {
+		return errors.New("migration requires --source-dir, --target-dir and --generation-id or --plan-file")
 	}
 	scope := mem.Scope(*scopeText)
 	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
@@ -843,11 +845,31 @@ func runMemoryMigration(args []string) error {
 	if err != nil {
 		return err
 	}
-	plan, err := mem.BuildMigrationPlanFromStores(context.Background(), source, target, *generationID)
-	if err != nil {
-		return err
+	var plan mem.MigrationPlan
+	if *planFile != "" {
+		data, readErr := readBoundedJSONFile(*planFile)
+		if readErr != nil {
+			return errors.New("migration plan file is unavailable")
+		}
+		if readErr := strictJSON(data, &plan); readErr != nil {
+			return errors.New("migration plan file is invalid")
+		}
+		if readErr := plan.Validate(); readErr != nil {
+			return readErr
+		}
+		if plan.SourceScope != scope || plan.TargetScope != scope {
+			return errors.New("migration plan scope does not match command")
+		}
+	} else {
+		plan, err = mem.BuildMigrationPlanFromStores(context.Background(), source, target, *generationID)
+		if err != nil {
+			return err
+		}
 	}
 	if action == "preview" {
+		if *output != "" {
+			return writeJSONValue(*output, "migration plan", plan)
+		}
 		return writeJSONOutput(plan)
 	}
 	if action == "doctor" {
@@ -855,12 +877,18 @@ func runMemoryMigration(args []string) error {
 		if err != nil {
 			return err
 		}
+		if *output != "" {
+			return writeJSONValue(*output, "migration doctor", report)
+		}
 		return writeJSONOutput(report)
 	}
 	if action == "copy" {
 		result, err := mem.ApplyMigrationCopy(context.Background(), source, target, mem.MigrationCopyRequest{Plan: plan})
 		if err != nil {
 			return err
+		}
+		if *output != "" {
+			return writeJSONValue(*output, "migration copy", result)
 		}
 		return writeJSONOutput(result)
 	}
@@ -870,6 +898,9 @@ func runMemoryMigration(args []string) error {
 	result, err := mem.ApplyMigration(context.Background(), source, target, mem.MigrationApplyRequest{Plan: plan, IdempotencyKey: *idempotency})
 	if err != nil {
 		return err
+	}
+	if *output != "" {
+		return writeJSONValue(*output, "migration result", result)
 	}
 	return writeJSONOutput(result)
 }

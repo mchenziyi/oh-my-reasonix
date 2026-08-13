@@ -68,6 +68,23 @@ func TestMemoryRetrievalAuditRequiresExplicitNowAndDoesNotCreateStore(t *testing
 	}
 }
 
+func TestMemoryMigrationPlanFileIsStrictAndReadOnly(t *testing.T) {
+	sourceDir, targetDir := t.TempDir(), t.TempDir()
+	if _, err := mem.OpenProject(memoryStoreRoot(sourceDir), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mem.OpenProject(memoryStoreRoot(targetDir), mem.Options{}); err != nil {
+		t.Fatal(err)
+	}
+	planFile := filepath.Join(t.TempDir(), "plan.json")
+	if err := os.WriteFile(planFile, []byte(`{"schema_version":1,"operation":"migration_preview","source_scope":"project","target_scope":"project","generation_id":"gen_01K7A9X2SOURCE","input_manifest_sha256":"`+testHashForCLI+`","fact_count":0,"snapshot_required":true,"steps":["preview"],"eligible":true,"unknown":true}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"migration", "doctor", "--source-dir", sourceDir, "--target-dir", targetDir, "--scope", "project", "--plan-file", planFile}); err == nil {
+		t.Fatal("unknown plan fields must be rejected before migration work")
+	}
+}
+
 func TestMemoryStatusRequiresExplicitNow(t *testing.T) {
 	err := runMemory([]string{"status", "--memory-id", "mem_status_01", "--project-dir", t.TempDir()})
 	if err == nil || !strings.Contains(err.Error(), "now is required") {

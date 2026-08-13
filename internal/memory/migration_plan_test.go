@@ -45,6 +45,29 @@ func TestBuildMigrationPlanBindsTargetBaseGeneration(t *testing.T) {
 	}
 }
 
+func TestMigrationPlanValidationBindsExecutionMetadata(t *testing.T) {
+	base := "gen_01K7A9X2BASE"
+	valid := MigrationPlan{Operation: "migration_preview", SourceScope: ScopeProject, TargetScope: ScopeProject, GenerationID: "gen_01K7A9X2SOURCE", InputManifestSHA256: testHash, FactCount: 2, SnapshotRequired: true, Steps: []string{"preview", "snapshot", "copy", "compile", "doctor", "switch"}, Eligible: true, TargetBaseGenerationID: &base}
+	if err := valid.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	for name, mutate := range map[string]func(*MigrationPlan){
+		"wrong operation":    func(p *MigrationPlan) { p.Operation = "other" },
+		"missing snapshot":   func(p *MigrationPlan) { p.SnapshotRequired = false },
+		"invalid generation": func(p *MigrationPlan) { p.GenerationID = "../outside" },
+		"invalid hash":       func(p *MigrationPlan) { p.InputManifestSHA256 = "not-a-hash" },
+		"invalid base":       func(p *MigrationPlan) { x := "../outside"; p.TargetBaseGenerationID = &x },
+	} {
+		t.Run(name, func(t *testing.T) {
+			candidate := valid
+			mutate(&candidate)
+			if err := candidate.Validate(); err == nil {
+				t.Fatal("invalid persisted plan must be rejected")
+			}
+		})
+	}
+}
+
 func TestBuildMigrationPlanFromStoresRejectsCrossScope(t *testing.T) {
 	sourceRoot := tempRoot(t)
 	targetRoot := tempRoot(t)

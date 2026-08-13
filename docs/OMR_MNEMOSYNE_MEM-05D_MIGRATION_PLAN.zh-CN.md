@@ -68,6 +68,10 @@ omr memory migration copy \
   --generation-id <generation-id> \
   --json
 ```
+`preview` 可通过 `--output <file>` 保存严格 JSON 计划；`doctor`、`copy` 和 `apply` 可通过
+`--plan-file <file>` 消费该计划。计划文件经过 strict JSON、Scope、Generation、Manifest Hash、步骤、权限和
+目标基线校验；`apply` 不再重新读取 CURRENT 生成另一份计划。这样目标在预览后发生变化时会由 Generation CAS
+稳定拒绝，而不是把旧预览悄悄重绑定到新 CURRENT。`--output` 也可保存 doctor/copy/apply 的结构化结果。
 
 `copy` 只执行已验证输入事实的同 Scope `PutBatch`，重复执行幂等；它不编译目标 Generation、创建 Snapshot 或切换 CURRENT。
 

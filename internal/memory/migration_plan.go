@@ -32,6 +32,37 @@ type MigrationPlan struct {
 	TargetBaseGenerationID *string  `json:"target_base_generation_id,omitempty"`
 }
 
+// Validate checks a persisted preview before it is used for a write. The
+// target base is part of the plan hash, so callers cannot silently rebind an
+// old preview to a newer CURRENT.
+func (p MigrationPlan) Validate() error {
+	if p.Operation != "migration_preview" {
+		return errors.New("migration plan: invalid operation")
+	}
+	if (p.SourceScope != ScopeProject && p.SourceScope != ScopeGlobal) ||
+		(p.TargetScope != ScopeProject && p.TargetScope != ScopeGlobal) {
+		return errors.New("migration plan: invalid scope")
+	}
+	if p.SourceScope != p.TargetScope {
+		return errors.New("migration plan: cross-scope migration requires promotion")
+	}
+	if err := validateID(p.GenerationID, "generation_id"); err != nil {
+		return errors.New("migration plan: invalid generation")
+	}
+	if err := validateHash(p.InputManifestSHA256, "input_manifest_sha256"); err != nil {
+		return errors.New("migration plan: invalid manifest hash")
+	}
+	if p.FactCount < 0 || !p.SnapshotRequired || len(p.Steps) == 0 {
+		return errors.New("migration plan: invalid execution metadata")
+	}
+	if p.TargetBaseGenerationID != nil {
+		if err := validateID(*p.TargetBaseGenerationID, "target_base_generation_id"); err != nil {
+			return errors.New("migration plan: invalid target base")
+		}
+	}
+	return nil
+}
+
 func BuildMigrationPlan(req MigrationRequest) (MigrationPlan, error) {
 	plan := MigrationPlan{Operation: "migration_preview", SourceScope: req.SourceScope, TargetScope: req.TargetScope, FactCount: req.FactCount, SnapshotRequired: true, Steps: []string{"preview", "snapshot", "copy", "compile", "doctor", "switch"}}
 	if req.SourceScope != ScopeProject && req.SourceScope != ScopeGlobal || req.TargetScope != ScopeProject && req.TargetScope != ScopeGlobal {
