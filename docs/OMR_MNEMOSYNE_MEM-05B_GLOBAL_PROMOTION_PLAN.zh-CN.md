@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 Schema Gate 设计中，尚未实现 Global 写入
+- 状态：✅ 只读 PromotionPlan/Gate 已实现并通过门禁（2026-08-13）；Global Revision 写入与批准流程仍未实现
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 
