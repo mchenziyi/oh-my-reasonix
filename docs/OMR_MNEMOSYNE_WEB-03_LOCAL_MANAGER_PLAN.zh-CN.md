@@ -22,7 +22,7 @@
 
 1. 静态资源与 JSON 数据协议（先做确定性 fixture 和浏览器无关测试）。
 2. ✅ 本地受限启动器（`memory web serve`，随机本地端口、仅 loopback、单 workspace）。
-3. ✅ 只读详情/关系/审计/管理页面（`/manager`），管理页展示同一固定时间点重建的 Lifecycle、Health、Usage、关系与审计入口。
+3. ✅ 只读详情/关系/审计/管理页面（`/manager`），管理页展示同一固定时间点重建的 Lifecycle、Health、Usage、Pinned/Frozen/Archived 治理标记、关系与审计入口。
 4. 人工确认后的 CLI 治理操作和回滚结果刷新。
 
 ## 验收
@@ -42,4 +42,4 @@ omr memory web serve --project-dir /tmp/omr-web-03 --now 2026-08-14T00:00:00Z
 
 ## 进程级联调记录
 
-2026-08-14 在隔离临时项目中构建 `omr` 二进制并启动 `memory web serve --listen 127.0.0.1:0`：`/manager` 与 `/audit` 均返回 200；管理页包含 Lifecycle、Health、Usage、Relations、Unfreeze 与审计入口；响应包含 CSP、`Cache-Control: no-store` 与 `X-Content-Type-Options: nosniff`；空 Store 不产生任何 Fact。该 smoke 不替代人工浏览器点击和 Reasonix Desktop 联调。
+2026-08-14 在隔离临时项目中构建 `omr` 二进制并启动 `memory web serve --listen 127.0.0.1:0`：`/manager` 与 `/audit` 均返回 200；管理页包含 Lifecycle、Health、Usage、Pinned/Frozen/Archived、Relations、Unfreeze 与审计入口；响应包含 CSP、`Cache-Control: no-store` 与 `X-Content-Type-Options: nosniff`；空 Store 不产生任何 Fact。该 smoke 不替代人工浏览器点击和 Reasonix Desktop 联调。
