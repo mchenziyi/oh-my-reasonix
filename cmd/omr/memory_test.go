@@ -148,6 +148,9 @@ func TestMemoryCLIRejectsIncompleteRequests(t *testing.T) {
 	if err := runMemory([]string{"generalize", "apply"}); err == nil {
 		t.Fatal("generalize apply must require explicit plan and target")
 	}
+	if err := runMemory([]string{"promotion", "apply"}); err == nil {
+		t.Fatal("promotion apply must require explicit plan, policy and target")
+	}
 	if err := runMemory([]string{"rollback", "generation_1", "--project-dir", t.TempDir()}); err == nil {
 		t.Fatal("rollback must require explicit audit fields")
 	}

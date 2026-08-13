@@ -75,6 +75,12 @@ func runMemory(args []string) error {
 		}
 		return runMemoryGeneralizeApply(args[2:])
 	}
+	if args[0] == "promotion" {
+		if len(args) < 2 || args[1] != "apply" {
+			return errors.New("memory promotion requires apply")
+		}
+		return runMemoryPromotionApply(args[2:])
+	}
 	if args[0] == "rollback" {
 		return runMemoryRollback(args[1:])
 	}
@@ -108,6 +114,59 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryPromotionApply(args []string) error {
+	fs := flag.NewFlagSet("memory promotion apply", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	planPath := fs.String("plan", "", "PromotionPlan JSON file")
+	policyPath := fs.String("policy", "", "Trust PolicyFact JSON file")
+	targetPath := fs.String("target", "", "global MemoryRevision JSON file")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *global == "" || *planPath == "" || *policyPath == "" || *targetPath == "" {
+		return errors.New("promotion apply requires --global-dir, --plan, --policy and --target")
+	}
+	planBytes, err := readBoundedJSONFile(*planPath)
+	if err != nil {
+		return err
+	}
+	policyBytes, err := readBoundedJSONFile(*policyPath)
+	if err != nil {
+		return err
+	}
+	targetBytes, err := readBoundedJSONFile(*targetPath)
+	if err != nil {
+		return err
+	}
+	var plan mem.PromotionPlan
+	if err := strictJSON(planBytes, &plan); err != nil {
+		return errors.New("promotion plan JSON is invalid")
+	}
+	var policy mem.PolicyFact
+	if err := strictJSON(policyBytes, &policy); err != nil {
+		return errors.New("promotion policy JSON is invalid")
+	}
+	var target mem.MemoryRevision
+	if err := strictJSON(targetBytes, &target); err != nil {
+		return errors.New("promotion target JSON is invalid")
+	}
+	projectStore, err := openExistingMemoryStore(*project, mem.ScopeProject)
+	if err != nil {
+		return err
+	}
+	globalStore, err := openExistingMemoryStore(*global, mem.ScopeGlobal)
+	if err != nil {
+		return err
+	}
+	result, err := mem.ApplyPromotionPlan(context.Background(), projectStore, globalStore, plan, policy, target)
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 func runMemoryGeneralizeApply(args []string) error {

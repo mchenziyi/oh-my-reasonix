@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion
 
 - 阶段：MEM-05B
-- 状态：🟡 只读 PromotionPlan/Gate 与显式 Global Promotion Apply 已实现并通过门禁（2026-08-13）；人工批准记录、审计事件与后续 Generation 接入仍未实现
+- 状态：🟡 只读 PromotionPlan/Gate、Global Promotion Apply 与 `memory promotion apply` CLI 已实现并通过门禁（2026-08-13）；人工批准记录、审计事件与后续 Generation 接入仍未实现
 - 前置：MEM-05A 只读 Revision/Merge/Split/Generalize 计划已实现；Trust Gate、Lifecycle、Governance 已可只读验证
 - 目标：定义跨项目经验进入 Global Scope 的显式、可审计、不可隐式升级的批准计划
 
@@ -49,6 +49,8 @@ blocked_reasons: []
 ## 四、批准与写入边界
 
 `ApplyPromotionPlan` 是显式单次写入边界：重新验证 Project 来源、Evidence、Trust Policy、Scope 和目标 Hash，然后复用 Global FactStore 的不可变写入、NOOP 与冲突语义。它不删除或修改 Project 来源，不改变 Lifecycle、CURRENT、Prompt 或索引。
+
+CLI 入口为 `omr memory promotion apply --project-dir <dir> --global-dir <dir> --plan <plan.json> --policy <policy.json> --target <revision.json>`；所有输入只读解析，Apply 仍不会自动批准或切换 Global CURRENT。
 
 真正的批准记录、Promotion Governance Event、Global OKF/Index 接入仍需后续事务阶段实现，顺序必须是：
 
