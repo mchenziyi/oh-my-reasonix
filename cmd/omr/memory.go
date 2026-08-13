@@ -48,6 +48,9 @@ func runMemory(args []string) error {
 	if args[0] == "doctor" {
 		return runMemoryConsistencyDoctor(args[1:])
 	}
+	if args[0] == "status" {
+		return runMemoryStatus(args[1:])
+	}
 	switch args[0] {
 	case "pin", "unpin", "freeze", "unfreeze", "archive":
 		return runMemoryGovernance(args[0], args[1:])
@@ -69,6 +72,47 @@ func runMemory(args []string) error {
 	default:
 		return fmt.Errorf("unknown memory episodic subcommand %q", args[1])
 	}
+}
+
+func runMemoryStatus(args []string) error {
+	fs := flag.NewFlagSet("memory status", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scope := fs.String("scope", "project", "project or global")
+	memoryID := fs.String("memory-id", "", "memory id")
+	revision := fs.Int("revision", 0, "memory revision")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *memoryID == "" {
+		return errors.New("memory-id is required")
+	}
+	sc := mem.Scope(*scope)
+	if sc != mem.ScopeProject && sc != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	dir := *project
+	if sc == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, sc)
+	if err != nil {
+		return err
+	}
+	result, err := mem.DeriveState(context.Background(), store, mem.DerivedStateRequest{Scope: sc, Revision: *revision, Now: time.Now().UTC()})
+	if err != nil {
+		return err
+	}
+	for _, state := range result.States {
+		if state.MemoryID == *memoryID && (*revision == 0 || state.Revision == *revision) {
+			return writeJSONOutput(state)
+		}
+	}
+	return errors.New("memory status not found")
 }
 
 func runMemoryConsistencyDoctor(args []string) error {
