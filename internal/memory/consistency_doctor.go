@@ -49,6 +49,7 @@ const (
 	findingCrossScopeReference = "cross_scope_reference"
 	findingSupersedeCycle      = "supersede_cycle"
 	findingSubjectMismatch     = "subject_payload_mismatch"
+	findingAttributionMismatch = "attribution_override_mismatch"
 	findingCorruptFact         = "corrupt_fact"
 )
 
@@ -99,8 +100,10 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 		}
 	}
 	outcomeSet := map[string]bool{}
+	outcomeByID := map[string]Outcome{}
 	for _, o := range outcomes {
 		outcomeSet[o.OutcomeID] = true
+		outcomeByID[o.OutcomeID] = o
 	}
 	// policy facts keyed by policy_id + type + content hash (the PolicyRef
 	// carries no version, so the exact hash is the anchor).
@@ -194,6 +197,19 @@ func CheckConsistency(ctx context.Context, store *FactStore, req ConsistencyRequ
 				if validateJudgmentRefTarget(*j.SupersedesJudgmentRef, target) != nil || !conflictNodesEqual(j, target) {
 					add(report, findingReferenceMismatch, "error", "judgment", j.JudgmentID, "conflict supersede reference does not exactly match its target")
 				}
+			}
+		}
+		if j.JudgmentType == JudgmentTypeAttributionOverride && j.AttributionOverride != nil {
+			previous := ""
+			if j.SupersedesJudgmentRef == nil {
+				if o, ok := outcomeByID[j.Subject.OutcomeID]; ok {
+					previous = o.Effect
+				}
+			} else if target, ok := judgmentByID[j.SupersedesJudgmentRef.JudgmentID]; ok && target.AttributionOverride != nil {
+				previous = target.AttributionOverride.NewEffect
+			}
+			if previous == "" || previous != j.AttributionOverride.PreviousEffect {
+				add(report, findingAttributionMismatch, "error", "judgment", j.JudgmentID, "attribution override previous effect does not match its target outcome")
 			}
 		}
 	}

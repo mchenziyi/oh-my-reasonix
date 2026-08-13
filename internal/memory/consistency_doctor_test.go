@@ -31,6 +31,27 @@ func TestConsistencyDoctorCleanStore(t *testing.T) {
 	}
 }
 
+func TestConsistencyDoctorAttributionOverrideMismatch(t *testing.T) {
+	store, receipt, _ := attributionFixture(t, "evaluated")
+	if _, err := CommitOutcomes(context.Background(), AttributionRequest{Store: store, Receipt: receipt}); err != nil {
+		t.Fatal(err)
+	}
+	outcomes, err := BuildOutcomes(context.Background(), AttributionRequest{Store: store, Receipt: receipt})
+	if err != nil {
+		t.Fatal(err)
+	}
+	j := JudgmentFact{SchemaVersion: 1, JudgmentID: "judgment_bad_override", JudgmentType: JudgmentTypeAttributionOverride, Scope: ScopeProject, Subject: JudgmentSubject{SubjectType: "memory_outcome", OutcomeID: outcomes[0].OutcomeID}, Source: JudgmentSource{SourceType: "local_user", SourceID: "user_1"}, AttributionOverride: &AttributionOverridePayload{PreviousEffect: "harmed", NewEffect: "neutral", Reason: "bad fixture"}, CreatedAt: "2026-08-13T00:00:00Z"}
+	j = fillJudgmentHash(j)
+	put(t, store, j)
+	rep, err := CheckConsistency(context.Background(), store, ConsistencyRequest{Scope: ScopeProject})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if rep.Healthy || !hasFinding(rep, findingAttributionMismatch) {
+		t.Fatalf("expected attribution mismatch finding: %+v", rep.Findings)
+	}
+}
+
 func TestConsistencyDoctorOrphanMemoryRef(t *testing.T) {
 	root := tempRoot(t)
 	s := openProject(t, root, Options{})
