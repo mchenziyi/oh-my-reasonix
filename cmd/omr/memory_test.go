@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	mem "github.com/mchenziyi/oh-my-reasonix/internal/memory"
@@ -121,6 +122,75 @@ func TestMemoryOutcomeOverrideAcceptsPositionalIDBeforeFlags(t *testing.T) {
 		t.Fatalf("positional outcome id must not stop flag parsing: %v", err)
 	}
 }
+
+func TestMemoryGovernanceFakeCLICycle(t *testing.T) {
+	project := t.TempDir()
+	store, err := mem.OpenProject(memoryStoreRoot(project), mem.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev := mem.MemoryRevision{SchemaVersion: 1, MemoryID: "mem_cli_cycle", MemoryType: mem.MemoryTypeStrategy, Scope: mem.ScopeProject, CanonicalKey: "cli-cycle", Revision: 1, UsagePolicy: mem.UsagePolicyOutcomeAttributed, Title: "CLI cycle", Summary: "test", CreatedAt: "2026-08-13T00:00:00Z"}
+	h, err := rev.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	rev.ContentSHA256 = h
+	if _, err := store.Put(nilContext(), rev); err != nil {
+		t.Fatal(err)
+	}
+	usage := mem.MemoryUsage{SchemaVersion: 1, UsageID: "usage_cli_cycle", Scope: mem.ScopeProject, MemoryID: rev.MemoryID, Revision: 1, UsageStage: "affected", OccurredAt: "2026-08-13T00:00:00Z", Source: "test", CreatedAt: "2026-08-13T00:00:00Z"}
+	h, err = usage.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	usage.ContentSHA256 = h
+	if _, err := store.Put(nilContext(), usage); err != nil {
+		t.Fatal(err)
+	}
+	outcome := mem.Outcome{SchemaVersion: 1, OutcomeID: "outcome_cli_cycle", Scope: mem.ScopeProject, UsageID: "usage_cli_cycle", MemoryID: rev.MemoryID, Revision: 1, Effect: "helped", CreatedAt: "2026-08-13T00:00:00Z"}
+	h, err = outcome.ContentHash()
+	if err != nil {
+		t.Fatal(err)
+	}
+	outcome.ContentSHA256 = h
+	if _, err := store.Put(nilContext(), outcome); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"freeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "test", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"get", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1"}); err == nil {
+		t.Fatal("normal get must reject frozen memory")
+	}
+	review, err := captureRunOutput(func() error {
+		return runMemory([]string{"get", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--include-frozen", "--review-mode", "--json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(review, `"frozen":true`) {
+		t.Fatalf("review read did not expose frozen state: %s", review)
+	}
+	if err := runMemory([]string{"outcome", "override", outcome.OutcomeID, "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := runMemory([]string{"unfreeze", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--reason", "corrected", "--json"}); err != nil {
+		t.Fatal(err)
+	}
+	status, err := captureRunOutput(func() error {
+		return runMemory([]string{"status", "--project-dir", project, "--memory-id", rev.MemoryID, "--revision", "1", "--json"})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(status, `"lifecycle":"frozen"`) {
+		t.Fatalf("unfreeze did not clear frozen lifecycle: %s", status)
+	}
+}
+
+// nilContext keeps the test focused on the CLI cycle; FactStore accepts a
+// context only to honor cancellation, and a background context is sufficient.
+func nilContext() context.Context { return context.Background() }
 
 func TestMemoryUsageCLIRejectsUnknownFieldsBeforeStoreAccess(t *testing.T) {
 	dir := t.TempDir()

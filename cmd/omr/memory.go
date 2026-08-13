@@ -264,7 +264,11 @@ func runMemoryGovernance(operation string, args []string) error {
 		return errors.New("memory revision is invalid")
 	}
 	target := mem.MemoryRef{Scope: rev.Scope, MemoryType: rev.MemoryType, MemoryID: rev.MemoryID, Revision: rev.Revision, ContentSHA256: rev.ContentSHA256}
-	request := mem.GovernanceRequest{Store: store, Target: target, Operation: operation, Reason: *reason, Source: *source, Now: time.Now().UTC()}
+	governanceOperation := operation
+	if governanceOperation == "freeze" {
+		governanceOperation = "manual_freeze"
+	}
+	request := mem.GovernanceRequest{Store: store, Target: target, Operation: governanceOperation, Reason: *reason, Source: *source, Now: time.Now().UTC()}
 	if operation == "unfreeze" {
 		request.BasisRefs = []mem.BasisRef{{MemoryRef: &target}}
 	}
