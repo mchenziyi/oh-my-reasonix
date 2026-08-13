@@ -111,6 +111,7 @@ ReadMemoryForReview(ctx, ReviewReadRequest) (ReviewMemory, error)
 omr memory pin|unpin|freeze|unfreeze|archive <memory-id> --revision <n> --reason ... --json
 omr memory outcome override <outcome-id> --previous-effect harmed --new-effect neutral --reason ... --json
 omr memory get <memory-id> --revision <n> [--include-frozen --review-mode] --json
+omr memory doctor --scope project --project-dir . --json
 ```
 
 ## 六、TDD 验收矩阵
@@ -121,6 +122,7 @@ omr memory get <memory-id> --revision <n> [--include-frozen --review-mode] --jso
 - `CommitGovernanceEvent`：精确校验目标 Revision 的五字段后追加 `pin|unpin|manual_freeze|archive` 事件；重复提交由 FactStore 幂等处理。
 - `unfreeze` 当前明确 fail-closed，尚未开放任何绕过自动冻结证据门禁的路径。
 - CLI 已提供 `memory pin|unpin|freeze|unfreeze|archive`；`unfreeze` 自动携带目标 Revision 作为 basis，并继续接受证据重派生门禁。
+- CLI 已提供只读 `memory doctor`；它调用 `CheckConsistency` 检查 Outcome/Override/Judgment/Governance/Policy 引用完整性，发现问题只输出脱敏诊断，不修复、不删除、不修改 CURRENT。
 
 1. 旧 Revision 的 Governance Event 不污染新 Revision；同 Revision 顺序由 created_at + event_id 决定；
 2. pin/unpin 只改 Pinned；Pinned 不能进入 Frozen 普通索引；
