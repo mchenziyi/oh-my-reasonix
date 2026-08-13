@@ -39,7 +39,7 @@ func TestMemoryWebHandlerReadAndActionProtocol(t *testing.T) {
 	h, action := webHandlerFixture(t)
 	get := httptest.NewRecorder()
 	h.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/", nil))
-	if get.Code != http.StatusOK || !bytes.Contains(get.Body.Bytes(), []byte("mem_web_handler")) {
+	if get.Code != http.StatusOK || !bytes.Contains(get.Body.Bytes(), []byte("mem_web_handler")) || get.Header().Get("X-Content-Type-Options") != "nosniff" {
 		t.Fatalf("read endpoint failed: %d %s", get.Code, get.Body.String())
 	}
 	manager := httptest.NewRecorder()

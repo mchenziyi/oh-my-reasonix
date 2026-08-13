@@ -52,6 +52,8 @@ func (h *MemoryWebHandler) serveGet(w http.ResponseWriter, r *http.Request) {
 		writeWebError(w, http.StatusInternalServerError)
 		return
 	}
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline';")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	_, _ = w.Write(data)
 }
