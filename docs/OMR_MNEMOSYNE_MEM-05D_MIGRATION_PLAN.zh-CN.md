@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：🟡 只读 MigrationPlan、同 Scope 事实复制、Migration Doctor 与目标 Generation/CURRENT 事务已实现；真实跨项目联调仍未完成
+- 状态：✅ 只读 MigrationPlan、同 Scope 事实复制、Migration Doctor 与目标 Generation/CURRENT 事务已实现并通过自动门禁；真实跨项目联调仍未完成
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 

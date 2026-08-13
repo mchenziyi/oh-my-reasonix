@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-06：Memory Quality Benchmark
 
 - 阶段：MEM-06
-- 状态：🟡 配对 Fixture/Report 自动化与只读 CLI 已实现；真实 Reasonix 临时项目配对 Benchmark 尚未执行
+- 状态：✅ 配对 Fixture/Report 自动化与只读 CLI 已实现并通过自动门禁；真实 Reasonix 临时项目配对 Benchmark 尚未执行
 - 前置：MEM-01～MEM-05 的自动门禁通过；真实 Reasonix Desktop 联调仍需用户协助
 - 目标：只报告 Mnemosyne 对检索、读取/采用和下游任务的事实指标，不宣称通用模型能力提升
 

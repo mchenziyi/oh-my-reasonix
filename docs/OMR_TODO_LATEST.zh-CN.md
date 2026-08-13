@@ -19,6 +19,13 @@ OMR-T01～T10、T11（Grill Me）、T12（Grill with Docs）、T13（Comment Che
 5. Tmux/桌面实时面板：记录为 Reasonix 官方适配事项，不在 OMR 内复制 UI 或后台状态机；
 6. **Subagent → Task Monitor 父子任务可观测性**：等待 Reasonix 提供父子关联字段及稳定的 Desktop 映射接口（BLOCKED）。
 
+当前已实现但仍需外部联调的 Mnemosyne 能力：
+
+- MEM-03C-04、MEM-04A～04C：Reasonix Desktop 的真实结构化回执与生命周期联调；
+- MEM-05A、MEM-05C、MEM-05D：跨项目 Revision/Repair/Rollback/Migration 临时目录联调；
+- MEM-05B：Global Generation 的真实 Global Store/界面联调；
+- MEM-06：Reasonix 临时项目的 paired Benchmark。上述项目均已有自动化测试，不是代码阻塞；在真实联调完成前不宣称模型质量提升。
+
 ## v2.0.0～v2.0.3：OMR 自动自进化（已交付）
 
 OMR 不实现第二套 Agent Runtime。Reasonix 继续负责理解任务、推理、工具、Session、Task 和 Subagent；OMR 作为项目级外置策略大脑，通过进化自己的 Prompt、Profile、编排规则、Review 规则、路由和质量 Fixture，使装载 OMR 的 Reasonix 在项目中持续改善。
