@@ -108,6 +108,14 @@ func TestMemoryConsistencyDoctorCLIHealthyJSON(t *testing.T) {
 	}
 }
 
+func TestMemoryOutcomeOverrideAcceptsPositionalIDBeforeFlags(t *testing.T) {
+	project := t.TempDir()
+	err := runMemory([]string{"outcome", "override", "outcome_missing", "--project-dir", project, "--previous-effect", "helped", "--new-effect", "neutral", "--reason", "review"})
+	if err == nil || strings.Contains(err.Error(), "outcome-id, previous-effect") {
+		t.Fatalf("positional outcome id must not stop flag parsing: %v", err)
+	}
+}
+
 func TestMemoryUsageCLIRejectsUnknownFieldsBeforeStoreAccess(t *testing.T) {
 	dir := t.TempDir()
 	librarian := filepath.Join(dir, "librarian.json")

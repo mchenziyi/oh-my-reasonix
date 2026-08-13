@@ -103,6 +103,7 @@ func runMemoryConsistencyDoctor(args []string) error {
 }
 
 func runMemoryOutcomeOverride(args []string) error {
+	args = normalizeLeadingTargetArgs(args)
 	fs := flag.NewFlagSet("memory outcome override", flag.ContinueOnError)
 	project := fs.String("project-dir", ".", "project directory")
 	global := fs.String("global-dir", "", "global memory directory")
