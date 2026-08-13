@@ -1,6 +1,6 @@
 # OMR Mnemosyne MEM-05B：Global Promotion 协议收敛
 
-- 状态：✅ Schema Gate 通过（2026-08-13）；代码实现继续沿用现有 Candidate/Plan/Apply 边界
+- 状态：✅ Schema Gate 与来源物化、Global Generation/OKF 发布实现均已通过（2026-08-13）
 - 目的：消除 Global Promotion 文档中“人工批准”与 Architecture v1 自动进入 `global/probation` 的冲突
 
 ## 一、唯一有效语义
@@ -21,8 +21,8 @@ Lifecycle 规则。因此正常 Promotion 不需要逐条人工批准。
 3. 只写入 Global FactStore，不修改 Project Facts、不切换 CURRENT、不重建索引；
 4. 同身份同 Hash 为 NOOP，异 Hash fail closed。
 
-自动触发器、跨多个 Project Store 的来源装配和 Global Generation/OKF 发布属于后续事务阶段，不能通过伪造一个批准记录
-来替代。来源 Store 身份必须由调用方显式提供，不能从 MemoryRef 猜测项目路径。
+自动触发器仍属于后续调度阶段；跨多个 Project Store 的来源装配与 Global Generation/OKF 发布已由显式请求和事务库层提供，
+不能通过伪造一个批准记录来替代。来源 Store 身份必须由调用方显式提供，不能从 MemoryRef 猜测项目路径。
 
 ## 三、治理审计边界
 
@@ -61,8 +61,8 @@ omr memory promotion candidate apply \
   --json
 ```
 
-## 六、下一步实现前置
+## 六、已实现与后续边界
 
-下一阶段若要实现自动物化，必须先定义一个只读、显式的来源装配请求：每个 `MemoryRef` 绑定调用方提供的 Project
-FactStore 与不可逆 Family fingerprint；装配完成后才能调用现有 `ApplyPromotionPlan`。随后再设计 Global Generation/OKF
-发布事务。两者均不依赖 Reasonix 官方接口，但均需独立 Schema/事务测试。
+来源装配由 `PromotionCandidateSource` 显式绑定并由 `ApplyPromotionCandidate` 校验；Global Generation/OKF 发布由
+`PublishPromotionGeneration` 及 `omr memory promotion generation publish` 完成。后续只剩自动触发调度、桌面观察面板
+和真实临时项目联调，不改变本协议的事实源与事务边界。
