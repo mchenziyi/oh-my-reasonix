@@ -303,7 +303,7 @@ Hash、保护 Composite Generation，支持 dry-run/幂等/CAS/崩溃恢复，�
 
 ### MEM-03C：Episodic Recall
 
-状态：✅ MEM-03C-01～04 自动化实现完成，待真实 Reasonix Desktop 联调（见
+状态：✅ MEM-03C-01～04 自动化实现完成，`omr-memory` 已包含只读检索与回执交接协议；待真实 Reasonix Desktop 联调（见
 `OMR_MNEMOSYNE_MEM-03C_EPISODIC_RECALL_PLAN.zh-CN.md`）
 
 - Episode Card 和 Episodic Index 只能由规范事实派生；
@@ -338,7 +338,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04A：结构化 MemoryUsage 回执
 
-状态：✅ 自动化实现完成，待真实 Reasonix Desktop 回执联调（见 `OMR_MNEMOSYNE_MEM-04A_USAGE_CAPTURE_PLAN.zh-CN.md`）
+状态：✅ 自动化实现完成，`memory usage capture` 与 Profile 交接协议已就绪；待真实 Reasonix Desktop 回执联调（见 `OMR_MNEMOSYNE_MEM-04A_USAGE_CAPTURE_PLAN.zh-CN.md`）
 
 - Reasonix 通过 Prompt Protocol 返回结构化回执；
 - OMR 只记录客观事件、引用和时间；
@@ -347,7 +347,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-04B：Attribution Analyst 与 Outcome
 
-状态：✅ 自动化实现完成，待真实 Reasonix Desktop Attribution 回执联调（见 `OMR_MNEMOSYNE_MEM-04B_ATTRIBUTION_OUTCOME_PLAN.zh-CN.md`）
+状态：✅ 自动化实现完成，`memory outcome capture` 与 Profile 交接协议已就绪；待真实 Reasonix Desktop Attribution 回执联调（见 `OMR_MNEMOSYNE_MEM-04B_ATTRIBUTION_OUTCOME_PLAN.zh-CN.md`）
 
 - 模型分析只输出候选归因；
 - OMR Attribution Gate 校验上下文、证据和任务边界；
