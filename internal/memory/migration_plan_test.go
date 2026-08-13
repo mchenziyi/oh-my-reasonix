@@ -1,6 +1,35 @@
 package memory
 
-import "testing"
+import (
+	"context"
+	"testing"
+)
+
+func TestBuildMigrationPlanFromStoresIsVerifiedAndReadOnly(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := openProject(t, targetRoot, Options{})
+	tx := commitOne(t, NewGenerationStore(source), "migration_verified", nil)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, tx.GenerationID)
+	if err != nil || !plan.Eligible || plan.FactCount != 1 || plan.InputManifestSHA256 == "" {
+		t.Fatalf("unexpected verified migration plan: %+v %v", plan, err)
+	}
+	if _, err := target.Get(context.Background(), FactKindGenerationInputManifest, tx.GenerationID); ErrorCode(err) != CodeNotFound {
+		t.Fatalf("preview must not write target: %v", err)
+	}
+}
+
+func TestBuildMigrationPlanFromStoresRejectsCrossScope(t *testing.T) {
+	sourceRoot := tempRoot(t)
+	targetRoot := tempRoot(t)
+	source := openProject(t, sourceRoot, Options{})
+	target := mustOpenStore(t, targetRoot, StoreScopeGlobal)
+	plan, err := BuildMigrationPlanFromStores(context.Background(), source, target, "gen_01")
+	if err != nil || plan.Eligible || plan.BlockedReason == "" {
+		t.Fatalf("cross scope migration must be blocked: %+v %v", plan, err)
+	}
+}
 
 func TestBuildMigrationPlanScopeAndRefGate(t *testing.T) {
 	req := MigrationRequest{SourceScope: ScopeProject, TargetScope: ScopeProject, ProjectGenerationRef: &ProjectGenerationRef{SchemaVersion: SchemaVersion, Scope: ScopeProject, GenerationID: "gen_migrate", InputManifestID: "manifest_migrate", InputManifestSHA256: "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, FactCount: 4, InputManifestSHA256: "sha256_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}

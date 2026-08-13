@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05D：迁移预览与 Scope 切换
 
 - 阶段：MEM-05D
-- 状态：✅ 只读 MigrationPlan 预览已实现并通过新增测试；迁移复制与 CURRENT 切换仍未实现
+- 状态：🟡 只读 MigrationPlan（含已验证 Store 预览）已实现；迁移复制、编译与 CURRENT 切换仍未实现
 - 前置：MEM-01D Generation 事务、MEM-03C Composite Generation、MEM-05C 只读 Repair/Rollback
 - 目标：提供跨版本/跨目录迁移的可审计预览，避免把项目数据隐式变成 Global 数据
 
@@ -28,6 +28,10 @@ blocked_reasons: []
 ```
 
 `eligible=true` 只表示所有只读检查通过，不代表迁移已执行。计划不能包含绝对路径、项目名、命令、Prompt、凭据或模型输出。
+
+`BuildMigrationPlanFromStores` 仅接受两个不同根目录且 Scope 相同的已打开 Store；它会重新验证源 Generation、永久
+GenerationInputManifest 与输入数量，目标 Store 保持零写入。跨 Scope 仍稳定阻断并要求走 Promotion；任何损坏、Scope
+不匹配或缺失都 fail closed。真正复制事实、编译目标 Generation 和切换目标 CURRENT 尚未开放。
 
 ## 三、后续写入事务
 

@@ -1,8 +1,10 @@
 package memory
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 )
 
 type MigrationRequest struct {
@@ -65,6 +67,44 @@ func BuildMigrationPlan(req MigrationRequest) (MigrationPlan, error) {
 	plan.InputManifestSHA256 = req.InputManifestSHA256
 	plan.Eligible = true
 	return plan, nil
+}
+
+// BuildMigrationPlanFromStores derives a migration preview from verified
+// source/target stores. It is read-only and never creates target directories.
+func BuildMigrationPlanFromStores(ctx context.Context, source, target *FactStore, generationID string) (MigrationPlan, error) {
+	if source == nil || target == nil || source == target || filepath.Clean(source.root) == filepath.Clean(target.root) {
+		return MigrationPlan{}, errors.New("migration plan: source and target stores must be distinct")
+	}
+	if source.storeScope != target.storeScope {
+		return MigrationPlan{Operation: "migration_preview", SourceScope: scopeOfStore(source), TargetScope: scopeOfStore(target), BlockedReason: "cross-scope migration requires promotion"}, nil
+	}
+	if err := validateID(generationID, "generation_id"); err != nil {
+		return MigrationPlan{}, errors.New("migration plan: invalid generation")
+	}
+	gs := NewGenerationStore(source).(*generationStore)
+	gen, _, err := readPublishedGeneration(gs, generationID)
+	if err != nil {
+		return MigrationPlan{}, errors.New("migration plan: source generation is unreadable")
+	}
+	if gen.Scope != scopeOfStore(source) {
+		return MigrationPlan{}, errors.New("migration plan: source generation scope mismatch")
+	}
+	mfBytes, err := source.Get(ctx, FactKindGenerationInputManifest, generationID)
+	if err != nil {
+		return MigrationPlan{}, errors.New("migration plan: source manifest is unavailable")
+	}
+	mf, err := DecodeStrict[GenerationInputManifest](mfBytes)
+	if err != nil || mf.GenerationID != generationID || mf.InputManifestSHA256 == "" {
+		return MigrationPlan{}, errors.New("migration plan: source manifest is invalid")
+	}
+	return MigrationPlan{Operation: "migration_preview", SourceScope: scopeOfStore(source), TargetScope: scopeOfStore(target), GenerationID: generationID, InputManifestSHA256: mf.InputManifestSHA256, FactCount: len(mf.Inputs), SnapshotRequired: true, Steps: []string{"preview", "snapshot", "copy", "compile", "doctor", "switch"}, Eligible: true}, nil
+}
+
+func scopeOfStore(s *FactStore) Scope {
+	if s != nil && s.storeScope == StoreScopeGlobal {
+		return ScopeGlobal
+	}
+	return ScopeProject
 }
 
 func (p MigrationPlan) CanonicalBytes() ([]byte, error) { return json.Marshal(p) }
