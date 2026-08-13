@@ -368,7 +368,7 @@ omr memory retrieval audit <retrieval-id>
 
 ### MEM-05A：Revision/Merge/Split/Generalize
 
-状态：🟡 已形成实现计划，待 Schema Gate 与 TDD 实现（见
+状态：✅ 只读计划层已实现并通过门禁；规范事实写入与批准流程仍待后续阶段（见
 `OMR_MNEMOSYNE_MEM-05A_REVISION_MERGE_GENERALIZE_PLAN.zh-CN.md`）
 
 - Revision 不原地覆盖；
