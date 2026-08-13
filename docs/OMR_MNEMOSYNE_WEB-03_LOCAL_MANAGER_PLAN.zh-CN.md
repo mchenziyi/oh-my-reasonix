@@ -1,6 +1,6 @@
 # OMR Mnemosyne WEB-03：本地管理页面计划
 
-状态：🟡 设计完成，待实现
+状态：🟡 管理动作协议已实现，页面与执行器待实现
 
 ## 目标
 
@@ -13,6 +13,10 @@
 - 默认绑定单一 project workspace；切换 workspace 时清空缓存并重新生成视图，禁止跨项目混读。
 - 不监听公网、不上传数据、不引入向量数据库、不输出 Prompt、命令正文或凭据。
 - 任何写操作失败时只显示稳定错误，页面不做乐观状态更新；刷新后以 FactStore 派生结果为准。
+
+## 已实现的协议切片
+
+`internal/memory.WebManagementAction` 是页面提交给本地执行器的意图对象，不是 Fact。它固定包含 action id、Scope、完整 MemoryRef、受控 operation、人工 reason、basis refs 和显式 requested_at；严格校验后可稳定编码和计算 Hash。该对象不会直接调用 Store，也不会改变 Lifecycle。执行器必须再次读取当前 Fact、校验 Scope/Hash 和二次确认，再调用既有治理 API。
 
 ## 分阶段实现
 
