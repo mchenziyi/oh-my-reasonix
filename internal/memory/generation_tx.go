@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -306,17 +307,24 @@ func generationCompilerAvailable(compiler string, canon int) bool {
 
 // requestHash is the deterministic binding of a generation request to its
 // idempotency key: the same key with a different request hash fails closed.
-func requestHash(scope Scope, base *string, compiler string, canon int) (string, error) {
+func requestHash(scope Scope, base *string, compiler string, canon int, bindings ...string) (string, error) {
 	var baseVal any
 	if base != nil {
 		baseVal = *base
 	}
-	b, err := json.Marshal(map[string]any{
+	payload := map[string]any{
 		"scope":                    string(scope),
 		"base_generation":          baseVal,
 		"compiler_version":         compiler,
 		"canonicalization_version": canon,
-	})
+	}
+	if len(bindings) > 1 {
+		return "", errors.New("too many request bindings")
+	}
+	if len(bindings) == 1 && bindings[0] != "" {
+		payload["request_binding_sha256"] = bindings[0]
+	}
+	b, err := json.Marshal(payload)
 	if err != nil {
 		return "", err
 	}

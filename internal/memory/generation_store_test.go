@@ -302,6 +302,28 @@ func TestGenerationIdempotentReplay(t *testing.T) {
 	}
 }
 
+func TestGenerationRequestBindingDistinguishesPayload(t *testing.T) {
+	root := tempRoot(t)
+	gs := openGenerationProject(t, root)
+	first := beginReq("gen_bound_request", nil)
+	first.RequestBindingSHA256 = "sha256_" + strings.Repeat("a", 64)
+	tx, err := gs.Begin(context.Background(), first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := gs.PrepareManifest(context.Background(), tx, manifestFor(tx, nil)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := gs.Commit(context.Background(), tx); err != nil {
+		t.Fatal(err)
+	}
+	second := beginReq("gen_bound_request", nil)
+	second.RequestBindingSHA256 = "sha256_" + strings.Repeat("b", 64)
+	if _, err := gs.Begin(context.Background(), second); ErrorCode(err) != CodeGenerationIdempotency {
+		t.Fatalf("same idempotency key with different payload must fail closed, got %v", err)
+	}
+}
+
 func TestGenerationIdempotentConflict(t *testing.T) {
 	root := tempRoot(t)
 	gs := openGenerationProject(t, root)

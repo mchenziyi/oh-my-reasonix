@@ -108,6 +108,15 @@ func TestMemoryIndexRebuildRequiresExplicitRequest(t *testing.T) {
 	}
 }
 
+func TestMemoryIndexPublishRequiresRequestAndKey(t *testing.T) {
+	if err := runMemory([]string{"index", "publish", "--project-dir", t.TempDir()}); err == nil || !strings.Contains(err.Error(), "requires --request") {
+		t.Fatalf("index publish must require a request, got %v", err)
+	}
+	if err := runMemory([]string{"index", "publish", "--request", "/tmp/missing-index-request.json", "--project-dir", t.TempDir()}); err == nil || !strings.Contains(err.Error(), "request is unavailable") {
+		t.Fatalf("index publish must reject an unavailable request before key validation, got %v", err)
+	}
+}
+
 func TestMemoryEpisodeCommandsRequireFixedContext(t *testing.T) {
 	if err := runMemory([]string{"episode", "list"}); err == nil || !strings.Contains(err.Error(), "context-file is required") {
 		t.Fatalf("episode list must require fixed context, got %v", err)

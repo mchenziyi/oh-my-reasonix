@@ -70,15 +70,17 @@ func runMemory(args []string) error {
 	}
 	if args[0] == "index" {
 		if len(args) < 2 {
-			return errors.New("memory index requires rebuild or doctor")
+			return errors.New("memory index requires rebuild, doctor or publish")
 		}
 		switch args[1] {
 		case "rebuild":
 			return runMemoryIndexRebuild(args[2:])
 		case "doctor":
 			return runMemoryIndexDoctor(args[2:])
+		case "publish":
+			return runMemoryIndexPublish(args[2:])
 		default:
-			return errors.New("memory index requires rebuild or doctor")
+			return errors.New("memory index requires rebuild, doctor or publish")
 		}
 	}
 	if args[0] == "benchmark" {
@@ -612,6 +614,82 @@ func runMemoryIndexRebuild(args []string) error {
 		return err
 	}
 	return writeJSONOutput(memoryIndexRebuildOutput{Scope: scope, EvaluationTime: now.UTC().Format(time.RFC3339Nano), InputCount: len(revisions), RootEntries: len(result.RootIndex.Entries), LocalShards: len(result.LocalIndex.Shards)})
+}
+
+func runMemoryIndexPublish(args []string) error {
+	fs := flag.NewFlagSet("memory index publish", flag.ContinueOnError)
+	project := fs.String("project-dir", ".", "project memory directory")
+	global := fs.String("global-dir", "", "global memory directory")
+	scopeText := fs.String("scope", "project", "project or global")
+	requestPath := fs.String("request", "", "strict OKF compile request JSON")
+	idempotencyKey := fs.String("idempotency-key", "", "idempotency key")
+	dryRun := fs.Bool("dry-run", false, "compile without publishing")
+	_ = fs.Bool("json", false, "JSON output")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
+	if *requestPath == "" {
+		return errors.New("index publish requires --request")
+	}
+	b, err := readBoundedJSONFile(*requestPath)
+	if err != nil {
+		return errors.New("index publish request is unavailable")
+	}
+	var input memoryCompileRequestInput
+	if err := strictJSON(b, &input); err != nil {
+		return errors.New("index publish request is invalid")
+	}
+	scope := mem.Scope(*scopeText)
+	if input.Scope != "" && input.Scope != scope {
+		return errors.New("index publish request scope does not match --scope")
+	}
+	if scope != mem.ScopeProject && scope != mem.ScopeGlobal {
+		return errors.New("memory scope is invalid")
+	}
+	now, err := time.Parse(time.RFC3339Nano, input.EvaluationTime)
+	if err != nil || now.IsZero() {
+		return errors.New("index publish request evaluation_time must be a valid RFC3339 timestamp")
+	}
+	if !*dryRun && *idempotencyKey == "" {
+		return errors.New("index publish requires --idempotency-key")
+	}
+	dir := *project
+	if scope == mem.ScopeGlobal {
+		dir = *global
+	}
+	if dir == "" {
+		return errors.New("memory scope directory is unavailable")
+	}
+	store, err := openExistingMemoryStore(dir, scope)
+	if err != nil {
+		return err
+	}
+	revisions := make([]mem.MemoryRevisionRef, 0, len(input.Revisions))
+	for _, ref := range input.Revisions {
+		revisions = append(revisions, mem.MemoryRevisionRef{MemoryID: ref.MemoryID, Revision: ref.Revision, ContentSHA256: ref.ContentSHA256})
+	}
+	evidence := make([]mem.MemoryEvidenceRef, 0, len(input.Evidence))
+	for _, ref := range input.Evidence {
+		evidence = append(evidence, mem.MemoryEvidenceRef{MemoryID: ref.MemoryID, Revision: ref.Revision, EvidenceGeneration: ref.EvidenceGeneration, EvidenceSetSHA256: ref.EvidenceSetSHA256})
+	}
+	request := mem.OKFCompileRequest{Scope: scope, BaseGeneration: input.BaseGeneration, IndexPolicyRef: input.IndexPolicyRef, EvaluationTime: now.UTC(), DerivationInputs: input.DerivationInputs, Revisions: revisions, Evidence: evidence}
+	if *dryRun {
+		compiled, err := mem.CompileOKF(context.Background(), store, request)
+		if err != nil {
+			return err
+		}
+		return writeJSONOutput(struct {
+			Scope          mem.Scope `json:"scope"`
+			DryRun         bool      `json:"dry_run"`
+			InputCount     int       `json:"input_count"`
+			CompiledSHA256 string    `json:"compiled_sha256"`
+		}{scope, true, len(compiled.Inputs), compiled.CompiledSHA256})
+	}
+	result, err := mem.PublishIndexGeneration(context.Background(), store, mem.IndexPublishRequest{OKF: request, IdempotencyKey: *idempotencyKey})
+	if err != nil {
+		return err
+	}
+	return writeJSONOutput(result)
 }
 
 type memoryIndexDoctorRequest struct {

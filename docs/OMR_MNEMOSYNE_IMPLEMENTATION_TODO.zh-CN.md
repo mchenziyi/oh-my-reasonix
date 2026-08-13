@@ -199,7 +199,7 @@ Repair 第一版只能重建派生状态、清理明确孤立的临时目录或�
 
 ### MEM-01G：CLI 接入
 
-状态：✅ status/doctor/list/show/history/usage、compile、index rebuild/index doctor、repair、migration、rollback 等主要 CLI 已实现；派生 Index 发布事务与真实联调仍待后续
+状态：✅ status/doctor/list/show/history/usage、compile、index rebuild/index doctor/index publish、repair、migration、rollback 等主要 CLI 已实现；真实联调仍待后续
 
 新增：
 
@@ -213,17 +213,18 @@ omr memory usage <id>
 omr memory compile --request /path/to/okf-compile-request.json
 omr memory index rebuild
 omr memory index doctor
+omr memory index publish --request /path/to/okf-compile-request.json --idempotency-key index_publish_01
 ```
 
 要求：`--project-dir`、`--scope`、稳定 JSON、写命令 `--dry-run`、稳定错误码，并保证 `omr evolve` 行为不变。
 
 ### MEM-01H：派生 Index 显式发布事务
 
-状态：🟡 设计完成，待 TDD 实现（见 `OMR_MNEMOSYNE_MEM-01H_INDEX_PUBLISH_PLAN.zh-CN.md`）
+状态：✅ 已实现并通过自动门禁，真实 Desktop 联调待后续（见 `OMR_MNEMOSYNE_MEM-01H_INDEX_PUBLISH_PLAN.zh-CN.md`）
 
-当前只读 `compile/index rebuild/index doctor` 已覆盖预览和诊断；尚缺把确定性输出通过唯一
-GenerationStore 事务发布为 `CURRENT` 的显式命令。该阶段必须绑定完整请求 Hash、保护 Composite
-Generation、支持 dry-run/幂等/CAS/崩溃恢复，并且不新增 Index Fact 或第二 `CURRENT`。
+`memory index publish` 已把确定性输出通过唯一 GenerationStore 事务发布为 `CURRENT`，绑定完整请求
+Hash、保护 Composite Generation，支持 dry-run/幂等/CAS/崩溃恢复，并且不新增 Index Fact 或第二
+`CURRENT`。
 
 ## 5. MEM-02：Evolution 转换、OKF 与 Trust Gate
 

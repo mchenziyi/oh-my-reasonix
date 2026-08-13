@@ -46,7 +46,11 @@ type BeginGenerationRequest struct {
 	CanonicalizationVersion int
 	SchemaVersion           int
 	IdempotencyKey          string
-	RequestSHA256           string // optional; verified against the computed request hash when set
+	// RequestBindingSHA256 optionally binds the claim to the complete
+	// higher-level request (for example all OKF inputs). Empty preserves the
+	// legacy metadata-only binding used by older callers.
+	RequestBindingSHA256 string
+	RequestSHA256        string // optional; verified against the computed request hash when set
 }
 
 // GenerationTx is the live handle of one prepared transaction. It owns the
@@ -282,7 +286,12 @@ func (gs *generationStore) Begin(ctx context.Context, req BeginGenerationRequest
 	if req.CanonicalizationVersion < 1 {
 		return nil, storeError(CodeSchemaInvalid, "canonicalization version must be >= 1")
 	}
-	rHash, err := requestHash(req.Scope, req.BaseGeneration, req.CompilerVersion, req.CanonicalizationVersion)
+	if req.RequestBindingSHA256 != "" {
+		if err := validateHash(req.RequestBindingSHA256, "request_binding_sha256"); err != nil {
+			return nil, storeError(CodeSchemaInvalid, "invalid request binding hash")
+		}
+	}
+	rHash, err := requestHash(req.Scope, req.BaseGeneration, req.CompilerVersion, req.CanonicalizationVersion, req.RequestBindingSHA256)
 	if err != nil {
 		return nil, storeError(CodeSchemaInvalid, "request hash cannot be computed")
 	}

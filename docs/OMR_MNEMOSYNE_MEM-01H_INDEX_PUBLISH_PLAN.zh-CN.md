@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-01H：派生 Index 显式发布事务计划
 
 - 阶段：MEM-01H
-- 状态：🟡 设计完成，待 TDD 实现
+- 状态：✅ 已实现并通过自动门禁（2026-08-14）；真实 Desktop 联调待后续
 - 前置：MEM-01D GenerationStore、MEM-01E OKF Compiler、MEM-01G 只读 compile/index rebuild/index doctor
 - 目标：把确定性 OKF/Index 预览通过显式、可审计的 Generation 事务发布为唯一 `CURRENT`
 
@@ -90,3 +90,16 @@ bash tests/docs_check.sh
 
 实现前必须先更新失败测试；实现完成后单独运行 `internal/memory`、`cmd/omr` 和 race 测试，再跑全量
 门禁。未通过 CTO Review 前不创建 Tag/Release。
+
+## 八、实现结果
+
+- 新增 `PublishIndexGeneration` 与 `omr memory index publish`；`--dry-run` 只编译，默认路径才创建
+  Generation Claim、事务、Manifest 和唯一 `CURRENT`。
+- 发布前精确准备 Manifest 中的全部规范事实，输出 Hash 与 Generation Hash 在 staging 中校验；失败
+  通过 Abort 保留可诊断记录，不覆盖规范事实。
+- `BeginGenerationRequest.RequestBindingSHA256` 可选绑定完整高层请求；旧调用方留空时保持原有 Hash
+  语义，Index publish 则覆盖 Policy、Revision、Evidence、DerivationInputs、Base 和评估时间。
+- 当前有效 Generation 为 Composite 时 Memory-only publish fail closed；不创建第二 `CURRENT`。
+- 新增首代发布、完整请求幂等冲突和 Composite 保护回归测试。
+
+实现提交前仍需完成 CTO Review；真实 Reasonix Desktop 读取验证不属于本地自动门禁。
