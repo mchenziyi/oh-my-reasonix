@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-05B：Global Promotion Generation 发布计划
 
 - 阶段：MEM-05B-Generation
-- 状态：✅ 库层发布事务已实现（CLI/Global Generation UI 待后续阶段）
+- 状态：✅ 库层与 CLI 发布事务已实现并通过门禁（Global Generation UI/真实联调待后续阶段）
 - 前置：GlobalPromotionCandidate、`ApplyPromotionCandidate`、MEM-01D Generation 事务、OKF Compiler
 - 不依赖：Reasonix 官方接口、人工批准、模型调用
 

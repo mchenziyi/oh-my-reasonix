@@ -1,7 +1,7 @@
 # OMR Mnemosyne MEM-01G：只读编译 CLI 计划
 
 - 阶段：MEM-01G
-- 状态：✅ `memory compile`、`index rebuild` 与 `index doctor` 只读命令均已实现；尚未提供派生 Index 发布事务
+- 状态：✅ `memory compile`、`index rebuild`、`index doctor` 与 `index publish` 均已实现并通过门禁；真实 Desktop 联调待后续
 - 目标：把已有确定性 OKF 编译器暴露为可审计的 CLI 预览，不隐式读取 CURRENT、不写入 Generation、不引入墙钟。
 
 ## 一、命令契约
@@ -48,12 +48,19 @@ omr memory index rebuild \
 - 输入顺序规范化后结果字节稳定；非法 Hash、路径穿越、跨 Scope、缺失事实或不完整 Manifest 均 fail closed；
 - 不写入 Index Fact；Index 仍是由规范事实派生的读取视图。
 
-## 三、明确不做
+## 三、Index 发布事务（MEM-01H 收口）
+
+派生 Index 的写入不属于本计划的只读预览命令，已由 MEM-01H 提供独立的
+`omr memory index publish`。该命令复用唯一 Generation/CURRENT 事务，绑定完整请求 Hash，拒绝覆盖
+Composite Generation，并保留 Manifest、CAS、幂等与恢复语义。MEM-01G 的 compile/rebuild/doctor
+仍保持只读，不会隐式调用 publish。
+
+## 四、明确不做
 
 本命令不负责发布派生 Index、更新 CURRENT/CAS、修复损坏数据或自动生成缺失事实；需要这些
 能力时必须进入独立的 Generation 事务计划，避免把预览结果变成第二事实源。
 
-## 四、验收
+## 五、验收
 
 - 缺少 request、缺少 evaluation_time、非法 JSON、未知字段和 symlink 输入均稳定拒绝；
 - 合法请求输出字节稳定，重复执行不产生任何 Store 文件变化；
